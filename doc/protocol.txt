@@ -16,6 +16,28 @@ LOGSTATS if LOGINC:
 LOGSTAT|100|2|20040703a|239E038F12E685FB75C6C03A79A1DE8A|11|Alain/telnet|Stiévenart|JO20HI|on4kst@skynet.be|
 LOGSTAT|100|chat id|client software version|session key|config|first name|last name|locator|email|
 
+if error:
+LOGSTAT|101|Unknown user %s.|
+LOGSTAT|102|%s is a bad callsign (length)!|
+LOGSTAT|103|%s is a bad callsign (used characters)!|
+LOGSTAT|104|Bad password (length)!| 
+LOGSTAT|105|Bad password (used characters)!| 
+LOGSTAT|106|Wrong selection!| 
+LOGSTAT|107|The passwords dont match!| 
+LOGSTAT|108|Invalid callsign!|
+LOGSTAT|109|Invalid password!|
+LOGSTAT|110|Invalid first name!|
+LOGSTAT|111|Invalid locator!|
+LOGSTAT|112|Invalid email address!|
+LOGSTAT|113|User already registered!|
+LOGSTAT|114|Wrong password!|
+LOGSTAT|115|Wrong selection!| 
+LOGSTAT|116|Invalid last name!|
+LOGSTAT|117|PROXY not logged in that chat!|
+LOGSTAT|118|PROXY %s not logged in that chat!|
+LOGSTAT|200|PROXY %s callsign added|
+LOGSTAT|201|PROXY %s callsign removed|
+
 Chat message frame at login
 CR|chat id|Unix time|callsign|firstname|destination|msg|highlight|
 CR|2|1186819108|EA6VQ|Gabriel|0|OH8K, will you be on EME later today please?|0|
@@ -106,8 +128,8 @@ SES|chat id|session key|
 SES|1|1910034479E1B1C441B71EFB2EB141F2|
 
 PRKP|time|kpp|
-PRMA|time|Bt|Bz|
-PRSW|time|proton|sws|
+PRMA|time|Bt|Bz|sws|
+PRSW|time|proton|
 PRWW|time|solar flux|A index|K index|Sun Spot Number|
 PRXR|time|xray|
 PRAU|time|Aurora level|
@@ -120,7 +142,7 @@ Aurora level:
 9:Low lat. AU alert
 Other values: no alert
 
-CK: link check
+CK: link check (you need to reply at least the 2 characters [CR] and [LF])
 CK|
 
 Client -> Server
@@ -198,15 +220,56 @@ Command frame
 MSG|chat id|destination|command|0|
 MSG|2|0|/SHCLX|0|
 
-/AWAY              To indicate that I am currently away.
-/BACK              To indicate that I am currently watching the chat.
-/CHAT  value       Login into another chat. Values are 50 144 GHZ EME HF.
-/CQ callsign msg   To send a public msg seen in highlight by the "callsign".
-/LSTCLX            The list of the available DX clusters.
-/SETCLX dxcluster  To give the cluster where to spot the DX.
-/SETLOC locator    To set his own locator.
-/SHCLX	           To show the DX cluster where the DX spot is sent.
-/SHLOC callsign    To show the locator of a station.
-/SHUSER callsign   To show the locator of a station.
-/QUIT              To leave the chat.
+/AWAY              		To indicate that I am currently away.
+/BACK              		To indicate that I am currently watching the chat.
+/CHAT  value       		Login into another chat. Values are 50 144 GHZ EME HF.
+/CQ callsign msg   		To send a public msg seen in highlight by the "callsign".
+/DX qrg callsign [info]	to spot a DX on the clx cluster
+/LSTCLX            		The list of the available DX clusters.
+/SETCLX dxcluster  		To give the cluster where to spot the DX.
+/SETNAME name 	   		To set your firstname.
+/SETLOC locator    		To set his own locator.
+/SHCLX	           		To show the DX cluster where the DX spot is sent.
+/SHLOC callsign    		To show the locator of a station.
+/SHUSER callsign   		To show the data of a station.
+/QUIT              		To leave the chat.
+
+Proxy commands (it works only after a LOGINP command)
+==============
+Client -> server
+----------------
+LOGINP in place of LOGIN (same data)
+LOGINP|proxy callsign|password|chat id|client software version|1|1|1|0|0|
+
+To add a registered user
+AUSER|chat id|user callsign|password|
+
+To remove a registered user
+DUSER|chat id|user callsign|
+
+To reply to the CKUSER command (see below)
+OKUSER|chat id|user callsign|
+
+User message
+MSGP|chat id|user callsign|destination|command|highlight|
+
+Command frame
+MSGP|chat id|user callsign|0|msg|0|
+
+/AWAY              		To indicate that I am currently away.
+/BACK              		To indicate that I am currently watching the chat.
+/CQ callsign msg   		To send a public msg seen in highlight by the "callsign".
+/DX qrg callsign [info]	to spot a DX on the clx cluster
+/LSTCLX            		The list of the available DX clusters.
+/SETCLX dxcluster  		To give the cluster where to spot the DX.
+/SETNAME name 	   		To set your firstname.
+/SETLOC locator    		To set his own locator.
+/SHCLX	           		To show the DX cluster where the DX spot is sent.
+/SHLOC callsign    		To show the locator of a station.
+/SHUSER callsign   		To show the data of a station.
+
+Server -> client
+----------------
+To check if the user is still connected
+CKUSER|chat id|callsign|
 
