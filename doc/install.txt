@@ -1,0 +1,28 @@
+Create DB:
+mysqladmin -u root -p create beacons
+
+open mysql console
+
+grant all privileges on beacons.* to 'beacons'@'localhost' identified by 'wibble';
+flush privileges;
+use beacons
+source beacons.sql
+
+Install modules:
+
+pip install requests mysql-connector-python google-cloud-storage
+
+Install directory by copying the contents of the scripts dir to /var/lib/KST
+
+Install systemd timers and service by moving/copying beacons.timer and beacons.service to /etc/systemd/system
+
+Enable and start the service:
+
+sudo systemctl daemon-reload
+sudo systemctl enable foo.timer
+sudo systemctl start foo.timer
+
+Check it is running:
+
+sudo systemctl list-timers --all
+

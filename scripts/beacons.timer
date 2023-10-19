@@ -1,0 +1,11 @@
+[Unit]
+Description=Run beacons.sh every 12 hours
+
+[Timer]
+OnBootSec=15min
+OnUnitActiveSec=12h
+Unit=beacons.service
+
+[Install]
+WantedBy=timers.target
+
