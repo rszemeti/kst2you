@@ -12,12 +12,16 @@
 // http://ham.stackexchange.com/questions/221/how-can-one-convert-from-lat-long-to-grid-square
 //
 
+//
+// Modified for all uppercase ouput as per 
+// https://www.iaru-r1.org/wp-content/uploads/2021/03/VHF_Handbook_V9.01.pdf p120
+//
+
 latLonToGridSquare = function(param1,param2){
   var lat=-100.0;
   var lon=0.0;
   var adjLat,adjLon,GLat,GLon,nLat,nLon,gLat,gLon,rLat,rLon;
   var U = 'ABCDEFGHIJKLMNOPQRSTUVWX'
-  var L = U.toLowerCase();
   // support Chris Veness 2002-2012 LatLon library and
   // other objects with lat/lon properties
   // properties could be numbers, or strings
@@ -57,37 +61,37 @@ latLonToGridSquare = function(param1,param2){
   nLon = ''+Math.trunc((adjLon/2) % 10);
   rLat = (adjLat - Math.trunc(adjLat)) * 60;
   rLon = (adjLon - 2*Math.trunc(adjLon/2)) *60;
-  gLat = L[Math.trunc(rLat/2.5)];
-  gLon = L[Math.trunc(rLon/5)];
+  gLat = U[Math.trunc(rLat/2.5)];
+  gLon = U[Math.trunc(rLon/5)];
   return GLon+GLat+nLon+nLat+gLon+gLat;
 }
 
-gridSquareToLatLon = function(grid, obj){
-  grid = grid.toUpperCase();
-  var returnLatLonConstructor = (typeof(LatLon)==='function');
-  var returnObj = (typeof(obj)==='object');
-  var lat=0.0,lon=0.0,aNum="a".charCodeAt(0),numA="A".charCodeAt(0);
-  function lat4(g){
-    return 10*(g.charCodeAt(1)-numA)+parseInt(g.charAt(3))-90;
-  }
-  function lon4(g){
-    return 20*(g.charCodeAt(0)-numA)+2*parseInt(g.charAt(2))-180;
-  }
-  if ((grid.length!=4) && (grid.length!=6)) throw "gridSquareToLatLon: grid must be 4 or 6 chars: "+grid;
-  if (/^[A-X][A-X][0-9][0-9]$/.test(grid)){
-    lat = lat4(grid)+0.5;
-    lon = lon4(grid)+1;
-  } else if (/^[A-X][A-X][0-9][0-9][A-X][A-X]$/.test(grid)){
-    lat = lat4(grid)+(1.0/60.0)*2.5*(grid.toLowerCase().charCodeAt(5)-aNum+0.5);
-    lon = lon4(grid)+(1.0/60.0)*5*(grid.toLowerCase().charCodeAt(4)-aNum+0.5);
-  } else throw "gridSquareToLatLon: invalid grid: "+grid;
-  if (returnLatLonConstructor) return new LatLon(lat,lon);
-  if (returnObj){
-    obj.lat = lat;
-    obj.lon = lon;
-    return obj;
-  }
-  return [lat,lon];
+gridSquareToLatLon = function(grid){
+		grid = grid.toUpperCase();
+		gridLen = grid.length;
+		if (gridLen < 4)  grid += '55LL55LL';
+		if (gridLen < 6)  grid += 'LL55LL';
+		if (gridLen < 8)  grid += '55LL';
+		if (gridLen < 10) grid += 'LL';
+		var gridFormat = /[A-R]{2}[0-9]{2}[A-X]{2}[0-9]{2}[A-X]{2}/;
+		if (gridFormat.test(grid) && (gridLen % 2 == 0)) {
+            return fromLocator(grid);
+		} else {
+            throw("Invalid locator format");
+		}
+	}     
+
+function fromLocator(loc){
+    var i = 0;
+    var l = new Array();
+    loc = loc.toUpperCase();
+    while (i < 10) l[i] = loc.charCodeAt(i++) - 65;
+    l[2] += 17; l[3] += 17;
+    l[6] += 17; l[7] += 17;
+    var lon = (l[0]*20 + l[2]*2 + l[4]/12 + l[6]/120 + l[8]/2880 - 180);
+    var lat = (l[1]*10 + l[3] + l[5]/24 + l[7]/240 + l[9]/5760 - 90);
+
+    return [lat,lon];
 };
 
 testGridSquare = function(){
@@ -96,14 +100,14 @@ testGridSquare = function(){
   // original test data in Python / citations by Walter Underwood K6WRU
   // last test and coding into Javascript from Python by Paul Brewer KI6CQ
   var testData = [
-    ['Munich', [48.14666,11.60833], 'JN58td'],
-    ['Montevideo', [[-34.91,-56.21166]], 'GF15vc'],
-    ['Washington, DC', [{lat:38.92,lon:-77.065}], 'FM18lw'],
-    ['Wellington', [{latitude:-41.28333,longitude:174.745}], 'RE78ir'],
-    ['Newington, CT (W1AW)', [41.714775,-72.727260], 'FN31pr'],
-    ['Palo Alto (K6WRU)', [[37.413708,-122.1073236]], 'CM87wj'],
+    ['Munich', [48.14666,11.60833], 'JN58TD'],
+    ['Montevideo', [[-34.91,-56.21166]], 'GF15VC'],
+    ['Washington, DC', [{lat:38.92,lon:-77.065}], 'FM18LW'],
+    ['Wellington', [{latitude:-41.28333,longitude:174.745}], 'RE78IR'],
+    ['Newington, CT (W1AW)', [41.714775,-72.727260], 'FN31PR'],
+    ['Palo Alto (K6WRU)', [[37.413708,-122.1073236]], 'CM87WJ'],
     ['Chattanooga (KI6CQ/4)', [{lat:function(){ return "35.0542"; }, 
-                              lon: function(){ return "-85.1142"}}], "EM75kb"]
+                              lon: function(){ return "-85.1142"}}], "EM75KB"]
   ];
   var i=0,l=testData.length,result='',result2,result3,thisPassed=0,totalPassed=0;
   for(i=0;i<l;++i){

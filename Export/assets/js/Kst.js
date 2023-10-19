@@ -4,7 +4,7 @@ var debug;
 var ws;
 var connectState;
 
-const websocketServerUrl = "wss://live2.live-bidder.com:9050"
+const websocketServerUrl = "wss://live2.live-bidder.com/kst/"
 
 var lastMsg;
 var latestMessageTime = 0;
@@ -28,6 +28,34 @@ var password;
 
 var userList = [];
 const locTest = RegExp('\w{6}');
+
+var bandData = {
+    1: {
+        min: 50,
+        max:70
+    },
+    2: {
+        min: 144,
+        max: 432
+    },
+    3: {
+        min: 1296,
+        max: 300000
+    },
+    4: {
+        min: 0,
+        max: 0
+    },
+    5: {
+        min: 0,
+        max: 1
+    },
+    7: {
+        min: 50,
+        max: 52
+    },
+    
+}
 
 class Station{
 
@@ -114,6 +142,7 @@ class Station{
   
 }
 
+// CH|3|1696934988|SERVER|message|G1YFG|Your name is now "Robin 3cm".|0|
 class Message{
     constructor(msgString){
       var msg = msgString.split("|");
@@ -123,6 +152,11 @@ class Message{
       this._text = msg[6];
       this._to = msg[7];
     }  
+    
+    
+  get status(){
+    return this._status.toUpperCase();
+  }
     
   get from(){
     return this._from.toUpperCase();
@@ -172,14 +206,11 @@ function websocketInit(url){
   };
 
   ws.onopen = function() {
-    $('#connState').text("connected");
-    $('#content').append('opened<br/>');
-    sendMsg("LOGINC|"+userName+"|"+password+"|"+chatId+"|KST2You 1.0|20|20|1|"+latestMessageTime+"|"+latestMessageTime+"|");
+    $('#connState').text("connected"); sendMsg("LOGINC|"+userName+"|"+password+"|"+chatId+"|KST2You 1.0|20|20|1|"+latestMessageTime+"|"+latestMessageTime+"|");
   };
 
   ws.onclose = function() {
     if(connectState == 'logOff'){
-      $('#content').append('closed<br/>');
       $('#connState').text('connection closed');
       $("#loginModal").modal();
     }else{
@@ -202,15 +233,22 @@ function procWsError(evt){
   $('#loginErrorMessage').text("Unable to connect to "+evt.target.url);
 }
 
-function procMsgs(msgs){
-  var list = msgs.split(/\r\n/);
-  if(Array.isArray(list)){
-      list.forEach(function(value,index,array){
-        procMsg(value);
-      }); //              
-  }else{
-     procMsg(msg);
-  }
+let incompleteMessage = '';
+
+function procMsgs(msgs) {
+    let combinedMsgs = incompleteMessage + msgs;
+    incompleteMessage ='';
+    let list = combinedMsgs.split(/\r\n/);
+    
+    if (list.length > 0 && !list[list.length - 1].endsWith('\r\n')) {
+        incompleteMessage = list.pop();
+    }
+
+    if (Array.isArray(list)) {
+        list.forEach(function(value, index, array) {
+            procMsg(value);
+        });
+    }
 }
 
 function procMsg(msg){
@@ -244,22 +282,48 @@ function procMsg(msg){
 //CH|3|1592770412|G1YFG |Robin 23cm   |0| test     |0|
 function procChatHistory(msg, isLive){
   var message = new Message(msg);
+  console.log("From:" + message.from);
+  
+  if(message.from.includes('SERVER')){
+     if(message.status == userName){
+         console.log("TO me: "+message.text);
+         if(message.text.includes("Your name is now")){
+             $('#setNameAlert').hide();
+             $('#setNameModal').modal('hide');
+         }
+        if(message.text.includes("Invalid first name")){
+             $('#setNameAlert').show();
+             $('#setNameAlertText').html("<strong>Warning: </strong> Invalid first name");
+         }
+     }
+    return;
+  }
   
   if(message.timestamp > latestMessageTime){
     latestMessageTime = message.timestamp;
   }
   
   var stn = stationList[message.from];
+  var to = message.to;
+
+  if(to === '0'){
+      to="<span style='border: ;background: red;padding: 5px;color: aliceblue;'>CQ</span>";
+  }
+    
   var row = $("<tr>"
                        +"<td>"+message.date+"</td>"
                        +'<td class="from" onclick="chatPopup(\''+message.from+'\')" >'+message.from+"</td>"
-                       +'<td class="to" onclick="chatPopup(\''+message.to+'\')"  >'+message.to+"</td>"
+                       +'<td class="to" onclick="chatPopup(\''+message.to+'\')"  >'+to+"</td>"
                        +"<td>"+message.text+"</td>"
                        +"</tr>");
   
   row.data('fromCall',message.from);
-  
-  $('#chatLog').prepend(row);
+  if(isLive){
+      $('#chatLog').prepend(row);
+  }else{
+      $('#chatLog').append(row);
+  }
+
   if ($('#aboutMe').prop('checked')) {
         $('#chatLog >  tr').filter(":not(:icontains('"+userName+"'))").hide();
   }
@@ -345,11 +409,14 @@ function procUser(msg){
   }else{
     return;
   }
-
-  
+  console.log(stn);
   dataTableUsers.draw();
-    var stnLoc = {lat: stn.lat, lng: stn.long};
-    var marker = new google.maps.Marker({position: stnLoc, map: map, title: stn.callsign});
+  addMapMarker(stn);
+}
+
+function addMapMarker(stn){
+  var stnLoc = {lat: stn.lat, lng: stn.long};
+  var marker = new google.maps.Marker({position: stnLoc, map: map, title: stn.callsign});
       var contentString = '<div id="content">'+
       '<h4 id="firstHeading" class="firstHeading">'+stn.callsign+'</h1>'+
       '<div id="bodyContent">'+
@@ -367,6 +434,7 @@ function procUser(msg){
    });
     marker.addListener('click', function() {
      infowindow.open(map, marker);
+     showProfile( {lat: myLatLong[0], lng: myLatLong[1]},stnLoc);
    });
 
    stn.marker = marker;
@@ -404,14 +472,14 @@ function procLogin(msg){
   var userData = msg.split("|");
   setSessionKey(userData[4]);
   setUsername(userData[6],userData[7]);
-  setMyLocator(userData[8]);
+  setMyLocator(userData[8]); fetchBeacons(bandData[chatId].min,bandData[chatId].max);
 }
-
 function setSessionKey(key){
   sessionKey=key;
 }
 
 function setUsername(first, surname){
+  $('#setNameText').val(first);
   console.log("User: "+first+" "+surname);
 }
 
@@ -427,12 +495,21 @@ function setBack(){
   dataTableUsers.clear().rows.add(Object.values(stationList)).draw();
 }
 
+function setName(){
+    var name = $('#setNameText').val();
+    sendMsg("MSG|"+chatId+"|0|/SETNAME "+name+"|0|");  
+}
+
 function setMyLocator(loc){
   if(loc == myLoc){
     return;
   }
   myLoc=loc;
   myLatLong=gridSquareToLatLon(myLoc);
+  drawMap();
+}
+
+function drawMap(){
   $('#map').empty();
     // The location of Uluru
   var qth = {lat: myLatLong[0], lng: myLatLong[1]};
@@ -441,7 +518,8 @@ function setMyLocator(loc){
       document.getElementById('map'), {
         zoom: 6, 
         center: qth,
-        gestureHandling: 'greedy'
+        gestureHandling: 'greedy',
+        mapTypeId: "terrain",
       });
 
     google.maps.event.addListener(map, "dblclick", function(event) {
@@ -453,12 +531,26 @@ function setMyLocator(loc){
         lng: lng,
         gs: gs
       };
+      showProfile( {lat: myLatLong[0], lng: myLatLong[1]},newLocation);
       // populate yor box/field with lat, lng
-      $('#currentLat').text(lat);
-      $('#currentLng').text(lng);
+      $('#currentLat').text(degToDegMin(lat)+ ((lat>0)?" N":" S"));
+      $('#currentLng').text(degToDegMin(Math.abs(lng))+((lng>0?"  E":" W")));
       $('#currentGrid').text(gs);
       $('#locationModal').modal('show');
-      event.stopPropagation();
+      event.preventDefault();
+      return false;
+    });
+    
+    google.maps.event.addListener(map, "rightclick", function(event) {
+      var lat = event.latLng.lat();
+      var lng = event.latLng.lng();
+      var gs =  latLonToGridSquare(lat,lng);
+      newLocation = {
+        lat: lat,
+        lng: lng,
+        gs: gs
+      };
+      showProfile( {lat: myLatLong[0], lng: myLatLong[1]},newLocation);
       event.preventDefault();
       return false;
     });
@@ -468,6 +560,7 @@ function setMyLocator(loc){
   addCircle(qth,200);
   addCircle(qth,300);
 }
+
 
 function addCircle(qth,radius){
    new google.maps.Circle({
@@ -496,7 +589,7 @@ function sendMsg(msg){
 //ws.open();
 function doLogin(){
   chatId = $('#chatId').val();
-  userName = $('#userInput').val();
+  userName = $('#userInput').val().toUpperCase();
   password = $('#passInput').val();
   if ($('#rememberMe').is(':checked')) {
     var cookieData = { user: userName, pass: password};
@@ -508,16 +601,29 @@ function doLogin(){
   websocketInit(websocketServerUrl);
 }
 
+// Function to delete all markers from the map
+function deleteAllMapMarkers() {
+  for (var key in stationList) {
+    if (stationList.hasOwnProperty(key) && stationList[key].marker) {
+      stationList[key].marker.setMap(null); // Remove the marker from the map
+    }
+  }
+}
+
+
+
 function doLogoff(){
   $("#loginModal").modal({backdrop: 'static', keyboard: false});
   $('#loginError').hide();
   password='';
-  ws.close();
-  stnList=[];
+  if(typeof ws != 'undefined'){
+      ws.close();
+  }
+  deleteAllMapMarkers();
+  stationList={};
   latestMessageTime=0;
   //$('#userList').empty();
-  stationList = {};
-  dataTableUsers.clear();
+  dataTableUsers.clear().draw();
   $('#chatLog').empty();
   $('#debugWindow').empty();
   connectState='logOff';
@@ -560,7 +666,6 @@ function initUserList(){
 function filterChatByDistance(){
   var dist = $('#maxDistance').val();
        $('#chatLog > tr').each(function(index,tr) {
-           console.log("Got  "+$(tr).data('distance'));
            if(typeof $(tr).data('distance') == 'undefined'){
              // sigh ... 
            }else if($(tr).data('distance') > dist){
@@ -572,6 +677,9 @@ function filterChatByDistance(){
 }
 
 function chatPopup(callsign){
+  if(callsign==='0'){
+      return;
+  }
   chatPopupCallsign = callsign;
   var chatUser =  stationList[callsign];
   $('#chatWindow').empty();
@@ -638,8 +746,18 @@ function cqModalShow(){
   $('#cqModal').modal('show');
 }
 
+function sendChat(){
+    var txt = $('#chatPopupMessageInput').val();
+    if(txt.length > 0){
+        $('#chatPopupMessageInput').val('');
+        //alert(txt);
+        sendMsg("MSG|"+chatId+"|0|/CQ "+chatPopupCallsign+" "+txt+"|0|");
+     }
+}
+
 $( document ).ready(function() {
-    if (location.protocol !== 'https:') {   location.replace(`https:${location.href.substring(location.protocol.length)}`);
+    if ((location.protocol !== 'https:') && (location.hostname != "127.0.0.1")) {   
+location.replace(`https:${location.href.substring(location.protocol.length)}`);
     }  
     initUserList();
     initCqList();
@@ -669,7 +787,23 @@ $( document ).ready(function() {
     $('#cqButton').click(function(){
       cqModalShow();
     });
+    
+    
+    
+    $('#setNameButton').click(function(){
+      $('#setNameModal').modal('show');
+    });
+    
+    $('#setNameAlert').hide();
+    
+    $('#sendSetNameButton').click(function(){
+      setName();
+    });
   
+    $('#beepTestButton').click(function(){
+      playBeep();
+    });
+    
     $("#chatPopup").on('shown.bs.modal', function(){
         $(this).find('#chatPopupMessageInput').focus();
     });
@@ -710,11 +844,24 @@ $( document ).ready(function() {
     });
   
     $('#chatPopupSendButton').click(function(){
-      var txt = $('#chatPopupMessageInput').val();
-      if(txt.length > 0){
-        $('#chatPopupMessageInput').val('');
-        sendMsg("MSG|"+chatId+"|0|/CQ "+chatPopupCallsign+" "+txt+"|0|");
-      }
+        sendChat();
+    });
+    
+    $('#modalChat').on('shown.bs.modal', function () {
+        $('#chatPopupMessageInput').focus();
+        $('#chatPopupMessageInput').on('keydown', function(e) {
+            if (e.keyCode == 13) { // Check if the pressed key is Enter
+                sendChat();
+                return false; // Prevent the default behavior of the Enter key
+            }
+        });
+        
+        $('#chatPopupSendButton').on('click', function() {
+            sendChat();
+
+            // Set focus back to the input box after clicking the send button
+            $('#chatPopupMessageInput').focus();
+        });
     });
   
   $('#setLocation').click(function(){
@@ -722,6 +869,7 @@ $( document ).ready(function() {
     myLatLong= [newLocation.lat, newLocation.lng];
     sendMsg("MSG|"+chatId+"|0|/SETLOC "+myLoc+"|0|");
     $('#locationModal').modal('hide');
+    drawMap();
   });
   
    var supportsWebSockets = 'WebSocket' in window || 'MozWebSocket' in window;
@@ -729,15 +877,14 @@ $( document ).ready(function() {
     if(! supportsWebSockets){
       alert("Your browser does not appear to support WebSockets, we use these for communication with the server. Can I suggest you try Google Chrome?");
     }
-  
 });
 
 function setCookie(name,value,days) {
     var expires = "";
     if (days) {
         var date = new Date();
-        date.setTime(date.getTime() + (days*24*60*60*1000));
-        expires = "; expires=" + date.toUTCString();
+        date.setTime(date.getTime() + (days*24*60*60*1000))
+        expires = "; expires=" + date.toUTCString()+"; SameSite=None; Secure";
     }
     document.cookie = name + "=" + (value || "")  + expires + "; path=/";
 }
@@ -752,5 +899,17 @@ function getCookie(name) {
     return null;
 }
 function eraseCookie(name) {   
-    document.cookie = name +'=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+    document.cookie = name +'=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=None; Secure';
+}
+
+function degToDegMin(decimalDegrees) {
+    if (isNaN(decimalDegrees)) {
+        return "Invalid input";
+    }
+    
+    const degrees = Math.floor(decimalDegrees);
+    const decimalPortion = decimalDegrees - degrees;
+    const minutes = decimalPortion * 60;
+    
+    return `${degrees}° ${minutes.toFixed(2)}'`;
 }
