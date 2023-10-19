@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+<link href="assets/img/favicon-32x32.png" rel="icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <title>Kst2You</title>
+    <meta name="description" content="An alternative interface to the ON4KST chat system.">
+    <link rel="stylesheet" href="assets/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="assets/fonts/ionicons.min.css">
+    <link rel="stylesheet" href="assets/css/Bootstrap-Chat.css">
+    <link rel="stylesheet" href="assets/css/Bootstrap-DataTables.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.20/css/dataTables.bootstrap4.min.css" crossorigin="anonymous">
+    <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col">
+                <div class="row">
+                    <div class="col">
+                        <div class="row">
+                            <div class="col"><span id="connState">Wait ...</span><button class="btn btn-primary" id="logOffButton" type="button">Log Off</button></div>
+                            <div class="col">
+                                <div class="form-check"><input class="form-check-input" type="checkbox" id="awayButton"><label class="form-check-label" for="awayButton">Away</label></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col"><button class="btn btn-primary" id="cqButton" type="button">CQ</button><button class="btn btn-primary btn-group-vertical" id="setNameButton" type="button">Set Name</button></div>
+                </div>
+                <div class="row">
+                    <div class="col">
+                        <div>
+                            <ul class="nav nav-tabs" role="tablist">
+                                <li class="nav-item" role="presentation"><a class="nav-link active" role="tab" data-toggle="tab" href="#tab-1">Chat</a></li>
+                                <li class="nav-item" role="presentation"><a class="nav-link" role="tab" data-toggle="tab" href="#tab-2">User List</a></li>
+                                <li class="nav-item" role="presentation"><a class="nav-link" role="tab" data-toggle="tab" href="#tab-3">Map</a></li>
+                                <li class="nav-item" role="presentation"><a class="nav-link" role="tab" data-toggle="tab" href="#tab-4">About ...</a></li>
+                            </ul>
+                            <div class="tab-content">
+                                <div class="tab-pane active" role="tabpanel" id="tab-1">
+                                    <div class="row">
+                                        <div class="col"><span>Filter by distance&nbsp;</span><input type="number" id="maxDistance" value="1000" step="100"><span>km</span></div>
+                                        <div class="col">
+                                            <div class="form-check"><input class="form-check-input" type="checkbox" id="aboutMe"><label class="form-check-label">Only messages about me</label></div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col">
+                                            <div class="table-responsive">
+                                                <table class="table" id="chatLogTable">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Time</th>
+                                                            <th>From</th>
+                                                            <th>To</th>
+                                                            <th>Message</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="chatLog"></tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tab-pane" role="tabpanel" id="tab-2"><div class="bootstrap_datatables">
+          <div class="table-responsive">
+            <table id="userListTable" style="width:100%" class="table table-striped table-bordered">
+              <thead>
+                <tr>
+                  <th>Call</th>
+                  <th>Name</th>
+                  <th>Locator</th>
+                  <th>Distance/Bearing</th>
+                  <th>Last Seen</th>
+                </tr>
+              </thead>
+              <tbody>
+              </tbody>
+            </table>
+          </div>
+</div></div>
+                                <div class="tab-pane" role="tabpanel" id="tab-3">
+                                    <div class="row">
+                                        <div class="col col-11">
+                                            <div id="map"></div>
+                                            <div id="pathProfile" style="width: 100%;"></div>
+                                        </div>
+                                        <div class="col col-1"><span class="h6 text-right">Beacons</span>
+                                            <div class="row">
+                                                <div class="col">
+                                                    <div id="bandList"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tab-pane" role="tabpanel" id="tab-4">
+                                    <div class="row">
+                                        <div class="col">
+                                            <p>KST2YOU is a project by Robin Szemeti, G1YFG , it aims to provide a web-based interface to the KST service, accessible on any modern browser, regardless of the device. If you have feature request or comments, please contact me via my email as published on QRZ.com</p>
+                                            <p>A basic write-up on the various function and features may be found on my blog&nbsp;<a href="https://g1yfg.blogspot.com/2021/12/kst2you-alternative-interface-to-kst.html">https://g1yfg.blogspot.com</a></p>
+                                            <p>Beacon data is circa June 2022 from Beaconspot, a website run by the UK Microwave group. If you enjoy microwave radio&nbsp;&nbsp;or would like to contribute to the upkeep of our servers, beacon network or just receive our monthly newsletter, please consider a subscription (just £6 a year at the time of writing) every little helps!&nbsp;&nbsp;<a href="https://www.beaconspot.uk/index2.php"><span style="text-decoration: underline;">https://www.beaconspot.uk/</span></a></p>
+                                            <p>Privacy: I do not store your passwords. These are only stored in your browser if you select "remember me". I do not currently store any logs of who is using the service nor the messages they send. I may at some point in the future keep a log of callsigns that have used the service, purely for statistics to see if it is being used by enough people to justify further development.&nbsp; I do not log your messages either sent or received.</p><p id="licencePanel"><a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png"></a><br>This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.</p>
+                                            <p><button class="btn btn-primary" id="beepTestButton" type="button">Beep Test</button>Test your audio here, this is the "beep" you will hear when a station calls you:&nbsp;</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="chatPopup">
+        <div class="modal left fade in vichomChat" role="dialog" tabindex="-1" id="modalChat">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <div class="col-12 col-lg-12 col-xl-12 padMar text-right">
+                            <h5 class="text-primary padMar margenesCajas pointer" data-dismiss="modal"><i class="icon ion-android-arrow-dropleft"></i>&nbsp; Hide Chat</h5>
+                            <div id="chatUserInfo">
+                                <ul>
+                                    <li><span id="chatPopupLocator">Locator</span></li>
+                                    <li><span id="chatPopupBearing">Bearing</span></li>
+                                </ul>
+                            </div><strong class="text-primary" id="chatPopupUser">G1YFG:</strong>
+                        </div><button class="close d-none" type="button" aria-label="Close" data-dismiss="modal"><span aria-hidden="true">×</span></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="col-12 col-xl-12 padMar" id="chatWindow"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <div class="col-11 col-sm-11 col-md-11 col-lg-11 col-xl-11 padMar margenesCompletas10px"><input class="form-control-sm vichomChatInput" type="text" id="chatPopupMessageInput" placeholder="Write your message"><button class="btn btn-primary mx-auto d-block margenesTxts" id="chatPopupSendButton" type="button">SEND</button></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" role="dialog" tabindex="-1" id="loginModal">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">Login Details</h4><button class="close" type="button" aria-label="Close" data-dismiss="modal"><span aria-hidden="true">×</span></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger" role="alert" id="loginError"><span id="loginErrorMessage"><strong>Alert</strong> text.</span></div>
+                    <div>
+                        <div class="row">
+                            <div class="col-3"><label class="col-form-label">Chat Group</label></div>
+                            <div class="col"><select id="chatId">
+                                    <optgroup label="Select Chat Group">
+                                        <option value="1">50-70MHz</option>
+                                        <option value="2">144-432 MHz</option>
+                                        <option value="3" selected="">Microwave</option>
+                                        <option value="4">EME/JT65</option>
+                                        <option value="5">VLF</option>
+                                        <option value="7">50 MHz AURU Region 2</option>
+                                    </optgroup>
+                                </select></div>
+                        </div>
+                        <div class="row">
+                            <div class="col-3"><label class="col-form-label">Callsign</label></div>
+                            <div class="col"><input type="text" id="userInput"></div>
+                        </div>
+                        <div class="row">
+                            <div class="col-3"><label class="col-form-label">Password</label></div>
+                            <div class="col"><input type="password" id="passInput"></div>
+                        </div>
+                        <div class="row">
+                            <div class="col-3"><label class="col-form-label">Register?</label></div>
+                            <div class="col">
+                                <p>To use this service, you need to have an account on the KST server, you can register&nbsp;<a href="http://www.on4kst.info/chat/register.php">here</a></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div class="row">
+                        <div class="col">
+                            <div class="form-check"><input class="form-check-input" type="checkbox" id="rememberMe"><label class="form-check-label">Remember me</label></div>
+                        </div>
+                    </div><button class="btn btn-primary" id="registerButton" type="button">Log In</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" role="dialog" tabindex="-1" id="locationModal">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">Location</h4><button class="close" type="button" aria-label="Close" data-dismiss="modal"><span aria-hidden="true">×</span></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col"><span>Latitude</span></div>
+                        <div class="col"><span id="currentLat"></span></div>
+                    </div>
+                    <div class="row">
+                        <div class="col"><span>Longitude</span></div>
+                        <div class="col"><span id="currentLng"></span></div>
+                    </div>
+                    <div class="row" id="gridSquareRow">
+                        <div class="col"><span>Grid Square</span></div>
+                        <div class="col"><span id="currentGrid"></span></div>
+                    </div>
+                </div>
+                <div class="modal-footer"><button class="btn btn-light" type="button" data-dismiss="modal">Cancel</button><button class="btn btn-primary" id="setLocation" type="button">Set My Location</button></div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" role="dialog" tabindex="-1" id="cqModal">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">CQ ...</h4><button class="close" type="button" aria-label="Close" data-dismiss="modal"><span aria-hidden="true">×</span></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row" id="cqDropDownRow">
+                        <div class="col"><span>Stored Messages</span><select id="cqMesgSelector">
+                                <optgroup label="This is a group" id="cqMesgList">
+                                    <option value="12" selected="">This is item 1</option>
+                                    <option value="13">This is item 2</option>
+                                    <option value="14">This is item 3</option>
+                                </optgroup>
+                            </select></div>
+                    </div>
+                    <div class="row">
+                        <div class="col"><span>Message Text</span><input class="form-control-plaintext" type="text" id="cqMesgText" value="" style="border-style: solid;border-color: var(--blue);" placeholder="type or select from dropdown"></div>
+                    </div>
+                </div>
+                <div class="modal-footer"><button class="btn btn-light" type="button" data-dismiss="modal">Cancel</button><button class="btn btn-primary" id="sendCqButton" type="button">Send</button></div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" role="dialog" tabindex="-1" id="setNameModal">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">Set Your Name</h4><button class="close" type="button" aria-label="Close" data-dismiss="modal"><span aria-hidden="true">×</span></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col">
+                            <div class="alert alert-success alert-warning" role="alert" id="setNameAlert"><span id="setNameAlertText"><strong>Warning</strong></span></div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col"><span>Name</span><input class="form-control-plaintext" type="text" id="setNameText" value="" style="border-style: solid;border-color: var(--blue);" placeholder=""></div>
+                    </div>
+                </div>
+                <div class="modal-footer"><button class="btn btn-light" type="button" data-dismiss="modal">Cancel</button><button class="btn btn-primary" id="sendSetNameButton" type="button">Set Name</button></div>
+            </div>
+        </div>
+    </div>
+    <script src="assets/js/jquery.min.js"></script>
+    <script src="assets/bootstrap/js/bootstrap.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.20/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.20/js/dataTables.bootstrap4.min.js"></script>
+    <script src="assets/js/Bootstrap-DataTables.js"></script>
+    <script src="assets/js/Beacons.js"></script>
+    <script src="assets/js/beep.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reconnecting-websocket/1.0.0/reconnecting-websocket.min.js"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA609pI75YFCN-uINIw89OXESRxv56Btpk"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=default"></script>
+    <script src="https://www.google.com/jsapi"></script>
+    <script src="assets/js/Kst.js"></script>
+    <script src="assets/js/Maidenhead.js"></script>
+    <script src="assets/js/profile.js"></script>
+</body>
+
+</html>
