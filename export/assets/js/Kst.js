@@ -704,7 +704,8 @@ function showChatHistory(msg,ix,array){
 
 function appendToCurrentChat(msg){
     var m = $('<p class="text-muted margenesCompletas10px"><strong class="text-primary">'+msg.from+':</strong>&nbsp;'+msg.text+'</p>');
-   $('#chatWindow').append(m);
+    $('#chatWindow').append(m);
+    $("#chatWindow").scrollTop($("#chatWindow").prop("scrollHeight"));
 }
 
 jQuery.expr[':'].icontains = function(a, i, m) {

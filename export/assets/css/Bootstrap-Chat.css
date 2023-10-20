@@ -66,3 +66,8 @@ p {
   margin-left: 20px;
 }
 
+#chatWindow {
+  overflow-y: auto;
+  max-height: 60vh;
+}
+
