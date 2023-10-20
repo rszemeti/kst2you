@@ -215,3 +215,4 @@ function bearing(startLat, startLng, destLat, destLng){
   brng = toDegrees(brng);
   return (brng + 360) % 360;
 }
+
