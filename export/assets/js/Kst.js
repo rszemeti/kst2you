@@ -227,7 +227,6 @@ function websocketInit(url){
 }
 
 function procWsError(evt){
-  console.log(evt);
   $('#loginError').show();
   $("#loginModal").modal('show');
   $('#loginErrorMessage').text("Unable to connect to "+evt.target.url);
@@ -259,7 +258,6 @@ function procMsg(msg){
       }else if(msg.startsWith("LOGSTAT|100")){
          procLogin(msg);
       }else if(msg.startsWith("LOGSTAT|1")){
-         console.log("login error");
          procLoginError(msg);
       }else if(msg.startsWith("UA0")){
          procUser(msg);
@@ -282,8 +280,6 @@ function procMsg(msg){
 //CH|3|1592770412|G1YFG |Robin 23cm   |0| test     |0|
 function procChatHistory(msg, isLive){
   var message = new Message(msg);
-  console.log("From:" + message.from);
-  
   if(message.from.includes('SERVER')){
      if(message.status == userName){
          console.log("TO me: "+message.text);
@@ -361,13 +357,23 @@ function procChatHistory(msg, isLive){
   }
 }
 
-function removeUser(msg){
+function removeUser(msg) {
   var data = msg.split("|");
   var stn = stationList[data[2]];
-  if(typeof stn != 'undefined'){
+  if (typeof stn !== 'undefined') {
     stn.marker.setMap(null);
+    var rowToRemove = dataTableUsers.row(function (idx, rowData, node) {
+      return rowData.callsign === stn.callsign;
+    });
+    if (rowToRemove.any()) {
+      rowToRemove.remove().draw();
+      delete stationList[data[2]];
+    } else {
+      console.log("User not found in the DataTable: " + data[2]);
+    }
   }
 }
+
 
 function procUserStatus(msg){
     var userData = msg.split("|");
@@ -401,7 +407,6 @@ function procUser(msg){
       dataTableUsers.row.add(stn);
       $('#chatLog > tr').each(function(i,tr){
         if($(tr).data('fromCall') == stn.callsign){
-          console.log("tagging index "+i);
           $(tr).data('distance',stn.distance);
           $(tr).data('station',stn);
         }
@@ -409,7 +414,6 @@ function procUser(msg){
   }else{
     return;
   }
-  console.log(stn);
   dataTableUsers.draw();
   addMapMarker(stn);
 }
@@ -480,7 +484,6 @@ function setSessionKey(key){
 
 function setUsername(first, surname){
   $('#setNameText').val(first);
-  console.log("User: "+first+" "+surname);
 }
 
 function setAway(){
@@ -761,7 +764,6 @@ location.replace(`https:${location.href.substring(location.protocol.length)}`);
     }  
     initUserList();
     initCqList();
-    console.log( "ready!" );
     var cookie = getCookie("kst2youUserDetails");
     if(typeof cookie != 'undefined'){
       try{
