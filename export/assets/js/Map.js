@@ -164,13 +164,9 @@ function drawGridLines() {
   // Draw horizontal grid lines (constant latitude)
   for (let lat = startLat; lat <= endLat; lat += latSpacing) {
     horizontalLines.push(lat);
-    if (startLng < -180 || endLng > 180) {
-      // If the line would cross the 180° longitude line, split it into two segments
-
-      // First segment up to 180°
       const path1 = [{
           lat: lat,
-          lng: Math.max(-180, startLng)
+          lng: 0.0
         },
         {
           lat: lat,
@@ -179,30 +175,16 @@ function drawGridLines() {
       ];
       drawLine(path1, granularity);
 
-      // Second segment starting from -180°
       const path2 = [{
           lat: lat,
-          lng: -180
+          lng: -179.999
         },
         {
           lat: lat,
-          lng: Math.min(180, endLng)
+          lng: 0.0
         }
       ];
       drawLine(path2, granularity);
-    } else {
-      // If the line doesn't cross the 180° longitude line, draw as normal
-      const path = [{
-          lat: lat,
-          lng: startLng
-        },
-        {
-          lat: lat,
-          lng: endLng
-        }
-      ];
-      drawLine(path, granularity);
-    }
   }
   const visibleSquares = getCornersFromGridLines(horizontalLines, verticalLines);
   if (visibleSquares.length < 150) {
