@@ -1,11 +1,18 @@
+var gridLines = [];
+var circles=[];
+var gridAnnotations = [];
+var smallAnnotations = [];
+var gridActive=false;
+var circlesActive=true;
+
 function drawMap() {
   $('#map').empty();
-  // The location of Uluru
+
   var qth = {
     lat: myLatLong[0],
     lng: myLatLong[1]
   };
-  // The map, centered at Uluru
+
   map = new google.maps.Map(
     document.getElementById('map'), {
       zoom: 6,
@@ -62,16 +69,51 @@ function drawMap() {
     map: map,
     title: 'QTH'
   });
+  drawCircles();
+}
+
+function drawCircles(){
+   var qth = {
+    lat: myLatLong[0],
+    lng: myLatLong[1]
+  };
   addCircle(qth, 100);
   addCircle(qth, 200);
   addCircle(qth, 300);
-
-  drawGridLines();
 }
 
-let gridLines = [];
-let gridAnnotations = [];
-let smallAnnotations = [];
+function clearCircles() {
+  for (let c of circles) {
+    c.setMap(null); // Remove the line from the map
+  }
+  circles.length = 0; // Clear the array
+}
+
+function setGridOn(){
+    gridActive=true;
+    $("#gridButton").addClass('active');
+    drawGridLines();
+}
+
+function setGridOff(){
+    gridActive=false;
+    $("#gridButton").removeClass('active');
+    clearGridLines();
+    clearAnnotations();
+    clearSmallAnnotations();
+}
+
+function setCirclesOn(){
+    circlesActive=true;
+    $("#circlesButton").addClass('active');
+    drawCircles();
+}
+
+function setCirclesOff(){
+    circlesActive=false;
+    $("#circlesButton").removeClass('active');
+    clearCircles();
+}
 
 function clearGridLines() {
   for (let line of gridLines) {
@@ -96,6 +138,9 @@ function clearSmallAnnotations() {
 
 
 function drawGridLines() {
+  if(! gridActive){
+      return;
+  }
   const zoomLevel = map.getZoom();
   console.log("grid zoomLevel: " + zoomLevel);
 
@@ -294,7 +339,7 @@ function drawLine(path, granularity) {
 }
 
 function addCircle(qth, radius) {
-  new google.maps.Circle({
+  let c = new google.maps.Circle({
     strokeColor: '#FF0000',
     strokeOpacity: 0.8,
     strokeWeight: 1,
@@ -305,4 +350,5 @@ function addCircle(qth, radius) {
     radius: 1000 * radius,
     clickable: false,
   });
+  circles.push(c);
 }

@@ -14,25 +14,19 @@ function fetchBeacons(min,max) {
             }
  
         });
-         $('#bandList').empty();
+        $('#bandList .bandButton').remove();
         var sortedKeys = Object.keys(beacons).map(Number).sort(function (a, b) {
             return a - b;
         });
-        var ul = $('<ul></ul>');
         sortedKeys.forEach(function (key) {
-            var li = $('<li></li>');
             var button = $('<button></button>').text(key).attr('id', "bcnButton"+key);
             button.addClass('btn btn-secondary btn-group-vertical');
             // Add a click event listener to the button
             button.click(function () {
                 toggleBeacons(key);
             });
-            li.append(button);
-            li.css('margin-bottom', '10px')// Add the button to the li
-            ul.append(li);
+            $('#bandList').append(button);
         });
-
-        $('#bandList').empty().append(ul);
         console.log(beacons);
     })
     .fail(function () {

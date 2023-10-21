@@ -34,13 +34,13 @@
                     <div class="col">
                         <div>
                             <ul class="nav nav-tabs" role="tablist">
-                                <li class="nav-item" role="presentation"><a class="nav-link active" role="tab" data-toggle="tab" href="#tab-1">Chat</a></li>
+                                <li class="nav-item" role="presentation"><a class="nav-link" role="tab" data-toggle="tab" href="#tab-1">Chat</a></li>
                                 <li class="nav-item" role="presentation"><a class="nav-link" role="tab" data-toggle="tab" href="#tab-2">User List</a></li>
-                                <li class="nav-item" role="presentation"><a class="nav-link" role="tab" data-toggle="tab" href="#tab-3">Map</a></li>
+                                <li class="nav-item" role="presentation"><a class="nav-link active" role="tab" data-toggle="tab" href="#tab-3">Map</a></li>
                                 <li class="nav-item" role="presentation"><a class="nav-link" role="tab" data-toggle="tab" href="#tab-4">About ...</a></li>
                             </ul>
                             <div class="tab-content">
-                                <div class="tab-pane active" role="tabpanel" id="tab-1">
+                                <div class="tab-pane" role="tabpanel" id="tab-1">
                                     <div class="row">
                                         <div class="col"><span>Filter by distance&nbsp;</span><input type="number" id="maxDistance" value="" step="100"><span>km</span></div>
                                         <div class="col">
@@ -82,19 +82,13 @@
             </table>
           </div>
 </div></div>
-                                <div class="tab-pane" role="tabpanel" id="tab-3">
+                                <div class="tab-pane active" role="tabpanel" id="tab-3">
                                     <div class="row">
                                         <div class="col col-11">
                                             <div id="map"></div>
                                             <div id="pathProfile" style="width: 100%;"></div>
                                         </div>
-                                        <div class="col col-1"><span class="h6 text-right">Beacons</span>
-                                            <div class="row">
-                                                <div class="col">
-                                                    <div id="bandList"></div>
-                                                </div>
-                                            </div>
-                                        </div>
+                                        <div class="col col-1" id="bandList"><button class="btn btn-warning btn-group-vertical" id="gridButton" type="button">Grid</button><button class="btn btn-warning active btn-group-vertical" id="circlesButton" type="button">Circles</button><span class="h6">Beacons</span></div>
                                     </div>
                                 </div>
                                 <div class="tab-pane" role="tabpanel" id="tab-4">

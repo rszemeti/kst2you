@@ -71,3 +71,7 @@ p {
   max-height: 60vh;
 }
 
+#bandList button {
+  margin-bottom: 10px;
+}
+

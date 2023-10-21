@@ -836,6 +836,22 @@ $(document).ready(function() {
     });
   });
 
+  $("#gridButton").click(function(){
+     if(gridActive){
+        setGridOff();
+     }else{
+        setGridOn();
+     }
+  });
+    
+  $("#circlesButton").click(function(){
+     if(circlesActive){
+        setCirclesOff();
+     }else{
+        setCirclesOn();
+     }
+  });
+    
   $('#setLocation').click(function() {
     myLoc = newLocation.gs;
     myLatLong = [newLocation.lat, newLocation.lng];
