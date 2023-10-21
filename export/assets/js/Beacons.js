@@ -20,7 +20,7 @@ function fetchBeacons(min,max) {
         });
         sortedKeys.forEach(function (key) {
             var button = $('<button></button>').text(key).attr('id', "bcnButton"+key);
-            button.addClass('btn btn-secondary btn-group-vertical');
+            button.addClass('btn btn-secondary btn-group-vertical bandButton');
             // Add a click event listener to the button
             button.click(function () {
                 toggleBeacons(key);
