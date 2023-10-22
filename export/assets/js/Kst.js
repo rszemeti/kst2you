@@ -29,16 +29,16 @@ var userList = [];
 const locTest = RegExp('\w{6}');
 
 const chatGroups = [
-    {id: '10', name: 'kHz (2000 m - 630 m) chat', min: 0, max: "1", defaultDistance: 20000},
-    {id: "4", name: 'low band (160 m - 40 m) chat', min: 1, max: "8", defaultDistance: 20000},
+    {id: '10', name: 'kHz (2000 m - 630 m)', min: 0, max: "1", defaultDistance: 20000},
+    {id: "4", name: 'low band (160 m - 40 m)', min: 1, max: "8", defaultDistance: 20000},
     {id: '12', name: '28 MHz chat', min: 27, max: 29, defaultDistance: 20000},
-    {id: '11', name: 'Warc (30 m, 17 m, 12 m) chat', min: 5, max: 30, defaultDistance: 20000},
+    {id: '11', name: 'WARC (30 m, 17 m, 12 m)', min: 5, max: 30, defaultDistance: 20000},
     {id: "1", name: '50-70MHz', min: 50, max: 70, defaultDistance: 2000},
-    {id: "7", name: '50 MHz AURU Region 2', min: 50, max: 52, defaultDistance: 2000},
-    {id: "6", name: '50 MHz IARU Region 3 chat', min: 50, max: 54, defaultDistance: 2000},
+    {id: "7", name: '50 MHz IARU R2', min: 50, max: 52, defaultDistance: 2000},
+    {id: "6", name: '50 MHz IARU R3', min: 50, max: 54, defaultDistance: 2000},
     {id: "2", name: '144-432 MHz', min: 144, max: 432, defaultDistance: 2000},
-    {id: "8", name: '144 & 432 MHz IARU Region 2 chat', min: 144, max: 438, defaultDistance: 1000},
-    {id: "9", name: '144 & 432 MHz IARU Region 3 chat', min: 144, max: 438, defaultDistance: 1000},
+    {id: "8", name: '144 & 432 MHz IARU R2', min: 144, max: 438, defaultDistance: 1000},
+    {id: "9", name: '144 & 432 MHz IARU R3', min: 144, max: 438, defaultDistance: 1000},
     {id: "3", name: 'Microwave', min: 1296, max: 300000, defaultDistance: 1000},
     {id: "5", name: 'EME/JT65', min: 1, max: 7, defaultDistance: 25000},
 ];
@@ -261,15 +261,26 @@ function procMsg(msg) {
   } else if (msg.startsWith("UR6")) {
     removeUser(msg);
   } else if (msg.startsWith("CR")) {
-    procChatHistory(msg, false);
+    procChatMessage(msg, false);
   } else if (msg.startsWith("CH")) {
-    procChatHistory(msg, true);
+    procChatMessage(msg, true);
   }
+}
+
+function decorate(callsign){
+    if(callsign === '0'){
+        return "<span style='border: ;background: red;padding: 5px;color: aliceblue;'>CQ</span>";
+    }
+    var stn = stationList[callsign];
+    if(typeof stn !== 'undefined'){
+        return stn.decoratedCallsign;
+    }
+    return "["+callsign+"]";
 }
 
 //CR|3|1592759981|SP4MPB|Marek 23/13/3|0| jestes ?|SP6GWB|
 //CH|3|1592770412|G1YFG |Robin 23cm   |0| test     |0|
-function procChatHistory(msg, isLive) {
+function procChatMessage(msg, isLive) {
   var message = new Message(msg);
   if (message.from.includes('SERVER')) {
     if (message.status == userName) {
@@ -291,20 +302,17 @@ function procChatHistory(msg, isLive) {
   }
 
   var stn = stationList[message.from];
-  var to = message.to;
-
-  if (to === '0') {
-    to = "<span style='border: ;background: red;padding: 5px;color: aliceblue;'>CQ</span>";
-  }
 
   var row = $("<tr>" +
     "<td>" + message.date + "</td>" +
-    '<td class="from" onclick="chatPopup(\'' + message.from + '\')" >' + message.from + "</td>" +
-    '<td class="to" onclick="chatPopup(\'' + message.to + '\')"  >' + to + "</td>" +
+    '<td class="from" onclick="chatPopup(\'' + message.from + '\')" >' + decorate(message.from) + "</td>" +
+    '<td class="to" onclick="chatPopup(\'' + message.to + '\')"  >' + decorate(message.to) + "</td>" +
     "<td>" + message.text + "</td>" +
     "</tr>");
 
   row.data('fromCall', message.from);
+  row.data('toCall', message.to);
+    
   if (isLive) {
     $('#chatLog').prepend(row);
   } else {
@@ -357,17 +365,30 @@ function procChatHistory(msg, isLive) {
   }
 }
 
+function statusUpdateChatLog(callsign){
+  let dec = decorate(callsign);
+  $("#chatLogTable tbody tr").each(function() {
+    if ( $(this).data("toCall") === callsign) {
+      $(this).find("td.to").text(dec);
+    }else if($(this).data("fromCall") === callsign){
+       $(this).find("td.from").text(dec);
+    }
+  });
+}
+
 function removeUser(msg) {
   var data = msg.split("|");
   var stn = stationList[data[2]];
   if (typeof stn !== 'undefined') {
     stn.marker.setMap(null);
+    stn.setAway();
+    statusUpdateChatLog(stn.callsign);
     var rowToRemove = dataTableUsers.row(function(idx, rowData, node) {
       return rowData.callsign === stn.callsign;
     });
     if (rowToRemove.any()) {
       rowToRemove.remove().draw();
-      delete stationList[data[2]];
+      //delete stationList[data[2]];
     } else {
       console.log("User not found in the DataTable: " + data[2]);
     }
@@ -382,8 +403,10 @@ function procUserStatus(msg) {
   if (typeof stationList[callsign] != 'undefined') {
     if ((state & 0x01) == 0x01) {
       stationList[callsign].setAway();
+      statusUpdateChatLog(callsign);
     } else {
       stationList[callsign].setBack();
+      statusUpdateChatLog(callsign);
     }
     dataTableUsers.clear().rows.add(Object.values(stationList)).draw();
   }
@@ -411,6 +434,7 @@ function procUser(msg) {
         $(tr).data('station', stn);
       }
     });
+    statusUpdateChatLog(stn.callsign);
   } else {
     return;
   }
@@ -472,9 +496,9 @@ function procLogin(msg) {
     dataTableUsers.clear();
     //$('#userList').empty();
     $('#chatLog').empty();
-    sendMsg("SPR|2|");
-    sendMsg("SDXQ|" + chatId + "|1296001|99999999|");
-    sendMsg("SMAQ|" + chatId + "|1296001|99999999|");
+    //sendMsg("SPR|2|");
+    //sendMsg("SDXQ|" + chatId + "|1296001|99999999|");
+    //sendMsg("SMAQ|" + chatId + "|1296001|99999999|");
     sendMsg("SDONE|" + chatId + "|");
   } else {
     sendMsg("SPR|2|");
@@ -508,13 +532,13 @@ function setUsername(first, surname) {
 function setAway() {
   sendMsg("MSG|" + chatId + "|0|/AWAY|0|");
   stationList[userName].setAway();
-  dataTableUsers.clear().rows.add(Object.values(stationList)).draw();
+  statusUpdateChatLog(userName); dataTableUsers.clear().rows.add(Object.values(stationList)).draw();
 }
 
 function setBack() {
   sendMsg("MSG|" + chatId + "|0|/BACK|0|");
   stationList[userName].setBack();
-  dataTableUsers.clear().rows.add(Object.values(stationList)).draw();
+  statusUpdateChatLog(userName); dataTableUsers.clear().rows.add(Object.values(stationList)).draw();
 }
 
 function setName() {
@@ -557,15 +581,6 @@ function doLogin() {
   }
   connectState = 'login';
   websocketInit(websocketServerUrl);
-}
-
-// Function to delete all markers from the map
-function deleteAllMapMarkers() {
-  for (var key in stationList) {
-    if (stationList.hasOwnProperty(key) && stationList[key].marker) {
-      stationList[key].marker.setMap(null); // Remove the marker from the map
-    }
-  }
 }
 
 function doLogoff() {
@@ -664,7 +679,6 @@ function chatPopup(callsign) {
   if (typeof messageLog[callsign] !== 'undefined') {
     messageLog[callsign].forEach(showChatHistory);
   }
-
 }
 
 function showChatHistory(msg, ix, array) {
@@ -714,7 +728,6 @@ function cqModalShow() {
     });
     $('#cqDropDownRow').show();
   }
-
   $('#cqModal').modal('show');
 }
 
@@ -859,9 +872,18 @@ $(document).ready(function() {
 
     $('#chatPopupSendButton').on('click', function() {
       sendChat();
-
-      // Set focus back to the input box after clicking the send button
       $('#chatPopupMessageInput').focus();
+    });
+  });
+    
+  $('#cqModal').on('shown.bs.modal', function() {
+    $('#cqMesgText').focus();
+    $('#cqMesgText').on('keydown', function(e) {
+        alert(e.keyCode);
+      if (e.keyCode == 13) {
+        sendCqMesg();
+        return false; 
+      }
     });
   });
 

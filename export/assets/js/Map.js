@@ -110,6 +110,15 @@ function clearCircles() {
   circles.length = 0; // Clear the array
 }
 
+// Function to delete all markers from the map
+function deleteAllMapMarkers() {
+  for (var key in stationList) {
+    if (stationList.hasOwnProperty(key) && stationList[key].marker) {
+      stationList[key].marker.setMap(null); // Remove the marker from the map
+    }
+  }
+}
+
 function setGridOn(){
     gridActive=true;
     $("#gridButton").addClass('active');
