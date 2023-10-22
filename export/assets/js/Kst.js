@@ -29,10 +29,10 @@ var userList = [];
 const locTest = RegExp('\w{6}');
 
 const chatGroups = [
-    {id: 'j', name: 'kHz (2000 m - 630 m) chat', min: 0, max: "1", defaultDistance: 20000},
+    {id: '10', name: 'kHz (2000 m - 630 m) chat', min: 0, max: "1", defaultDistance: 20000},
     {id: "4", name: 'low band (160 m - 40 m) chat', min: 1, max: "8", defaultDistance: 20000},
-    {id: 'l', name: '28 MHz chat', min: 27, max: 29, defaultDistance: 20000},
-    {id: 'k', name: 'Warc (30 m, 17 m, 12 m) chat', min: 5, max: 30, defaultDistance: 20000},
+    {id: '12', name: '28 MHz chat', min: 27, max: 29, defaultDistance: 20000},
+    {id: '11', name: 'Warc (30 m, 17 m, 12 m) chat', min: 5, max: 30, defaultDistance: 20000},
     {id: "1", name: '50-70MHz', min: 50, max: 70, defaultDistance: 2000},
     {id: "7", name: '50 MHz AURU Region 2', min: 50, max: 52, defaultDistance: 2000},
     {id: "6", name: '50 MHz IARU Region 3 chat', min: 50, max: 54, defaultDistance: 2000},
