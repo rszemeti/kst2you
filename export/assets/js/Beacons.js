@@ -51,7 +51,6 @@ function toggleBeacons(key) {
 function showBeacons(key){
     var list = beacons[key];
     for(i in list){
-        console.log(beacons[key][i]);
         addBeacon(beacons[key][i]);
     }    
 }
@@ -66,6 +65,13 @@ function hideBeacons(key) {
     }
 }
 //{"callsign":"SR6XHZ","frequency":"10368.8300","locator":"JO70SS","status":"O"}
+
+function deleteAllBeacons() {
+    for (var key in beacons) {
+        hideBeacons(key);
+    }
+    $('#bandList .bandButton').remove();
+}
 
 function addBeacon(bcn){
   loc = gridSquareToLatLon(bcn.locator);

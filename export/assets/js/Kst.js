@@ -28,38 +28,24 @@ var password;
 var userList = [];
 const locTest = RegExp('\w{6}');
 
-var bandData = {
-  1: {
-    min: 50,
-    max: 70,
-    defaultDistance: 2000,
-  },
-  2: {
-    min: 144,
-    max: 432,
-    defaultDistance: 2000,
-  },
-  3: {
-    min: 1296,
-    max: 300000,
-    defaultDistance: 1000,
-  },
-  4: {
-    min: 1,
-    max: 7,
-    defaultDistance: 25000,
-  },
-  5: {
-    min: 0,
-    max: 0,
-    defaultDistance: 25000,
-  },
-  7: {
-    min: 50,
-    max: 52,
-    defaultDistance: 2000,
-  },
+const chatGroups = [
+    {id: 'j', name: 'kHz (2000 m - 630 m) chat', min: 0, max: "1", defaultDistance: 20000},
+    {id: "4", name: 'low band (160 m - 40 m) chat', min: 1, max: "8", defaultDistance: 20000},
+    {id: 'l', name: '28 MHz chat', min: 27, max: 29, defaultDistance: 20000},
+    {id: 'k', name: 'Warc (30 m, 17 m, 12 m) chat', min: 5, max: 30, defaultDistance: 20000},
+    {id: "1", name: '50-70MHz', min: 50, max: 70, defaultDistance: 2000},
+    {id: "7", name: '50 MHz AURU Region 2', min: 50, max: 52, defaultDistance: 2000},
+    {id: "6", name: '50 MHz IARU Region 3 chat', min: 50, max: 54, defaultDistance: 2000},
+    {id: "2", name: '144-432 MHz', min: 144, max: 432, defaultDistance: 2000},
+    {id: "8", name: '144 & 432 MHz IARU Region 2 chat', min: 144, max: 438, defaultDistance: 1000},
+    {id: "9", name: '144 & 432 MHz IARU Region 3 chat', min: 144, max: 438, defaultDistance: 1000},
+    {id: "3", name: 'Microwave', min: 1296, max: 300000, defaultDistance: 1000},
+    {id: "5", name: 'EME/JT65', min: 1, max: 7, defaultDistance: 25000},
+];
 
+function getBandDataById(chatId) {
+    chatIdString = chatId.toString();
+    return chatGroups.find(band => band.id == chatIdString);
 }
 
 class Station {
@@ -188,6 +174,8 @@ class Message {
     return this._date;
   }
 }
+
+
 
 function websocketInit(url) {
   debug = true;
@@ -344,7 +332,11 @@ function procChatHistory(msg, isLive) {
     if (typeof messageLog[message.from] == 'undefined') {
       messageLog[message.from] = [];
     }
-    messageLog[message.from].push(message);
+    if(isLive){
+        messageLog[message.from].push(message);
+    }else{
+        messageLog[message.from].unshift(message); 
+    }
     if (message.from == chatPopupCallsign) {
       appendToCurrentChat(message);
     }
@@ -353,7 +345,12 @@ function procChatHistory(msg, isLive) {
     if (typeof messageLog[message.to] == 'undefined') {
       messageLog[message.to] = [];
     }
-    messageLog[message.to].push(message);
+    if(isLive){
+        messageLog[message.to].push(message);
+    }else{
+        messageLog[message.to].unshift(message); 
+    }
+   
     if (message.to == chatPopupCallsign) {
       appendToCurrentChat(message);
     }
@@ -486,15 +483,18 @@ function procLogin(msg) {
     sendMsg("SDONE|" + chatId + "|");
   }
 
-  if (!$('#maxDistance').val() > 0) {
-    $('#maxDistance').val(bandData[chatId].defaultDistance);
+
+  var bandInfo = getBandDataById(chatId);
+  if (!$('#maxDistance').val() > 0 && bandInfo) {
+    $('#maxDistance').val(bandInfo.defaultDistance);
   }
 
+  $('#connState').text(bandInfo.name);
   var userData = msg.split("|");
   setSessionKey(userData[4]);
   setUsername(userData[6], userData[7]);
   setMyLocator(userData[8]);
-  fetchBeacons(bandData[chatId].min, bandData[chatId].max);
+  fetchBeacons(bandInfo.min, bandInfo.max);
 }
 
 function setSessionKey(key) {
@@ -548,7 +548,8 @@ function doLogin() {
   if ($('#rememberMe').is(':checked')) {
     var cookieData = {
       user: userName,
-      pass: password
+      pass: password,
+      chatId: chatId,
     };
     setCookie("kst2youUserDetails", JSON.stringify(cookieData), 90);
   } else {
@@ -578,6 +579,7 @@ function doLogoff() {
     ws.close();
   }
   deleteAllMapMarkers();
+  deleteAllBeacons();
   stationList = {};
   latestMessageTime = 0;
   //$('#userList').empty();
@@ -727,10 +729,34 @@ function sendChat() {
 
 $(document).ready(function() {
   if ((location.protocol !== 'https:') && (location.hostname != "127.0.0.1")) {
-    location.replace(`https:${location.href.substring(location.protocol.length)}`);
+      location.replace(`https:${location.href.substring(location.protocol.length)}`);
+  }
+  if (typeof initMap === "function") {
+        // Dynamically load the Google Maps API.
+        var script = document.createElement('script');
+        script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyA609pI75YFCN-uINIw89OXESRxv56Btpk&callback=initMap";
+        document.body.appendChild(script);
+  } else {
+        console.error("initMap function is not defined!");
   }
   initUserList();
   initCqList();
+
+    $('#chatId').empty();
+  var optgroup = $('<optgroup>').attr('label', 'Select Chat Group'); 
+  $.each(chatGroups, function(index, chatGroup) {
+    var option = $('<option>')
+        .attr('value', chatGroup.id)
+        .text(chatGroup.name)
+        .data('min', chatGroup.min)
+        .data('max', chatGroup.max)
+        .data('defaultDistance', chatGroup.defaultDistance);
+    
+     optgroup.append(option);
+  });
+
+  $('#chatId').append(optgroup);  
+    
   var cookie = getCookie("kst2youUserDetails");
   if (typeof cookie != 'undefined') {
     try {
@@ -738,12 +764,17 @@ $(document).ready(function() {
       $('#userInput').val(cookieData.user);
       $('#passInput').val(cookieData.pass);
       $("#rememberMe").prop('checked', true);
+      if (cookieData.chatId !== null && cookieData.chatId !== undefined) {
+         $('#chatId option[value="' + cookieData.chatId + '"]').prop('selected', true);
+      }else{
+         $('#chatId option[value="3"]').prop('selected', true);
+      }
     } catch (e) {
-      // whatever
+      $('#chatId option[value="3"]').prop('selected', true);
     }
-
   } else {
     $("#rememberMe").prop('checked', false);
+    $('#chatId option[value="3"]').prop('selected', true);
   }
   $('#loginModal').modal({
     backdrop: 'static',
@@ -758,10 +789,8 @@ $(document).ready(function() {
   });
   $('#cqButton').click(function() {
     cqModalShow();
-  });
-
-
-
+  });  
+    
   $('#setNameButton').click(function() {
     $('#setNameModal').modal('show');
   });

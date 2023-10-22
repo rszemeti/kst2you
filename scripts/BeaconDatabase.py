@@ -1,6 +1,14 @@
 import mysql.connector
 from decimal import Decimal
 
+class Beacon:
+    def __init__(self, callsign, frequency, locator, comment, status):
+        self.callsign = callsign
+        self.frequency = frequency
+        self.locator = locator
+        self.comment = comment
+        self.status = status
+
 class BeaconDatabase:
     def __init__(self, host, username, password, database):
         self.host = host
@@ -8,6 +16,7 @@ class BeaconDatabase:
         self.password = password
         self.database = database
         self.connection = None
+        self.connect()
 
     def connect(self):
         try:
@@ -27,49 +36,32 @@ class BeaconDatabase:
             self.connection.close()
             print("Disconnected from MySQL database")
 
-    def update_beacons(self, data, prefix):
+    def update_beacons(self, data, source):
         if not self.connection:
             print("Not connected to the database. Call 'connect()' first.")
             return
 
         try:
             cursor = self.connection.cursor()
-            delete_query = "DELETE FROM beacons WHERE callsign LIKE %s"
-
-            # Create a wildcard pattern for the prefix with '%' appended
-            wildcard_pattern = f"{prefix}%"
-
-            # Execute the DELETE query with the wildcard pattern
-            cursor.execute(delete_query, (wildcard_pattern,))
+            delete_query = "DELETE FROM beacons WHERE source=%s"
+            cursor.execute(delete_query, (source,))
 
             # Commit the DELETE operation
             self.connection.commit()
             
+            insert_query = "INSERT INTO beacons (callsign,frequency,locator,comment,status,source) VALUES (%s, %s, %s,%s,%s,%s)"
 
-            insert_query = "INSERT INTO beacons (callsign,frequency,locator,comment,status) VALUES (%s, %s, %s,%s,%s)"
-
-            # Loop through the data array and insert each row into the table
-            #0 ['GB3AAX',
-            #1  '28.268000',
-            #2  'IO95FF',
-            #3  'ASHINGTON',
-            #4  'VERTICAL',
-            #5  '5',
-            #6  'OMNI',
-            #7  'H',
-            #8  '1',
-            #9  'F1D',
-            #10 'NOT OPERATIONAL',
-            #11 'G4NAB',
-            #12 '']
             for row in data:
-                cursor.execute(insert_query, (row[0], float(row[1]), row[2], row[3], 'O' if row[10] == 'OPERATIONAL' else 'X'))
-
+                try:
+                    cursor.execute(insert_query, (row.callsign,row.frequency,row.locator,row.comment,row.status,source))
+                except Exception as e:
+                    print(f"Error: {e}")
 
             self.connection.commit()
             print("Data inserted successfully")
             
         except mysql.connector.Error as err:
+            print(err)
             self.connection.rollback()
             print(f"Error: {err}")
 

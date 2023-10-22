@@ -4,8 +4,27 @@ var gridAnnotations = [];
 var smallAnnotations = [];
 var gridActive=false;
 var circlesActive=true;
+var mapJsLoaded = false;
 
+function initMap(){
+    mapJsLoaded = true;
+}
+
+// Wait until all the map JS is loaded before trying to draw a map
 function drawMap() {
+    if (!mapJsLoaded) {
+        let intervalId = setInterval(() => {
+            if (mapJsLoaded) {
+                clearInterval(intervalId); 
+                _DrawMap(); // The actual logic to draw the map
+            }
+        }, 100); // Check every 100 milliseconds
+    } else {
+        _DrawMap();
+    }
+}
+
+function _DrawMap() {
   $('#map').empty();
 
   var qth = {
@@ -80,6 +99,8 @@ function drawCircles(){
   addCircle(qth, 100);
   addCircle(qth, 200);
   addCircle(qth, 300);
+  addCircle(qth, 500);
+  addCircle(qth, 1000);
 }
 
 function clearCircles() {
@@ -253,6 +274,10 @@ function annotateCenterOfSquare(square, granularity) {
   const annotationText = gridLocator.substr(0, granularity);
 
   // Add the text to the map (you might use google maps Marker or InfoWindow for this)
+  var txtSz = "1.5em";
+  if(granularity==6){
+      txtSz="1.2em";
+  }
   const annotation = new google.maps.Marker({
     position: {
       lat: centerLat,
@@ -262,7 +287,7 @@ function annotateCenterOfSquare(square, granularity) {
     label: {
       text: annotationText,
       color: '#F00',
-      fontSize: "12px",
+      fontSize: txtSz,
       fontWeight: "bold"
     },
     icon: {

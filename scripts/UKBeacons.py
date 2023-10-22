@@ -1,15 +1,11 @@
 import requests
 import csv
 from io import StringIO
-from BeaconDatabase import BeaconDatabase
 
+from BeaconDatabase import BeaconDatabase
+from BeaconDatabase import Beacon
 
 db = BeaconDatabase(host='localhost', username='beacons', password='wibble', database='beacons')
-
-# Connect to the database
-db.connect()
-
-
 
 # Define the URL of the CSV file
 url = "https://ukrepeater.net/csvcreate_beacons.php"
@@ -28,7 +24,6 @@ try:
     # Send an HTTP GET request to the URL with the Referer header
     response = requests.get(url, headers=headers)
 
-
     # Check if the request was successful (status code 200)
     if response.status_code == 200:
         csv_data = response.text
@@ -36,10 +31,12 @@ try:
         csv_reader = csv.reader(csv_file)
         data = []
 
+        source=1
         for row in csv_reader:
-            data.append(row)
+            beacon = Beacon(row[0], float(row[1]), row[2], row[3], ('O' if row[10] == 'OPERATIONAL' else 'X'))
+            data.append(beacon)
 
-        db.update_beacons(data,"GB3")
+        db.update_beacons(data,source)
 
 
     else:
