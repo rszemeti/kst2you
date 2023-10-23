@@ -697,23 +697,39 @@ jQuery.expr[':'].icontains = function(a, i, m) {
 };
 
 function initCqList() {
-  $('#cqMesgSelector').empty();
-  cqMesgList = localStorage.getItem('cqMesgList');
-  if ((typeof cqMesgList !== 'undefined') && (Array.isArray(cqMesgList))) {
+  try {
+    const storedData = localStorage.getItem('cqMesgList');
+    cqMesgList = JSON.parse(storedData);
 
-  } else {
+    if (Array.isArray(cqMesgList)) {
+      $('#cqMesgSelector').empty();
+      // Your other initialization code here
+    } else {
+      cqMesgList = [];
+      localStorage.setItem('cqMesgList', JSON.stringify(cqMesgList));
+    }
+  } catch (error) {
+    // Handle JSON parsing errors here
+    console.error('Error parsing cqMesgList:', error);
     cqMesgList = [];
-    localStorage.setItem('cqMesgList', cqMesgList);
+    localStorage.setItem('cqMesgList', JSON.stringify(cqMesgList));
   }
 }
 
 function sendCqMesg() {
-  var msgText = $('#cqMesgText').val();
-  cqMesgList.push(msgText);
-  localStorage.setItem('cqMesgList', cqMesgList);
-  sendMsg("MSG|" + chatId + "|0|" + msgText + "|0|");
+  var msgText = $('#cqMesgText').val().trim();
+  if (!cqMesgList.includes(msgText)) {
+    cqMesgList.unshift(msgText);y
+    while (cqMesgList.length > 10) {
+      cqMesgList.pop(); // Remove the oldest message from the end
+    }
+    localStorage.setItem('cqMesgList', JSON.stringify(cqMesgList));
+    sendMsg("MSG|" + chatId + "|0|" + msgText + "|0|");
+    //console.log("MSG|" + chatId + "|0|" + msgText + "|0|");
+  }
   $('#cqModal').modal('hide');
 }
+
 
 function cqModalShow() {
   $('#cqMesgSelector').empty();
@@ -826,8 +842,8 @@ $(document).ready(function() {
     sendCqMesg();
   });
 
-  $('#cqMesgSelector').change(function() {
-    $('#cqMesgText').val(cqMesgList[$(this).val()]);
+  $('#cqMesgSelector').change(function() { 
+      $('#cqMesgText').val(cqMesgList[$(this).val()]);
   });
 
   $('#loginModal').keyup(function(e) {
@@ -859,32 +875,32 @@ $(document).ready(function() {
 
   $('#chatPopupSendButton').click(function() {
     sendChat();
+    $('#chatPopupMessageInput').focus();
   });
 
   $('#modalChat').on('shown.bs.modal', function() {
     $('#chatPopupMessageInput').focus();
-    $('#chatPopupMessageInput').on('keydown', function(e) {
+  });
+
+  $('#chatPopupMessageInput').on('keydown', function(e) {
       if (e.keyCode == 13) { // Check if the pressed key is Enter
+        e.preventDefault();
         sendChat();
         return false; // Prevent the default behavior of the Enter key
       }
-    });
-
-    $('#chatPopupSendButton').on('click', function() {
-      sendChat();
-      $('#chatPopupMessageInput').focus();
-    });
   });
     
   $('#cqModal').on('shown.bs.modal', function() {
     $('#cqMesgText').focus();
-    $('#cqMesgText').on('keydown', function(e) {
-        alert(e.keyCode);
+  });
+    
+  $('#cqMesgText').on('keydown', function(e) {
       if (e.keyCode == 13) {
+        e.preventDefault();
+        console.log("sending CQ ... "+e.keyCode);
         sendCqMesg();
         return false; 
       }
-    });
   });
 
   $("#gridButton").click(function(){
