@@ -57,8 +57,17 @@ function _DrawMap() {
     $('#currentLat').text(degToDegMin(lat) + ((lat > 0) ? " N" : " S"));
     $('#currentLng').text(degToDegMin(Math.abs(lng)) + ((lng > 0 ? "  E" : " W")));
     $('#currentGrid').text(gs);
+    let dist = distVincenty(myLatLong[0], myLatLong[1], lat, lng) / 1000;
+    let brg = bearing(myLatLong[0], myLatLong[1], lat, lng);
+    $('#arbitaryDistBearing').text(Math.round(dist)+"km/"+Math.round(brg)+'°');
     $('#locationModal').modal('show');
-    event.preventDefault();
+    // Prevent the default right-click context menu from appearing
+    if (event.preventDefault) {
+      event.preventDefault();
+    } else {
+      // For older browsers that do not support preventDefault
+      event.returnValue = false;
+    }
     return false;
   });
 
@@ -75,7 +84,13 @@ function _DrawMap() {
       lat: myLatLong[0],
       lng: myLatLong[1]
     }, newLocation);
-    event.preventDefault();
+    // Prevent the default right-click context menu from appearing
+    if (event.preventDefault) {
+      event.preventDefault();
+    } else {
+      // For older browsers that do not support preventDefault
+      event.returnValue = false;
+    }
     return false;
   });
 

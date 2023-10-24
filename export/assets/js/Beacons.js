@@ -3,7 +3,7 @@ var beaconStates={};
 
 function fetchBeacons(min,max) {
    beacons={};
-   $.getJSON('https://storage.googleapis.com/kst2you/BeaconList.json', function (data) {
+   $.getJSON('https://storage.googleapis.com/kst2you/BeaconList3.json', function (data) {
         data.forEach(function (item) {
             let frequencyKey = parseInt(item.frequency);
             if((frequencyKey >= min) && (frequencyKey <= max)){

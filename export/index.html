@@ -88,17 +88,23 @@
                                             <div id="map"></div>
                                             <div id="pathProfile" style="width: 100%;"></div>
                                         </div>
-                                        <div class="col col-12 col-md-1" id="bandList"><button class="btn btn-warning btn-group-vertical" id="gridButton" type="button">Grid</button><button class="btn btn-warning active btn-group-vertical" id="circlesButton" type="button">Circles</button><span class="h6">Beacons</span></div>
+                                        <div class="col col-12 col-md-1" id="bandColumn"><button class="btn btn-warning btn-group-vertical" id="gridButton" type="button">Grid</button><button class="btn btn-warning active btn-group-vertical" id="circlesButton" type="button">Circles</button><span class="h6">Beacons</span>
+                                            <div id="bandList"></div><a href="https://www.microwavers.org/" target="_blank">Microwavers.org</a>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="tab-pane" role="tabpanel" id="tab-4">
                                     <div class="row">
                                         <div class="col">
                                             <p>KST2YOU is a project by Robin Szemeti, G1YFG , it aims to provide a web-based interface to the KST service, accessible on any modern browser, regardless of the device. If you have feature request or comments, please contact me via my email as published on QRZ.com</p>
-                                            <p>A basic write-up on the various function and features may be found on my blog&nbsp;<a href="https://g1yfg.blogspot.com/2021/12/kst2you-alternative-interface-to-kst.html">https://g1yfg.blogspot.com</a></p>
-                                            <p>UK Beacon data is refreshed every 12 hours from data derived from the RSGB website that provides data from the official list of NOV's&nbsp;<a href="https://ukrepeater.net/"><span style="color: rgb(33, 37, 41);">https://ukrepeater.net/</span></a></p>
-                                            <p>Europe beacon data is circa June 2022 from Beaconspot, a website run by the UK Microwave group. If you enjoy microwave radio&nbsp;&nbsp;or would like to contribute to the upkeep of our servers, beacon network or just receive our monthly newsletter, please consider a subscription (just £6 a year at the time of writing) every little helps!&nbsp;&nbsp;<a href="https://www.beaconspot.uk/index2.php"><span style="text-decoration: underline;">https://www.beaconspot.uk/</span></a></p>
-                                            <p>Privacy: I do not store your passwords. These are only stored in your browser if you select "remember me". I do not currently store any logs of who is using the service nor the messages they send. I may at some point in the future keep a log of callsigns that have used the service, purely for statistics to see if it is being used by enough people to justify further development.&nbsp; I do not log your messages either sent or received.</p><p id="licencePanel"><a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png"></a><br>This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.</p>
+                                            <hr>
+                                            <div>
+                                                <h1 class="text-primary h5">Beacon data from UK Microwave Group / Beaconspot.uk</h1>
+                                                <p>Beacon data is current data kindly supplied by Beaconspot, a website run by the UK Microwave group. If you enjoy microwave radio or would like to contribute to the upkeep of our servers, beacon network or just receive our monthly newsletter, please consider a&nbsp; subscription (just £6 a year at the time of writing) every little helps!&nbsp;&nbsp;<a class="font-weight-bold" href="https://www.beaconspot.uk/index2.php" target="_blank"><span style="text-decoration: underline;">BeaconSpot</span></a>&nbsp; and&nbsp;<a class="font-weight-bold" href="https://www.microwavers.org/index.htm?membership.htm" target="_blank">Microwavers.org</a>&nbsp;appreciate your support.</p>
+                                            </div>
+                                            <hr>
+                                            <p>Privacy: I do not store your passwords. These are only stored in your browser if you select "remember me". I do not currently store any logs of who is using the service nor the messages they send. I may at some point in the future keep a log of callsigns that have used the service, purely for statistics to see if it is being used by enough people to justify further development.&nbsp; I do not log your messages either sent or received.</p>
+                                            <p>A basic write-up on the various function and features may be found on my blog&nbsp;<a href="https://g1yfg.blogspot.com/2021/12/kst2you-alternative-interface-to-kst.html">https://g1yfg.blogspot.com</a></p><p id="licencePanel"><a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png"></a><br>This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.</p>
                                             <p><button class="btn btn-primary" id="beepTestButton" type="button">Beep Test</button>Test your audio here, this is the "beep" you will hear when a station calls you:&nbsp;</p>
                                         </div>
                                     </div>
@@ -188,6 +194,10 @@
                     <div class="row">
                         <div class="col"><span>Longitude</span></div>
                         <div class="col"><span id="currentLng"></span></div>
+                    </div>
+                    <div class="row">
+                        <div class="col"><span>Dist/Bearing</span></div>
+                        <div class="col"><span id="arbitaryDistBearing"></span></div>
                     </div>
                     <div class="row" id="gridSquareRow">
                         <div class="col"><span>Grid Square</span></div>

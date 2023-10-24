@@ -730,13 +730,21 @@ function sendCqMesg() {
   $('#cqModal').modal('hide');
 }
 
-
 function cqModalShow() {
   $('#cqMesgSelector').empty();
-  if (cqMesgList.count == 0) {
+
+  // Add a default placeholder option
+  $('#cqMesgSelector').append($('<option>', {
+    value: '',
+    text: 'Choose a message',
+    disabled: true,
+    selected: true // This will make it selected by default
+  }));
+
+  if (cqMesgList.length === 0) {
     $('#cqDropDownRow').hide();
   } else {
-    cqMesgList.forEach(function(item, index) {
+    cqMesgList.forEach(function (item, index) {
       $('#cqMesgSelector').append($('<option>', {
         value: index,
         text: item
@@ -746,6 +754,7 @@ function cqModalShow() {
   }
   $('#cqModal').modal('show');
 }
+
 
 function sendChat() {
   var txt = $('#chatPopupMessageInput').val();
@@ -884,9 +893,13 @@ $(document).ready(function() {
 
   $('#chatPopupMessageInput').on('keydown', function(e) {
       if (e.keyCode == 13) { // Check if the pressed key is Enter
-        e.preventDefault();
         sendChat();
-        return false; // Prevent the default behavior of the Enter key
+        if (e.preventDefault) {
+          e.preventDefault();
+        } else {
+          e.returnValue = false;
+        }
+        return false;
       }
   });
     
@@ -896,10 +909,13 @@ $(document).ready(function() {
     
   $('#cqMesgText').on('keydown', function(e) {
       if (e.keyCode == 13) {
-        e.preventDefault();
-        console.log("sending CQ ... "+e.keyCode);
         sendCqMesg();
-        return false; 
+        if (e.preventDefault) {
+          e.preventDefault();
+        } else {
+          e.returnValue = false;
+        }
+        return false;
       }
   });
 
