@@ -1,18 +1,42 @@
 var beacons = {}; // Use an object instead of an array
 var beaconStates={};
 
+var spotBcn;
+
+const reportPattern = /^[1-5][1-9]{1,2}$|^[+-]?\s*[1-9][0-9]?\s*[dD][bB]$/;
+
+const modes = [
+    { value: "TR", text: "Tropo" },
+    { value: "AS", text: "Aircraft Scatter" },
+    { value: "RS", text: "Rain Scatter" },
+    { value: "SS", text: "Snow Scatter" },
+    { value: "ES", text: "Sporadic E" },
+    { value: "F2", text: "F2 layer" },
+    { value: "TEP", text: "Trans-Equatorial" },
+    { value: "AU", text: "Aurora" },
+    { value: "EME", text: "EME"}
+];
+
 function fetchBeacons(min,max) {
+   deleteAllBeacons();
    beacons={};
-   $.getJSON('https://storage.googleapis.com/kst2you/BeaconList3.json', function (data) {
+   beaconStates={};
+   var url;
+   if(window.location.hostname === 'kst2you.bss.design') {
+       url = 'https://storage.googleapis.com/kst2you/BeaconList.json';
+   } else{
+       url = 'https://storage.googleapis.com/kst2you/BeaconList4.json';
+   }
+   
+   $.getJSON(url, function (data) {
         data.forEach(function (item) {
             let frequencyKey = parseInt(item.frequency);
             if((frequencyKey >= min) && (frequencyKey <= max)){
                 if (!beacons[frequencyKey]) {
-                    beacons[frequencyKey] = [];
+                    beacons[frequencyKey] = {};
                 }
-                beacons[frequencyKey].push(item);
+                beacons[frequencyKey][item.callsign]=item;
             }
- 
         });
         $('#bandList .bandButton').remove();
         var sortedKeys = Object.keys(beacons).map(Number).sort(function (a, b) {
@@ -99,6 +123,7 @@ function addBeacon(bcn){
           '<li>Locator: '+bcn.locator+'</li>'+
           '<li>'+parseInt(bcn.distance).toLocaleString()+'km / '+parseInt(bcn.bearing)+'&#176;</li>'+
           '</ul>'+
+          '<button onclick="spotPopup(\'' + bcn.callsign + '\','+parseInt(bcn.frequency)+')">Spot</button>' +
       '</div>'+
       '</div>';
 
@@ -112,3 +137,78 @@ function addBeacon(bcn){
 
    bcn.marker = marker;
 }
+
+function spotPopup(callsign,key) {
+  if (callsign === '0') {
+    return;
+  }
+  spotPopupCallsign = callsign;
+  spotBcn = beacons[key][callsign];
+  offset = 0.0;
+  $('#bcnSpotCallsign').text(spotBcn.callsign);
+  $('#bcnSpotLocator').text(spotBcn.locator);
+  $('#bcnSpotFreq').text(spotBcn.frequency);
+  let latLng = gridSquareToLatLon(spotBcn.locator);
+  let dist = distVincenty(myLatLong[0], myLatLong[1], latLng[0], latLng[1]) / 1000;
+  let brg = bearing(myLatLong[0], myLatLong[1], latLng[0], latLng[1]);
+  $('#bcnSpotDistBearing').text(Math.round(dist)+"km/"+Math.round(brg)+'°');
+  $('#bcnSpotModal').modal('show');
+  $('#bcnReportInput').focus();
+}
+
+var offset=0;
+
+$(document).ready(function(){
+    modes.forEach(function(mode) {
+        $('.propagationModes').append($('<option>', {
+            value: mode.value,
+            text: mode.text
+        }));
+    });
+
+    // Set "TR" as the default selected value
+    $('.propagationModes').val('TR');
+    
+    const increment = 0.001;
+    const $freqElement = $('#bcnSpotFreq');
+    const $offsetElement = $('#bcnOffset');
+    
+    $('#increaseFreq').on('click', function() {
+        let currentFreq = parseFloat($freqElement.text());
+        $freqElement.text((currentFreq + increment).toFixed(3));
+        console.log("inc");
+        updateOffset(+1)
+    });
+    
+    $('#decreaseFreq').on('click', function() {
+        let currentFreq = parseFloat($freqElement.text());
+        $freqElement.text((currentFreq - increment).toFixed(3));
+        updateOffset(-1)
+    });
+    
+    function updateOffset(inc) {
+        offset = offset + inc;
+        console.log(offset);
+        if (offset > 0) {
+            $offsetElement.text('+' + (offset ).toFixed(0) + 'kHz');
+        } else if (offset < 0) {
+            $offsetElement.text((offset).toFixed(0) + 'kHz'); // Negative sign is already present
+        } else {
+            $offsetElement.text('');
+        }
+    }
+    
+    // spotToCluster(callsign,freq,locator,mode,report)
+    $('#sendBcnSpot').on('click', function() {
+        const currentFreq = parseFloat($freqElement.text()) * 1000.0;
+        const mode = $('#bcnPropagationModes').val();
+        const report = $('#bcnSpotReport').val().trim();
+        if(reportPattern.test(report)){
+          spotToCluster(spotBcn.callsign, currentFreq, spotBcn.locator, mode, report); 
+          $('#bcnSpotModal').modal('hide');
+        }else{
+          alert("Reports must be of the form 599, 59 or -16dB");
+        }
+    });
+});
+

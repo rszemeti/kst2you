@@ -75,3 +75,21 @@ p {
   margin-bottom: 10px;
 }
 
+#bcnSpotReport {
+  margin-top: 0.3em;
+}
+
+.freqButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 2px;
+  vertical-align: middle;
+  font-size: 0.8em;
+}
+
+.freqButton .focus {
+  outline: none;
+}
+

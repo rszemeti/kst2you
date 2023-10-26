@@ -8,6 +8,7 @@
     <title>Kst2You</title>
     <meta name="description" content="An alternative interface to the ON4KST chat system.">
     <link rel="stylesheet" href="assets/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="assets/fonts/fontawesome-all.min.css">
     <link rel="stylesheet" href="assets/fonts/ionicons.min.css">
     <link rel="stylesheet" href="assets/css/Bootstrap-Chat.css">
     <link rel="stylesheet" href="assets/css/Bootstrap-DataTables.css">
@@ -34,10 +35,10 @@
                     <div class="col">
                         <div>
                             <ul class="nav nav-tabs" role="tablist">
-                                <li class="nav-item" role="presentation"><a class="nav-link active" role="tab" data-toggle="tab" href="#tab-1">Chat</a></li>
-                                <li class="nav-item" role="presentation"><a class="nav-link" role="tab" data-toggle="tab" href="#tab-2">User List</a></li>
-                                <li class="nav-item" role="presentation"><a class="nav-link" role="tab" data-toggle="tab" href="#tab-3">Map</a></li>
-                                <li class="nav-item" role="presentation"><a class="nav-link" role="tab" data-toggle="tab" href="#tab-4">About ...</a></li>
+                                <li class="nav-item" role="presentation" id="chatTab"><a class="nav-link active" role="tab" data-toggle="tab" href="#tab-1">Chat</a></li>
+                                <li class="nav-item" role="presentation" id="userListTab"><a class="nav-link" role="tab" data-toggle="tab" href="#tab-2">User List</a></li>
+                                <li class="nav-item" role="presentation" id="mapTab"><a class="nav-link" role="tab" data-toggle="tab" href="#tab-3">Map</a></li>
+                                <li class="nav-item" role="presentation" id="aboutTab"><a class="nav-link" role="tab" data-toggle="tab" href="#tab-4">About ...</a></li>
                             </ul>
                             <div class="tab-content">
                                 <div class="tab-pane active" role="tabpanel" id="tab-1">
@@ -116,27 +117,25 @@
             </div>
         </div>
     </div>
-    <div id="chatPopup">
-        <div class="modal left fade in vichomChat" role="dialog" tabindex="-1" id="modalChat">
-            <div class="modal-dialog" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <div class="col-12 col-lg-12 col-xl-12 padMar text-right">
-                            <h5 class="text-primary padMar margenesCajas pointer" data-dismiss="modal"><i class="icon ion-android-arrow-dropleft"></i>&nbsp; Hide Chat</h5>
-                            <div id="chatUserInfo">
-                                <ul>
-                                    <li><span id="chatPopupLocator">Locator</span></li>
-                                    <li><span id="chatPopupBearing">Bearing</span></li>
-                                </ul>
-                            </div><strong class="text-primary" id="chatPopupUser">G1YFG:</strong>
-                        </div><button class="close d-none" type="button" aria-label="Close" data-dismiss="modal"><span aria-hidden="true">×</span></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="col-12 col-xl-12 padMar" id="chatWindow"></div>
-                    </div>
-                    <div class="modal-footer">
-                        <div class="col-11 col-sm-11 col-md-11 col-lg-11 col-xl-11 padMar margenesCompletas10px"><input class="form-control-sm vichomChatInput" type="text" id="chatPopupMessageInput" placeholder="Write your message"><button class="btn btn-primary mx-auto d-block margenesTxts" id="chatPopupSendButton" type="button">SEND</button></div>
-                    </div>
+    <div class="modal left fade in vichomChat" role="dialog" tabindex="-1" id="modalChat">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="col-12 col-lg-12 col-xl-12 padMar text-right">
+                        <h5 class="text-primary pointer" data-dismiss="modal"><i class="icon ion-android-arrow-dropleft"></i>&nbsp; Hide Chat</h5>
+                        <div id="chatUserInfo">
+                            <ul id="chatLocationUL" data-toggle="tooltip" title="Show On Map">
+                                <li><span id="chatPopupLocator">Locator</span></li>
+                                <li><span id="chatPopupBearing">Bearing</span></li>
+                            </ul>
+                        </div><strong class="text-primary" id="chatPopupUser">G1YFG:</strong>
+                    </div><button class="close d-none" type="button" aria-label="Close" data-dismiss="modal"><span aria-hidden="true">×</span></button>
+                </div>
+                <div class="modal-body">
+                    <div class="col-12 col-xl-12 padMar" id="chatWindow"></div>
+                </div>
+                <div class="modal-footer">
+                    <div class="col-11 col-sm-11 col-md-11 col-lg-11 col-xl-11 padMar margenesCompletas10px"><input class="form-control-sm vichomChatInput" type="text" id="chatPopupMessageInput" placeholder="Write your message"><button class="btn btn-primary mx-auto d-block margenesTxts" id="chatPopupSendButton" type="button">SEND</button></div>
                 </div>
             </div>
         </div>
@@ -208,6 +207,42 @@
             </div>
         </div>
     </div>
+    <div class="modal fade" role="dialog" tabindex="-1" id="bcnSpotModal">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">Beacon spot to DX Cluster</h4><button class="close" type="button" aria-label="Close" data-dismiss="modal"><span aria-hidden="true">×</span></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col"><span>Callsign</span></div>
+                        <div class="col"><span id="bcnSpotCallsign"></span></div>
+                    </div>
+                    <div class="row">
+                        <div class="col"><span>Frequency</span></div>
+                        <div class="col"><span id="bcnSpotFreq"></span><button class="btn" id="increaseFreq" type="button freqButton"><i class="far fa-arrow-alt-circle-up"></i></button><button class="btn" id="decreaseFreq" type="button freqButton"><i class="far fa-arrow-alt-circle-down"></i></button><span id="bcnOffset"></span></div>
+                    </div>
+                    <div class="row" id="gridSquareRow-1">
+                        <div class="col"><span>Grid Square</span></div>
+                        <div class="col"><span id="bcnSpotLocator"></span></div>
+                    </div>
+                    <div class="row" id="gridSquareRow-4">
+                        <div class="col"><span>Distance/bearing</span></div>
+                        <div class="col"><span id="bcnSpotDistBearing"></span></div>
+                    </div>
+                    <div class="row" id="gridSquareRow-2">
+                        <div class="col"><span>Propogation</span></div>
+                        <div class="col"><select id="bcnPropagationModes" class="propagationModes"></select></div>
+                    </div>
+                    <div class="row" id="gridSquareRow-3">
+                        <div class="col"><span>Report</span></div>
+                        <div class="col"><input type="text" id="bcnSpotReport" value="599"></div>
+                    </div>
+                </div>
+                <div class="modal-footer"><button class="btn btn-light" type="button" data-dismiss="modal">Cancel</button><button class="btn btn-primary" id="sendBcnSpot" type="button">Send Spot</button></div>
+            </div>
+        </div>
+    </div>
     <div class="modal fade" role="dialog" tabindex="-1" id="cqModal">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
@@ -267,6 +302,7 @@
     <script src="assets/js/Maidenhead.js"></script>
     <script src="assets/js/Map.js"></script>
     <script src="assets/js/profile.js"></script>
+    <script src="assets/js/QRZ.js"></script>
 </body>
 
 </html>

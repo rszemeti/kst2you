@@ -21,12 +21,17 @@ var messageLog = {}
 var chatPopupCallsign;
 var ngList;
 
+var clusterList=[];
+var activeCluster;
+
 var chatId;
 var userName;
 var password;
 
 var userList = [];
 const locTest = RegExp('\w{6}');
+
+var currentInfoWindow = null;
 
 const chatGroups = [
     {id: '10', name: 'kHz (2000 m - 630 m)', min: 0, max: "1", defaultDistance: 20000},
@@ -117,6 +122,7 @@ class Station {
   get long() {
     return this.latLong[1];
   }
+    
   set marker(m) {
     this._marker = m;
   }
@@ -141,6 +147,16 @@ class Message {
     this._status = msg[5];
     this._text = msg[6];
     this._to = msg[7];
+    if(this._to==0){
+        var poss = this._text.split(' ')[0].toUpperCase();
+        poss=poss.replace(/^[\[\(]|[\]\)]$/g, '');
+        console.log("CQ testing for "+poss);
+        if(poss.includes(userName)){
+            this._to=userName;
+        }else if(typeof stationList[poss] != 'undefined'){
+            this._to=poss;
+        }
+    }
   }
 
   get status() {
@@ -288,10 +304,18 @@ function procChatMessage(msg, isLive) {
       if (message.text.includes("Your name is now")) {
         $('#setNameAlert').hide();
         $('#setNameModal').modal('hide');
-      }
-      if (message.text.includes("Invalid first name")) {
+      }else if (message.text.includes("Invalid first name")) {
         $('#setNameAlert').show();
         $('#setNameAlertText').html("<strong>Warning: </strong> Invalid first name");
+      }else if (message.text.includes("Available DX clusters")) {
+        const regex = /Available DX clusters: (.+?)\./;
+        const match = message.text.match(regex);
+        if (match && match[1]) {
+            clusterList = match[1].split(',').map(cluster => cluster.trim());
+            console.log(clusterList);
+        } else {
+          console.error('No DX clusters found in the text.');
+        }
       }
     }
     return;
@@ -421,20 +445,21 @@ function procUser(msg) {
 
   if (stn.isOK) {
     if (typeof stationList[stn.callsign] == 'undefined') {
+      // New user to us ...
       stationList[stn.callsign] = stn;
       stn.lastSeen = Date.now();
-    } else {
+      console.log("assigning data to " + stn.callsign);
+      dataTableUsers.row.add(stn);
+      $('#chatLog > tr').each(function(i, tr) {
+        if ($(tr).data('fromCall') == stn.callsign) {
+          $(tr).data('distance', stn.distance);
+          $(tr).data('station', stn);
+        }
+      });
+      statusUpdateChatLog(stn.callsign);
+    } else{
       return;
     }
-    console.log("assigning data to " + stn.callsign);
-    dataTableUsers.row.add(stn);
-    $('#chatLog > tr').each(function(i, tr) {
-      if ($(tr).data('fromCall') == stn.callsign) {
-        $(tr).data('distance', stn.distance);
-        $(tr).data('station', stn);
-      }
-    });
-    statusUpdateChatLog(stn.callsign);
   } else {
     return;
   }
@@ -468,13 +493,17 @@ function addMapMarker(stn) {
     content: contentString
   });
   marker.addListener('click', function() {
+    if (currentInfoWindow) {
+      currentInfoWindow.close();
+    }
+    currentInfoWindow = infowindow;
     infowindow.open(map, marker);
     showProfile({
       lat: myLatLong[0],
       lng: myLatLong[1]
     }, stnLoc);
   });
-
+  stn.infowindow = infowindow;
   stn.marker = marker;
 }
 
@@ -500,6 +529,8 @@ function procLogin(msg) {
     //sendMsg("SDXQ|" + chatId + "|1296001|99999999|");
     //sendMsg("SMAQ|" + chatId + "|1296001|99999999|");
     sendMsg("SDONE|" + chatId + "|");
+    listClusters();
+    setCluster("ON4KST-2");
   } else {
     sendMsg("SPR|2|");
     sendMsg("SDXQ|" + chatId + "|" + latestMessageTime + "|99999999|");
@@ -527,6 +558,25 @@ function setSessionKey(key) {
 
 function setUsername(first, surname) {
   $('#setNameText').val(first);
+}
+
+function listClusters() {
+  sendMsg("MSG|" + chatId + "|0|/LSTCLX|0|");
+}
+
+function setCluster(cluster) {
+  sendMsg("MSG|" + chatId + "|0|/SETCLX "+cluster+"|0|");
+}
+
+function showCluster() {
+  sendMsg("MSG|" + chatId + "|0|/SHCLX|0|");
+}
+
+function spotToCluster(callsign,freq,locator,mode,report) {
+  const info = report +" "+myLoc+"<"+mode+">"+locator+" K2U";
+  const msg = "MSG|" + chatId + "|0|/DX "+freq+" "+callsign+" "+info+"|0|";
+  //alert(msg);
+  sendMsg(msg);
 }
 
 function setAway() {
@@ -674,11 +724,33 @@ function chatPopup(callsign) {
   $('#chatPopupUser').text(chatUser.decoratedCallsign + " " + chatUser.name);
   $('#chatPopupLocator').text(chatUser.locator);
   $('#chatPopupBearing').text(chatUser.distb);
+  $('#chatLocationUL').off('click').click(function(){
+     showOnMap(chatUser); 
+  });
   $('#modalChat').modal('show');
   $('#chatPopupMessageInput').focus();
   if (typeof messageLog[callsign] !== 'undefined') {
     messageLog[callsign].forEach(showChatHistory);
   }
+}
+
+function showOnMap(user){
+    if (currentInfoWindow) {
+      currentInfoWindow.close();
+    }
+    currentInfoWindow = user.infowindow;
+    user.infowindow.open(map, user.marker);
+    $('#mapTab a').tab('show');
+    showProfile(
+    {
+      lat: myLatLong[0],
+      lng: myLatLong[1]
+    }, 
+    {
+      lat: user.latLong[0],
+      lng: user.latLong[1] 
+    }
+  );
 }
 
 function showChatHistory(msg, ix, array) {
@@ -719,14 +791,13 @@ function initCqList() {
 function sendCqMesg() {
   var msgText = $('#cqMesgText').val().trim();
   if (!cqMesgList.includes(msgText)) {
-    cqMesgList.unshift(msgText);y
+    cqMesgList.unshift(msgText);
     while (cqMesgList.length > 10) {
       cqMesgList.pop(); // Remove the oldest message from the end
     }
     localStorage.setItem('cqMesgList', JSON.stringify(cqMesgList));
-    sendMsg("MSG|" + chatId + "|0|" + msgText + "|0|");
-    //console.log("MSG|" + chatId + "|0|" + msgText + "|0|");
   }
+  sendMsg("MSG|" + chatId + "|0|" + msgText + "|0|");
   $('#cqModal').modal('hide');
 }
 
@@ -942,6 +1013,8 @@ $(document).ready(function() {
     $('#locationModal').modal('hide');
     drawMap();
   });
+    
+  $('[data-toggle="tooltip"]').tooltip(); 
 
   var supportsWebSockets = 'WebSocket' in window || 'MozWebSocket' in window;
 
