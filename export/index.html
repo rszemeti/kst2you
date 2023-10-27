@@ -90,7 +90,7 @@
                                             <div id="pathProfile" style="width: 100%;"></div>
                                         </div>
                                         <div class="col col-12 col-md-1" id="bandColumn"><button class="btn btn-warning btn-group-vertical" id="gridButton" type="button">Grid</button><button class="btn btn-warning active btn-group-vertical" id="circlesButton" type="button">Circles</button><span class="h6">Beacons</span>
-                                            <div id="bandList"></div><a href="https://www.microwavers.org/" target="_blank">Microwavers.org</a>
+                                            <div id="bandList"></div><a href="https://beaconspot.uk/" target="_blank">Beaconspot.uk</a>
                                         </div>
                                     </div>
                                 </div>
@@ -104,7 +104,7 @@
                                                 <p>Beacon data is current data kindly supplied by Beaconspot, a website run by the UK Microwave group. If you enjoy microwave radio or would like to contribute to the upkeep of our servers, beacon network or just receive our monthly newsletter, please consider a&nbsp; subscription (just £6 a year at the time of writing) every little helps!&nbsp;&nbsp;<a class="font-weight-bold" href="https://www.beaconspot.uk/index2.php" target="_blank"><span style="text-decoration: underline;">BeaconSpot</span></a>&nbsp; and&nbsp;<a class="font-weight-bold" href="https://www.microwavers.org/index.htm?membership.htm" target="_blank">Microwavers.org</a>&nbsp;appreciate your support.</p>
                                             </div>
                                             <hr>
-                                            <p>Privacy: I do not store your passwords. These are only stored in your browser if you select "remember me". I do not currently store any logs of who is using the service nor the messages they send. I may at some point in the future keep a log of callsigns that have used the service, purely for statistics to see if it is being used by enough people to justify further development.&nbsp; I do not log your messages either sent or received.</p>
+                                            <p>Privacy: I do not store your passwords. These are only stored in your browser if you select "remember me". I do keep a log of callsigns that have used the service and any DXC cluster spots purely for statistics to see if it is being used by enough people to justify further development.&nbsp; I do not log your messages either sent or received. Since I started collecting numbers in late October 2023, there have been&nbsp;<span id="userCount"></span>&nbsp;logins to the service and&nbsp;<span id="spotCount"></span> spots reported</p>
                                             <p>A basic write-up on the various function and features may be found on my blog&nbsp;<a href="https://g1yfg.blogspot.com/2021/12/kst2you-alternative-interface-to-kst.html">https://g1yfg.blogspot.com</a></p><p id="licencePanel"><a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png"></a><br>This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.</p>
                                             <p><button class="btn btn-primary" id="beepTestButton" type="button">Beep Test</button>Test your audio here, this is the "beep" you will hear when a station calls you:&nbsp;</p>
                                         </div>
@@ -299,6 +299,7 @@
     <script src="https://polyfill.io/v3/polyfill.min.js?features=default"></script>
     <script src="https://www.google.com/jsapi"></script>
     <script src="assets/js/Kst.js"></script>
+    <script src="assets/js/Logging.js"></script>
     <script src="assets/js/Maidenhead.js"></script>
     <script src="assets/js/Map.js"></script>
     <script src="assets/js/profile.js"></script>

@@ -150,7 +150,6 @@ class Message {
     if(this._to==0){
         var poss = this._text.split(' ')[0].toUpperCase();
         poss=poss.replace(/^[\[\(]|[\]\)]$/g, '');
-        console.log("CQ testing for "+poss);
         if(poss.includes(userName)){
             this._to=userName;
         }else if(typeof stationList[poss] != 'undefined'){
@@ -312,7 +311,6 @@ function procChatMessage(msg, isLive) {
         const match = message.text.match(regex);
         if (match && match[1]) {
             clusterList = match[1].split(',').map(cluster => cluster.trim());
-            console.log(clusterList);
         } else {
           console.error('No DX clusters found in the text.');
         }
@@ -448,7 +446,6 @@ function procUser(msg) {
       // New user to us ...
       stationList[stn.callsign] = stn;
       stn.lastSeen = Date.now();
-      console.log("assigning data to " + stn.callsign);
       dataTableUsers.row.add(stn);
       $('#chatLog > tr').each(function(i, tr) {
         if ($(tr).data('fromCall') == stn.callsign) {
@@ -531,6 +528,8 @@ function procLogin(msg) {
     sendMsg("SDONE|" + chatId + "|");
     listClusters();
     setCluster("ON4KST-2");
+    logUsage({user: userName, chat: chatId});
+    getStats();
   } else {
     sendMsg("SPR|2|");
     sendMsg("SDXQ|" + chatId + "|" + latestMessageTime + "|99999999|");
@@ -572,9 +571,9 @@ function showCluster() {
   sendMsg("MSG|" + chatId + "|0|/SHCLX|0|");
 }
 
-function spotToCluster(callsign,freq,locator,mode,report) {
-  const info = report +" "+myLoc+"<"+mode+">"+locator+" K2U";
-  const msg = "MSG|" + chatId + "|0|/DX "+freq+" "+callsign+" "+info+"|0|";
+function spotToCluster(spot) {
+  const info = spot.report +" "+spot.spotter_locator+"<"+spot.mode+">"+spot.locator+" K2U";
+  const msg = "MSG|" + chatId + "|0|/DX "+spot.freq+" "+spot.callsign+" "+info+"|0|";
   //alert(msg);
   sendMsg(msg);
 }

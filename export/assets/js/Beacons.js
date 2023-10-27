@@ -25,7 +25,7 @@ function fetchBeacons(min,max) {
    if(window.location.hostname === 'kst2you.bss.design') {
        url = 'https://storage.googleapis.com/kst2you/BeaconList.json';
    } else{
-       url = 'https://storage.googleapis.com/kst2you/BeaconList4.json';
+       url = 'https://storage.googleapis.com/kst2you/BeaconListTest.json';
    }
    
    $.getJSON(url, function (data) {
@@ -51,7 +51,6 @@ function fetchBeacons(min,max) {
             });
             $('#bandList').append(button);
         });
-        console.log(beacons);
     })
     .fail(function () {
         console.error('Error fetching data.');
@@ -156,6 +155,19 @@ function spotPopup(callsign,key) {
   $('#bcnReportInput').focus();
 }
 
+function spotData(callsign,freq,locator,mode,report) {
+    data = {
+        spotter_callsign: userName,
+        spotter_locator: myLoc,
+        callsign: callsign,
+        freq: freq,
+        locator: locator,
+        mode: mode,
+        report: report,
+    };
+    return data;
+}
+
 var offset=0;
 
 $(document).ready(function(){
@@ -176,7 +188,6 @@ $(document).ready(function(){
     $('#increaseFreq').on('click', function() {
         let currentFreq = parseFloat($freqElement.text());
         $freqElement.text((currentFreq + increment).toFixed(3));
-        console.log("inc");
         updateOffset(+1)
     });
     
@@ -188,7 +199,6 @@ $(document).ready(function(){
     
     function updateOffset(inc) {
         offset = offset + inc;
-        console.log(offset);
         if (offset > 0) {
             $offsetElement.text('+' + (offset ).toFixed(0) + 'kHz');
         } else if (offset < 0) {
@@ -204,11 +214,14 @@ $(document).ready(function(){
         const mode = $('#bcnPropagationModes').val();
         const report = $('#bcnSpotReport').val().trim();
         if(reportPattern.test(report)){
-          spotToCluster(spotBcn.callsign, currentFreq, spotBcn.locator, mode, report); 
+          const spot = spotData(spotBcn.callsign, currentFreq, spotBcn.locator, mode, report); 
+          spotToCluster(spot);
+          logSpot(spot);
           $('#bcnSpotModal').modal('hide');
         }else{
           alert("Reports must be of the form 599, 59 or -16dB");
         }
-    });
+    }); 
+
 });
 
