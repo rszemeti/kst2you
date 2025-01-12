@@ -19,7 +19,23 @@ Install Websockify using pip:
 sudo pip install websockify
 ```
 
-### 3. Create a Systemd Script
+### 3. Install Nginx and Certbot
+Install Nginx to serve as a reverse proxy and Certbot to obtain SSL certificates:
+
+```bash
+sudo yum install nginx certbot python3-certbot-nginx
+```
+
+### 4. Obtain SSL Certificates with Certbot
+Use Certbot to generate SSL certificates for your domain:
+
+```bash
+sudo certbot --nginx -d yourdomain.com
+```
+
+Follow the interactive prompts to verify your domain and obtain the certificates. Certbot will automatically configure Nginx to use the certificates.
+
+### 5. Create a Systemd Script
 Set up a `systemd` service to proxy KST chat onto a local port (e.g., port 6000). This port is local only, so no need to open it in the firewall.
 
 #### Example Systemd Script
@@ -44,7 +60,7 @@ SyslogIdentifier=kst2you
 WantedBy=multi-user.target
 ```
 
-### 4. Reload and Enable the Service
+### 6. Reload and Enable the Service
 After creating the service file, reload the systemd daemon to recognize the new service:
 
 ```bash
@@ -57,14 +73,14 @@ Enable the service to start automatically on boot:
 sudo systemctl enable kst2you
 ```
 
-### 5. Start the Service
+### 7. Start the Service
 Start the proxy service:
 
 ```bash
 sudo systemctl start kst2you
 ```
 
-### 6. Verify the Service
+### 8. Verify the Service
 Check the status of the service to ensure it is running:
 
 ```bash
@@ -77,7 +93,7 @@ To confirm that the proxy is working, verify that the local port (6000) is liste
 ss -tuln | grep 6000
 ```
 
-### 7. Configure Nginx for SSL Termination
+### 9. Configure Nginx for SSL Termination
 Set up Nginx to reverse proxy requests to the Websockify service and expose it securely over HTTPS. The proxy will be accessible at `/kst/`.
 
 #### Example Nginx Configuration
@@ -88,8 +104,8 @@ server {
     listen 443 ssl;
     server_name yourdomain.com;
 
-    ssl_certificate /path/to/your/fullchain.pem;
-    ssl_certificate_key /path/to/your/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/yourdomain.com/privkey.pem;
 
     # SSL settings (optional for better security)
     ssl_protocols TLSv1.2 TLSv1.3;
@@ -119,7 +135,7 @@ server {
 }
 ```
 
-### 8. Reload Nginx
+### 10. Reload Nginx
 After adding the configuration, reload Nginx to apply the changes:
 
 ```bash
@@ -127,6 +143,21 @@ sudo nginx -t  # Test the configuration for errors
 sudo systemctl reload nginx
 ```
 
-You have now successfully set up a proxy server for KST2You. External clients can securely access the chat interface through your configured reverse proxy at `/kst/`. Let me know when your proxy is up and running, I will test it and add it to the list of proxies used in the software, improving the reliability for everyone, let me know if you need further assistance!
+### 11. Automatically Renew SSL Certificates
+Certbot can automatically renew SSL certificates. Add the following to your crontab to check for renewals regularly:
+
+```bash
+sudo crontab -e
+```
+
+Add this line to renew certificates and reload Nginx:
+
+```bash
+0 0 * * * certbot renew --quiet && systemctl reload nginx
+```
+
+You have now successfully set up a proxy server for KST2You. External clients can securely access the chat interface through your configured reverse proxy at `/kst/`. 
+
+Let me know when your proxy is up and running, I will test it and add it to the list of proxies used in the software, improving the reliability for everyone, let me know if you need further assistance!
 
 
