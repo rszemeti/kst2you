@@ -1,0 +1,8 @@
+{
+  "MY_CALLSIGN": "YOUR_CALLSIGN",
+  "EMAIL_FROM": "your_email@gmail.com",
+  "EMAIL_TO": "recipient@example.com",
+  "EMAIL_PASSWORD": "your_app_password_here",
+  "SMTP_SERVER": "smtp.gmail.com",
+  "SMTP_PORT": 587
+}

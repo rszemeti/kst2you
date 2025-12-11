@@ -1,0 +1,19 @@
+# Config file with sensitive credentials
+config.json
+
+# Test data files
+test_data.txt
+k2u_api_spots.csv
+cluster_spots.txt
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/

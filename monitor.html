@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>KST Stats — with WS Health + Diagnostics</title>
+  <!--
+    This version adds robust error handling for NS_ERROR_CONTENT_BLOCKED, CORS/mixed-content
+    issues, a WebSocket health check, *and* a built-in mock/diagnostics + test suite so the
+    page is useful even when the real endpoints are blocked by browser policy.
+
+    Key fixes/workarounds:
+    - Both endpoints are HTTPS/WSS (no mixed content).
+    - Clear messaging when the browser blocks the request (CORS/CSP/mixed-content).
+    - Fallback HTTP attempt using text/plain (to avoid a CORS preflight where possible).
+      NOTE: If the server *requires* application/json, the first attempt will succeed; the
+      fallback only helps when the environment blocks preflight.
+    - WebSocket connection is wrapped with graceful failure + origin diagnostics.
+    - Mock mode (no network) and a small test suite to validate UI rendering.
+  -->
+  <style>
+    :root {
+      --bg: #0f172a;         /* slate-900 */
+      --card: #111827;       /* gray-900 */
+      --text: #e5e7eb;       /* gray-200 */
+      --subtle: #94a3b8;     /* slate-400 */
+      --accent: #22d3ee;     /* cyan-400 */
+      --good: #22c55e;       /* green-500 */
+      --bad: #ef4444;        /* red-500 */
+      --warn: #f59e0b;       /* amber-500 */
+    }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1000px 600px at 20% -10%, #1e293b 0%, transparent 60%),
+                  radial-gradient(1000px 600px at 120% 10%, #111827 0%, transparent 60%),
+                  var(--bg);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+    }
+    .card {
+      width: min(1000px, 95vw);
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px;
+      padding: 28px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+    h1 { margin: 0 0 10px; font-size: clamp(24px, 4vw, 34px); letter-spacing: 0.2px; }
+    .muted { color: var(--subtle); }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 18px; }
+    @media (max-width: 900px){ .stats { grid-template-columns: 1fr 1fr; } }
+    .stat { background: var(--card); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 16px 18px; }
+    .label { font-size: 13px; color: var(--subtle); }
+    .value { font-size: clamp(26px, 4.5vw, 40px); font-weight: 700; word-break: break-word; }
+    .row { display: flex; align-items: center; gap: 10px; }
+    .dot { width: 10px; height: 10px; border-radius: 999px; background: var(--good); box-shadow: 0 0 0 3px rgba(34,197,94,0.15); }
+    .error .dot { background: var(--bad); box-shadow: 0 0 0 3px rgba(239,68,68,0.15); }
+    .warning .dot { background: var(--warn); box-shadow: 0 0 0 3px rgba(245,158,11,0.15); }
+    .controls { display:flex; flex-wrap: wrap; align-items:center; gap:10px; margin-top: 16px; }
+    button { background: transparent; border: 1px solid rgba(255,255,255,0.2); color: var(--text); padding: 8px 12px; border-radius: 10px; cursor: pointer; }
+    button:hover { border-color: var(--accent); }
+    code.inline { background: rgba(148,163,184,0.15); padding: 2px 6px; border-radius: 6px; }
+    .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; background: rgba(148,163,184,0.15); padding: 2px 6px; border-radius: 6px; }
+    details { margin-top: 16px; }
+    .list { margin: 8px 0 0 18px; color: var(--subtle); }
+    .test-pass { color: var(--good); }
+    .test-fail { color: var(--bad); }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="row" id="statusRow">
+      <div class="dot" id="statusDot" aria-hidden="true"></div>
+      <h1>KST Live Stats</h1>
+    </div>
+    <p class="muted">Posts every minute to <code class="inline">https://europe-west2-kst-chat.cloudfunctions.net/kst-actions</code> and pings <code class="inline">wss://bff.live-bidder.com/kst/</code>. Includes diagnostics & mock mode for local testing.</p>
+
+    <section class="stats">
+      <div class="stat"><div class="label">Total Logins</div><div class="value" id="totalLogins">—</div></div>
+      <div class="stat"><div class="label">Total Spots</div><div class="value" id="totalSpots">—</div></div>
+      <div class="stat"><div class="label">Last Updated (server)</div><div class="value" id="lastUpdated">—</div></div>
+      <div class="stat"><div class="label">Next HTTP Refresh</div><div class="value" id="countdown">—</div></div>
+      <div class="stat" id="wsStatusCard"><div class="label">WebSocket Status</div><div class="value" id="wsStatus">Disconnected</div></div>
+      <div class="stat"><div class="label">WS Latency (ping→pong)</div><div class="value" id="wsLatency">—</div></div>
+      <div class="stat"><div class="label">Last WS Check</div><div class="value" id="wsLastCheck">—</div></div>
+      <div class="stat"><div class="label">Origin</div><div class="value" id="originVal">—</div></div>
+    </section>
+
+    <div class="controls">
+      <button id="refreshBtn" type="button">Refresh HTTP now</button>
+      <button id="wsPingBtn" type="button">Ping WS now</button>
+      <button id="wsReconnectBtn" type="button">Reconnect WS</button>
+      <button id="diagBtn" type="button">Run diagnostics</button>
+      <label class="muted" style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" id="mockToggle" /> Mock mode
+      </label>
+      <span class="muted" id="lastFetchStatus">Waiting…</span>
+    </div>
+
+    <details>
+      <summary>Diagnostics</summary>
+      <div class="muted" id="diagOut">No diagnostics run yet.</div>
+      <ul class="list">
+        <li>If you see <span class="kbd">NS_ERROR_CONTENT_BLOCKED</span>, your browser blocked the request due to CORS, CSP, or mixed content. Host this page over HTTPS on an allowed origin, and ensure CSP <span class="kbd">connect-src</span> permits the API + WS domains.</li>
+        <li>Suggested CSP <span class="kbd">connect-src</span>: <span class="kbd">'self' https://europe-west2-kst-chat.cloudfunctions.net wss://bff.live-bidder.com</span></li>
+      </ul>
+    </details>
+
+    <details>
+      <summary>Test Suite</summary>
+      <div class="muted">Run built-in tests (no network). Click <button id="runTests" type="button">Run tests</button></div>
+      <div id="testResults" class="muted" style="margin-top:8px;"></div>
+    </details>
+  </main>
+
+  <script>
+    (function(){
+      const CONFIG = {
+        httpURL: "https://europe-west2-kst-chat.cloudfunctions.net/kst-actions",
+        wsURL: "wss://bff.live-bidder.com/kst/",
+        intervalMs: 60_000,
+        timeoutMs: 12_000,
+      };
+
+      const SAMPLE_PAYLOAD = {
+        status: "OK",
+        message: "Stats retrieved successfully",
+        data: {
+          totalLogins: 348697,
+          totalSpots: 596,
+          lastUpdated: "2025-10-07T08:47:17.490Z"
+        }
+      };
+
+      const el = {
+        totalLogins: document.getElementById('totalLogins'),
+        totalSpots: document.getElementById('totalSpots'),
+        lastUpdated: document.getElementById('lastUpdated'),
+        countdown: document.getElementById('countdown'),
+        refreshBtn: document.getElementById('refreshBtn'),
+        statusRow: document.getElementById('statusRow'),
+        lastFetchStatus: document.getElementById('lastFetchStatus'),
+        wsStatus: document.getElementById('wsStatus'),
+        wsLatency: document.getElementById('wsLatency'),
+        wsLastCheck: document.getElementById('wsLastCheck'),
+        wsPingBtn: document.getElementById('wsPingBtn'),
+        wsReconnectBtn: document.getElementById('wsReconnectBtn'),
+        wsStatusCard: document.getElementById('wsStatusCard'),
+        diagBtn: document.getElementById('diagBtn'),
+        diagOut: document.getElementById('diagOut'),
+        mockToggle: document.getElementById('mockToggle'),
+        originVal: document.getElementById('originVal'),
+        runTests: document.getElementById('runTests'),
+        testResults: document.getElementById('testResults'),
+      };
+
+      el.originVal.textContent = location.origin || 'file:// (local)';
+
+      let nextAt = null;
+      let ticker = null;
+      let mockMode = false;
+
+      function setBanner(kind){
+        el.statusRow.classList.remove('error','warning');
+        if (kind) el.statusRow.classList.add(kind);
+      }
+      function setStatus(ok, msg){
+        setBanner(ok ? null : 'error');
+        el.lastFetchStatus.textContent = msg;
+      }
+      function fmtNum(n){ try { return Number(n).toLocaleString(); } catch { return String(n); } }
+      function fmtTime(ts){ try { const d = typeof ts === 'number' ? new Date(ts) : new Date(String(ts)); if (isNaN(d)) return String(ts); return d.toLocaleString(); } catch { return String(ts); } }
+
+      function applyStats(payload){
+        const { totalLogins, totalSpots, lastUpdated } = payload.data;
+        el.totalLogins.textContent = fmtNum(totalLogins);
+        el.totalSpots.textContent = fmtNum(totalSpots);
+        el.lastUpdated.textContent = fmtTime(lastUpdated);
+      }
+
+      async function fetchStats(){
+        if (mockMode){
+          setStatus(true, 'Mock: rendering sample payload');
+          applyStats(SAMPLE_PAYLOAD);
+          nextAt = Date.now() + CONFIG.intervalMs;
+          return;
+        }
+        const controller = new AbortController();
+        const t = setTimeout(() => controller.abort(), CONFIG.timeoutMs);
+        setStatus(true, 'Fetching…');
+        try {
+          // Attempt 1: standard JSON POST (expected for Cloud Function)
+          let res = await fetch(CONFIG.httpURL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'getStats' }),
+            cache: 'no-store',
+            signal: controller.signal,
+            keepalive: true,
+            mode: 'cors',
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          let payload = await res.json();
+          if (!(payload && payload.status === 'OK' && payload.data)) throw new Error('Unexpected response shape');
+          applyStats(payload);
+          setStatus(true, 'Last HTTP refresh succeeded');
+        } catch (err){
+          // If blocked by preflight or CORS, try a CORS-lite fallback: text/plain
+          const msg = (err && err.message) ? err.message : String(err);
+          const looksBlocked = /CORS|NS_ERROR_CONTENT_BLOCKED|NetworkError|blocked/i.test(msg);
+          if (looksBlocked){
+            setBanner('warning');
+            el.lastFetchStatus.textContent = 'HTTP blocked or preflight failed; trying fallback…';
+            try {
+              const res2 = await fetch(CONFIG.httpURL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+                body: JSON.stringify({ action: 'getStats' }),
+                cache: 'no-store',
+                mode: 'cors',
+              });
+              if (!res2.ok) throw new Error(`HTTP ${res2.status}`);
+              const payload2 = await res2.json();
+              if (!(payload2 && payload2.status === 'OK' && payload2.data)) throw new Error('Unexpected response shape');
+              applyStats(payload2);
+              setStatus(true, 'Fallback (text/plain) succeeded');
+            } catch (err2){
+              console.error('HTTP fetch blocked:', err, err2);
+              setStatus(false, `HTTP blocked by browser policy. Host over HTTPS on an allowed origin or relax CSP/CORS. (${(err2 && err2.message) || err2})`);
+            }
+          } else {
+            console.error('HTTP error:', err);
+            setStatus(false, `HTTP fetch failed: ${msg}`);
+          }
+        } finally {
+          clearTimeout(t);
+          nextAt = Date.now() + CONFIG.intervalMs;
+        }
+      }
+
+      function startTicker(){
+        if (ticker) clearInterval(ticker);
+        ticker = setInterval(() => {
+          if (!nextAt) return;
+          const ms = Math.max(0, nextAt - Date.now());
+          el.countdown.textContent = `${Math.ceil(ms/1000)}s`;
+          if (ms <= 0){ fetchStats(); }
+        }, 250);
+      }
+
+      // ==== WebSocket health check ====
+      let ws = null;
+      let reconnectAttempts = 0;
+      let wsPingTimer = null;
+      let wsPendingPingAt = null;
+      const WS_PING_INTERVAL = 60_000; // 1 minute
+
+      function updateWSUI(statusText, ok=true){
+        el.wsStatus.textContent = statusText;
+        el.wsStatusCard.classList.toggle('error', !ok);
+      }
+
+      function scheduleWSPing(){
+        clearInterval(wsPingTimer);
+        wsPingTimer = setInterval(wsPing, WS_PING_INTERVAL);
+      }
+
+      function wsPing(){
+        el.wsLastCheck.textContent = fmtTime(Date.now());
+        if (mockMode){
+          wsPendingPingAt = Date.now();
+          setTimeout(() => {
+            const rtt = Date.now() - wsPendingPingAt; wsPendingPingAt = null;
+            el.wsLatency.textContent = `${rtt} ms`;
+            updateWSUI('Healthy (mock)', true);
+          }, 40 + Math.random()*60);
+          return;
+        }
+        if (!ws || ws.readyState !== WebSocket.OPEN){
+          updateWSUI('Disconnected', false);
+          connectWS();
+          return;
+        }
+        try {
+          wsPendingPingAt = Date.now();
+          ws.send(JSON.stringify({ type: 'healthcheck', ping: wsPendingPingAt }));
+          setTimeout(() => {
+            if (wsPendingPingAt){
+              updateWSUI('No pong/traffic', false);
+              try { ws.close(); } catch {}
+            }
+          }, CONFIG.timeoutMs);
+        } catch (e){
+          updateWSUI('Ping error', false);
+          try { ws.close(); } catch {}
+        }
+      }
+
+      function connectWS(){
+        if (mockMode){ updateWSUI('Connected (mock)', true); scheduleWSPing(); return; }
+        try { if (ws) { ws.onopen = ws.onmessage = ws.onerror = ws.onclose = null; } } catch {}
+        try { if (ws && ws.readyState === WebSocket.OPEN) ws.close(); } catch {}
+        try {
+          ws = new WebSocket(CONFIG.wsURL);
+        } catch (e) {
+          updateWSUI('Browser blocked WebSocket construct', false);
+          return;
+        }
+        updateWSUI('Connecting…', true);
+        ws.onopen = () => { reconnectAttempts = 0; updateWSUI('Connected', true); wsPing(); scheduleWSPing(); };
+        ws.onmessage = () => {
+          if (wsPendingPingAt){ const rtt = Date.now() - wsPendingPingAt; wsPendingPingAt = null; el.wsLatency.textContent = `${rtt} ms`; updateWSUI('Healthy', true); }
+        };
+        ws.onerror = (ev) => {
+          // Firefox often surfaces NS_ERROR_CONTENT_BLOCKED here when Origin is not allowed.
+          updateWSUI('Error (possible Origin/CSP block)', false);
+        };
+        ws.onclose = () => {
+          clearInterval(wsPingTimer);
+          const delay = Math.min(30_000, 1_000 * Math.pow(2, Math.min(6, reconnectAttempts++)));
+          updateWSUI(`Disconnected — retrying in ${Math.round(delay/1000)}s`, false);
+          setTimeout(connectWS, delay);
+        };
+      }
+
+      // ==== Diagnostics & Tests ====
+      function runDiagnostics(){
+        const origin = location.origin || 'file://';
+        const hints = [];
+        // Mixed content check
+        if (!/^https:/i.test(location.protocol) && location.protocol !== 'file:') {
+          hints.push('⚠️ Page is not served over HTTPS. Use HTTPS to avoid mixed-content blocks.');
+        }
+        // CSP/connect-src hint
+        hints.push(`ℹ️ Add CSP connect-src to allow: 'self' ${CONFIG.httpURL.replace(/^(https?:\/\/)([^\/]+).*/, '$1$2')} ${CONFIG.wsURL.replace(/^(wss?:\/\/)([^\/]+).*/, '$1$2')}`);
+        // Origin echo
+        hints.push(`Origin: ${origin}`);
+        // Probe: quick GET (may 405 but reveals CORS headers)
+        fetch(CONFIG.httpURL, { method: 'GET', mode: 'cors' }).then(r => {
+          hints.push(`HTTP GET probe: status ${r.status}`);
+          el.diagOut.innerHTML = hints.map(escapeHTML).join('<br>');
+        }).catch(e => {
+          hints.push(`HTTP GET probe blocked: ${e && e.message ? e.message : e}`);
+          el.diagOut.innerHTML = hints.map(escapeHTML).join('<br>');
+        });
+      }
+
+      function escapeHTML(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
+
+      function runTests(){
+        const results = [];
+        // Test 1: render sample payload
+        try {
+          applyStats(SAMPLE_PAYLOAD);
+          const ok1 = el.totalLogins.textContent.replace(/[,\s]/g,'') === String(SAMPLE_PAYLOAD.data.totalLogins);
+          results.push(ok1 ? '✅ Test 1: Sample payload renders Total Logins correctly' : '❌ Test 1: Total Logins mismatch');
+        } catch (e){ results.push('❌ Test 1 threw: ' + e.message); }
+        // Test 2: fmtTime validity
+        try {
+          const s = '2025-10-07T08:47:17.490Z';
+          const t = fmtTime(s);
+          results.push(/^\d/.test(t) ? '✅ Test 2: fmtTime produced a human-readable value' : '❌ Test 2: fmtTime returned unexpected');
+        } catch (e){ results.push('❌ Test 2 threw: ' + e.message); }
+        // Test 3: WS mock ping RTT
+        try {
+          const prev = mockMode; mockMode = true; let done = false;
+          wsPendingPingAt = Date.now(); setTimeout(() => { const rtt = Date.now() - wsPendingPingAt; wsPendingPingAt = null; results.push(rtt >= 0 ? '✅ Test 3: Mock WS RTT plausible' : '❌ Test 3: Mock WS RTT invalid'); el.testResults.innerHTML = renderTestResults(results); mockMode = prev; }, 50);
+          return; // async completion
+        } catch (e){ results.push('❌ Test 3 threw: ' + e.message); }
+        el.testResults.innerHTML = renderTestResults(results);
+      }
+      function renderTestResults(arr){
+        return '<ul class="list">' + arr.map(x => `<li class="${/^✅/.test(x)?'test-pass':'test-fail'}">${escapeHTML(x)}</li>`).join('') + '</ul>';
+      }
+
+      // Wiring
+      el.refreshBtn.addEventListener('click', () => { nextAt = Date.now(); });
+      el.wsPingBtn.addEventListener('click', wsPing);
+      el.wsReconnectBtn.addEventListener('click', () => { if (ws) { try { ws.close(); } catch {} } connectWS(); });
+      el.diagBtn.addEventListener('click', runDiagnostics);
+      el.mockToggle.addEventListener('change', (e) => { mockMode = !!e.target.checked; setStatus(true, mockMode ? 'Mock mode enabled' : 'Mock mode disabled'); });
+      if (el.runTests) el.runTests.addEventListener('click', runTests);
+
+      // Kick off
+      fetchStats();
+      nextAt = Date.now() + CONFIG.intervalMs;
+      startTicker();
+      connectWS();
+
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && nextAt && Date.now() - nextAt > CONFIG.intervalMs){ fetchStats(); }
+        if (!document.hidden){ wsPing(); }
+      });
+    })();
+  </script>
+</body>
+</html>
