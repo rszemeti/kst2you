@@ -34,14 +34,14 @@ except FileNotFoundError:
 
 # API and cluster settings
 API_URL = "https://europe-west2-kst-chat.cloudfunctions.net/kst-actions"
-DX_CLUSTER_HOST = "dxspider.co.uk"
-DX_CLUSTER_PORT = 7300
-API_DAYS = 7
+DX_CLUSTER_HOST = "dxcluster.f5len.org"
+DX_CLUSTER_PORT = 7373
+API_DAYS = 28
 SPOTS_REQUEST_MULTIPLIER = 2  # Request double the spots from cluster
 MIN_SPOTS_TO_SHOW = 10  # Minimum spots to request
-TEST_MODE = True  # Set to True to read from test_data.txt instead of connecting to cluster
+TEST_MODE = False  # Set to True to read from test_data.txt instead of connecting to cluster
 TEST_DATA_FILE = "test_data.txt"
-SAVE_CLUSTER_DATA = False  # Set to True to save cluster results to test_data.txt
+SAVE_CLUSTER_DATA = True  # Set to True to save cluster results to test_data.txt
 
 # Email Configuration
 SEND_EMAIL = True  # Set to True to send results via email
