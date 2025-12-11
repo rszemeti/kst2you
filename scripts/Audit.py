@@ -36,12 +36,12 @@ except FileNotFoundError:
 API_URL = "https://europe-west2-kst-chat.cloudfunctions.net/kst-actions"
 DX_CLUSTER_HOST = "dxcluster.f5len.org"
 DX_CLUSTER_PORT = 7373
-API_DAYS = 28
+API_DAYS = 7
 SPOTS_REQUEST_MULTIPLIER = 2  # Request double the spots from cluster
 MIN_SPOTS_TO_SHOW = 10  # Minimum spots to request
 TEST_MODE = False  # Set to True to read from test_data.txt instead of connecting to cluster
 TEST_DATA_FILE = "test_data.txt"
-SAVE_CLUSTER_DATA = True  # Set to True to save cluster results to test_data.txt
+SAVE_CLUSTER_DATA = False  # Set to True to save cluster results to test_data.txt
 
 # Email Configuration
 SEND_EMAIL = True  # Set to True to send results via email
@@ -486,6 +486,7 @@ if __name__ == "__main__":
     total_found = 0
     matched_cluster_indices = set()  # Track which cluster spots have been matched
     detailed_report = ""  # Build detailed report for both console and email
+    spotter_stats = {}  # Track actual match counts per spotter
     
     for spotter_call, spots in organized.items():
         spotter_report = f"\n{spotter_call} ({len(spots)} spots from API):\n"
@@ -538,6 +539,13 @@ if __name__ == "__main__":
         # Print spotter summary
         match_rate = (found_count / len(spots) * 100) if len(spots) > 0 else 0
         spotter_report += f"  Summary: {found_count}/{len(spots)} matched ({match_rate:.1f}%)\n"
+        
+        # Store stats for email summary
+        spotter_stats[spotter_call] = {
+            'total': len(spots),
+            'found': found_count,
+            'rate': match_rate
+        }
         
         # Add to detailed report and print to console
         detailed_report += spotter_report
@@ -626,16 +634,9 @@ SPOTTER SUMMARY
 ===============
 """
         
-        # Add per-spotter summary
-        for spotter_call, spots in organized.items():
-            spotter_found = sum(1 for spot in spots 
-                              if any(f"<{spotter_call}>" in line and 
-                                   str(spot.get('freq')) in line and
-                                   spot.get('callsign') in line and
-                                   times_match(spot.get('date'), line)
-                                   for line in k2u_spots))
-            match_rate = (spotter_found / len(spots) * 100) if len(spots) > 0 else 0
-            email_body += f"{spotter_call}: {spotter_found}/{len(spots)} ({match_rate:.1f}%)\n"
+        # Use the actual counts from detailed matching (not recalculated)
+        for spotter_call, stats in spotter_stats.items():
+            email_body += f"{spotter_call}: {stats['found']}/{stats['total']} ({stats['rate']:.1f}%)\n"
         
         # Add the detailed report that was already generated
         email_body += f"""
