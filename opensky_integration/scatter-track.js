@@ -109,14 +109,22 @@ const ScatterTrack = (() => {
   // radio horizon from the station at stnAltM (metres ASL), with at least
   // minElevDeg degrees of elevation.  Uses k=4/3 effective Earth radius.
   // ────────────────────────────────────────────────
+  // Returns elevation angle in degrees from station to aircraft (accounting for Earth curvature)
+  function elevationDeg(stnLat, stnLon, stnAltM, planeLat, planeLon, planeAltM) {
+    if (planeAltM == null) return null;
+    const dKm = haversine(stnLat, stnLon, planeLat, planeLon);
+    if (dKm < 1) return 90;
+    const d = dKm * 1000; // metres
+    const hDiff = planeAltM - stnAltM - (d * d) / (2 * R_EFF * 1000);
+    return Math.atan2(hDiff, d) * 180 / Math.PI;
+  }
+
   function isVisibleFrom(stnLat, stnLon, stnAltM, planeLat, planeLon, planeAltM, minElevDeg) {
     if (planeAltM == null) return false;
     const dKm = haversine(stnLat, stnLon, planeLat, planeLon);
     if (dKm < 1) return true;                     // trivially close
     const d = dKm * 1000;                         // metres
     const minElevRad = minElevDeg * Math.PI / 180;
-    // Minimum aircraft altitude to clear horizon at minElevDeg from this station:
-    //   h_req = h_stn + d·sin(ε) + d²/(2·R_eff)
     const hReq = stnAltM + d * Math.sin(minElevRad) + (d * d) / (2 * R_EFF * 1000);
     return planeAltM >= hReq;
   }
@@ -625,6 +633,8 @@ const ScatterTrack = (() => {
         dopplerKHz:   dkHz,
         minsToEntry,
         minsInPath,
+        elevA: elevationDeg(_stationA.lat, _stationA.lon, 0, p.lat, p.lon, p.alt),
+        elevB: elevationDeg(_stationB.lat, _stationB.lon, 0, p.lat, p.lon, p.alt),
       };
     });
 

@@ -68,7 +68,7 @@
       padding: 5px 8px; border-top: 1px solid #dee2e6;
       background: #f8f9fa; flex-shrink: 0;
     }
-    .scs-to   { font-size: 10px; color: #6c757d; white-space: nowrap; font-family: monospace; }
+    .scs-to   { font-size: 16px; font-weight: 700; color: #5bc0de; white-space: nowrap; font-family: monospace; }
     .scs-me   { color: #198754 !important; }
     .scatter-plane-list { flex: 1; overflow-y: auto; }
 
@@ -764,6 +764,7 @@
   let scatterMapReady = false;
   let scatterAutoScan = false;
   let scatterChatCallsign = null;
+  const SCATTER_MAX_KM = 900;
 
   // ── Auto-fill Station A when KST login sets our locator ────
   // Wraps setMyLocator() from Kst.js after DOMContentLoaded.
@@ -774,7 +775,16 @@
     window.setMyLocator = function (loc) {
       _origSetLoc(loc);
       const el = document.getElementById('scatter-loc-a');
-      if (el && !el.value) el.value = loc.toUpperCase();
+      if (el) el.value = loc.toUpperCase();
+    };
+
+    // Also catch manual location changes (double-click map) which set myLoc
+    // directly and call drawMap() without going through setMyLocator().
+    const _origDrawMap = window.drawMap;
+    window.drawMap = function () {
+      _origDrawMap();
+      const el = document.getElementById('scatter-loc-a');
+      if (el && typeof myLoc !== 'undefined') el.value = myLoc.toUpperCase();
     };
 
     // BS5: .modal(options) only initialises — doLogoff() needs an explicit show.
@@ -874,20 +884,17 @@
     }, 200);
   });
 
-  // ── Inject ✈ scatter buttons into user list rows ────
-  // Runs after every DataTable draw without modifying Kst.js.
+  // ── Inject ✈ scatter buttons into user list rows (≤900km only) ────
   $(document).on('draw.dt', '#userListTable', function () {
-    $(this).find('tbody tr').each(function () {
-      if ($(this).find('.scatter-btn').length) return;
-      const locCell  = $(this).find('td:nth-child(3)');
-      const callCell = $(this).find('td:nth-child(1)');
-      const loc  = locCell.text().trim().substring(0, 6);
-      const call = callCell.text().trim().split(/\s/)[0]; // strip decorations
-      if (loc.length >= 4) {
-        locCell.append(
+    $(this).DataTable().rows().every(function () {
+      const row  = this.data();
+      const node = $(this.node());
+      if (node.find('.scatter-btn').length) return;
+      if (row.distance >= 5 && row.distance <= 900) {
+        node.find('td:nth-child(3)').append(
           ' <button class="btn btn-outline-primary btn-sm py-0 px-1 scatter-btn"' +
-          ' data-loc="' + loc + '" data-call="' + call + '"' +
-          ' title="Check scatter path to ' + loc + '">✈</button>'
+          ' data-loc="' + row.locator + '" data-call="' + row.callsign + '"' +
+          ' title="Check scatter path to ' + row.locator + '">✈</button>'
         );
       }
     });
@@ -1288,6 +1295,10 @@
         (p.velocity != null ? p.velocity + ' kt' : '—') + ' · ' +
         (p.heading  != null ? p.heading  + '°'   : '—') + ' · ' +
         Math.round(p.distFromMid) + ' km' +
+      '</div>' +
+      '<div class="pi-meta">' +
+        'El: ' + (p.elevA != null ? p.elevA.toFixed(1) + '°' : '—') + ' / ' +
+                 (p.elevB != null ? p.elevB.toFixed(1) + '°' : '—') +
       '</div>' + timeHtml;
     return div;
   }

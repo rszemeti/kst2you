@@ -638,7 +638,7 @@ function addMapMarker(stn) {
     '<li>' + parseInt(stn.distance).toLocaleString() + 'km / ' + parseInt(stn.bearing) + '&#176;</li>' +
     '</ul>' +
     '<button onclick="chatPopup(\'' + stn.callsign + '\')">Chat</button>' +
-    '<button onclick="setScatterTarget(\'' + stn.locator + '\',\'' + stn.callsign + '\')" style="margin-left:4px">&#9992; Scatter</button>' +
+    (stn.distance >= 5 && stn.distance <= 900 ? '<button onclick="setScatterTarget(\'' + stn.locator + '\',\'' + stn.callsign + '\')" style="margin-left:4px">&#9992; Scatter</button>' : '') +
     '</div>' +
     '</div>';
 
@@ -860,7 +860,7 @@ function initUserList() {
           var d = new Date(data);
           return d.toLocaleDateString() + '  ' + d.toLocaleTimeString();
         }
-      }
+      },
     ],
   });
 
