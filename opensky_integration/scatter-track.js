@@ -63,6 +63,8 @@ const ScatterTrack = (() => {
   let _planeMarkers = new Map(); // icao → google.maps.Marker
   let _lastScanTime = 0;
   let _drTimer      = null;
+  let _mapFitted    = false;  // true after first fitBounds — don't reset pan/zoom on subsequent scans
+  let _lastDiamond  = null;  // cached diamond geometry for DR reclassification
 
   // ── Constants ──
   const R_EARTH = 6371;   // km, geometric Earth radius
@@ -483,21 +485,70 @@ const ScatterTrack = (() => {
   // Dead-reckoning animation
   // ────────────────────────────────────────────────
 
-  const DR_INTERVAL_MS = 10000;
+  const DR_INTERVAL_MS = 1000;
 
   function _drTick() {
-    if (!_lastScanTime || !_planeMarkers.size) return;
-    const elapsedSec = (Date.now() - _lastScanTime) / 1000;
-    _lastPlanes.forEach(p => {
-      if (!p.heading || !p.velocity) return;
+    if (!_lastScanTime || !_planeMarkers.size || !_lastDiamond) return;
+    const elapsedSec  = (Date.now() - _lastScanTime) / 1000;
+    const corridorDeg = _corridorDeg;
+    const mid         = _lastDiamond.mid;
+
+    const drPlanes = _lastPlanes.map(p => {
+      // Dead-reckon position
+      let lat = p.lat, lon = p.lon;
+      if (p.heading != null && p.velocity) {
+        const distKm = (p.velocity * 1.852 / 3600) * elapsedSec;
+        const pos    = destPoint(p.lat, p.lon, p.heading, distKm);
+        lat = pos.lat; lon = pos.lon;
+      }
+
+      // Update map marker position
       const m = _planeMarkers.get(p.icao);
-      if (!m) return;
-      // velocity is in knots; 1 knot = 1.852 km/h
-      const distKm = (p.velocity * 1.852 / 3600) * elapsedSec;
-      const pos    = destPoint(p.lat, p.lon, p.heading, distKm);
-      m.setPosition({ lat: pos.lat, lng: pos.lon });
-      // Rotate icon to match heading (icon already encodes heading, no change needed)
+      if (m) m.setPosition({ lat, lng: lon });
+
+      // Reclassify at predicted position
+      const visA = isVisibleFrom(_stationA.lat, _stationA.lon, 0, lat, lon, p.alt, _minElevDeg);
+      const visB = isVisibleFrom(_stationB.lat, _stationB.lon, 0, lat, lon, p.alt, _minElevDeg);
+      const isIn = inCorridor(lat, lon, corridorDeg) && visA && visB;
+
+      let minsToEntry = null, minsInPath = null;
+      if (isIn) {
+        minsInPath  = predictExit({ ...p, lat, lon }, corridorDeg);
+      } else {
+        minsToEntry = predictEntry({ ...p, lat, lon }, _lookahead, corridorDeg);
+      }
+
+      // Update marker icon/z-index to reflect new classification
+      if (m) {
+        m.setIcon(planeIcon(p.heading, isIn, minsToEntry != null, p.grade));
+        m.setZIndex(isIn
+          ? (p.grade === 'heavy' ? 13 : p.grade === 'medium' ? 12 : 10)
+          : minsToEntry != null
+          ? (p.grade === 'heavy' ?  8 : p.grade === 'medium' ?  6 :  5)
+          : 1);
+      }
+
+      return { ...p, lat, lon, inPath: isIn, visA, visB,
+               distFromMid: haversine(mid.lat, mid.lon, lat, lon),
+               minsToEntry, minsInPath };
     });
+
+    // Fire callback with predicted data
+    if (_opts.onUpdate) {
+      const inPath     = drPlanes.filter(p =>  p.inPath).sort((a, b) => a.distFromMid - b.distFromMid);
+      const approaching = drPlanes.filter(p => !p.inPath && p.minsToEntry != null).sort((a, b) => a.minsToEntry - b.minsToEntry);
+      _opts.onUpdate({
+        inPath, approaching, all: drPlanes, predicted: true,
+        pathInfo: {
+          stationA: _stationA, stationB: _stationB,
+          distance: Math.round(_lastDiamond.dist),
+          bearing:  Math.round(_lastDiamond.bearAB),
+          midpoint: mid, corridorDeg, freqMHz: _freqMHz,
+          inPathCount: inPath.length, approachingCount: approaching.length,
+          totalFetched: drPlanes.length,
+        },
+      });
+    }
   }
 
   function _startDR() {
@@ -599,6 +650,7 @@ const ScatterTrack = (() => {
       _stationB.lat, _stationB.lon,
       corridorDeg
     );
+    _lastDiamond = diamond;
 
     const mid = diamond.mid;
 
@@ -652,7 +704,8 @@ const ScatterTrack = (() => {
 
     // Redraw map overlays
     clearMapOverlays();
-    drawPathLine(_stationA.lat, _stationA.lon, _stationB.lat, _stationB.lon, true);
+    drawPathLine(_stationA.lat, _stationA.lon, _stationB.lat, _stationB.lon, !_mapFitted);
+    _mapFitted = true;
     drawDiamondOnMap(diamond);
     drawPlanesOnMap([...inPath, ...approaching, ...planes.filter(p => !p.inPath && p.minsToEntry == null)]);
 
@@ -747,6 +800,7 @@ const ScatterTrack = (() => {
       } else {
         _stationB = { lat: loc.lat, lon: loc.lon, locator: null };
       }
+      _mapFitted = false;  // new path — fit on next scan
     },
 
     /**
@@ -863,9 +917,11 @@ const ScatterTrack = (() => {
     destroy() {
       this.clear();
       _map = null;
-      _stationA = null;
-      _stationB = null;
-      _lastPlanes = [];
+      _stationA    = null;
+      _stationB    = null;
+      _lastPlanes  = [];
+      _mapFitted   = false;
+      _lastDiamond = null;
     },
 
     /**
