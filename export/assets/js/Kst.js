@@ -37,34 +37,6 @@ var dataTableUsers;
 
 const locTest = RegExp('\w{6}');
 
-<<<<<<< Updated upstream
-var bandData = {
-    1: {
-        min: 50,
-        max:70
-    },
-    2: {
-        min: 144,
-        max: 432
-    },
-    3: {
-        min: 1296,
-        max: 300000
-    },
-    4: {
-        min: 0,
-        max: 0
-    },
-    5: {
-        min: 0,
-        max: 1
-    },
-    7: {
-        min: 50,
-        max: 52
-    },
-    
-=======
 var currentInfoWindow = null;
 
 const chatGroups = [
@@ -86,7 +58,6 @@ const chatGroups = [
 function getBandDataById(chatId) {
     chatIdString = chatId.toString();
     return chatGroups.find(band => band.id == chatIdString);
->>>>>>> Stashed changes
 }
 
 class Station{
@@ -116,10 +87,6 @@ class Station{
       this._distance='???';
     }
   }
-<<<<<<< Updated upstream
-  
-  get distance(){
-=======
 
   get decoratedCallsign() {
     if (this.isAway()) {
@@ -130,7 +97,6 @@ class Station{
   }
 
   get distance() {
->>>>>>> Stashed changes
     return this._distance;
   }
   get bearing(){
@@ -140,15 +106,6 @@ class Station{
   isAway(){
     return this._isAway;
   }
-<<<<<<< Updated upstream
-  
-  setAway(){
-    this._isAway=true;
-  }
-  
-  setBack(){
-    this._isAway=false;
-=======
 
   setAway() {
     this._isAway = true;
@@ -164,7 +121,6 @@ class Station{
       this.marker.setIcon('https://maps.google.com/mapfiles/ms/icons/green-dot.png');
       this.marker.setTitle(this.decoratedCallsign);
     }
->>>>>>> Stashed changes
   }
   
   get callsign(){
@@ -249,24 +205,6 @@ class Message{
   }
 }
 
-<<<<<<< Updated upstream
-function websocketInit(url){
-  
-  debug = true;
-  ws = new ReconnectingWebSocket(url);
-  ws.binaryType = "blob";
-
-  ws.onmessage = function(msg) {
-    rawMsg=msg;
-    var reader = new FileReader();
-  
-    reader.addEventListener('loadend', (e) => {
-      const text = e.srcElement.result;
-      lastMsg=text;
-      procMsgs(text);
-    });
-    reader.readAsText(msg.data,'ISO-8859-1');
-=======
 
 let urlId = 0;
 let retryCount = 0;
@@ -288,31 +226,10 @@ function websocketInit(urls) {
 
         const url = urls[urlId];
         console.log('Connecting to: ' + url);
->>>>>>> Stashed changes
 
         ws = new WebSocket(url);
         ws.binaryType = "arraybuffer";
 
-<<<<<<< Updated upstream
-  ws.onopen = function() {
-    $('#connState').text("connected"); sendMsg("LOGINC|"+userName+"|"+password+"|"+chatId+"|KST2You 1.0|20|20|1|"+latestMessageTime+"|"+latestMessageTime+"|");
-  };
-
-  ws.onclose = function() {
-    if(connectState == 'logOff'){
-      $('#connState').text('connection closed');
-      $("#loginModal").modal();
-    }else{
-      connectState='relog';
-      $('#connState').text('re-connecting');
-    }
-  };
-  
-  ws.onerror = function(evt) {
-    lastError = evt;
-    procWsError(evt)
-  };
-=======
         ws.onmessage = function (msg) {
             if (msg.data instanceof ArrayBuffer) {
                 const text = new TextDecoder("utf-8").decode(msg.data);
@@ -363,7 +280,6 @@ function websocketInit(urls) {
                 setTimeout(connect, 500); // short delay to try next server
             } else {
                 console.error("Unable to connect to any servers.");
->>>>>>> Stashed changes
 
                 if (ws) {
                     try {
@@ -390,12 +306,6 @@ function websocketInit(urls) {
     connect();
 }
 
-<<<<<<< Updated upstream
-function procWsError(evt){
-  $('#loginError').show();
-  $("#loginModal").modal('show');
-  $('#loginErrorMessage').text("Unable to connect to "+evt.target.url);
-=======
 function reconnect() {
     if (connectState !== 'reconnecting') {
         connectState = 'reconnecting';
@@ -456,7 +366,6 @@ function doLogin() {
 }
 function procWsError(evt) {
     console.warn("Error connecting to " + evt.target.url);
->>>>>>> Stashed changes
 }
 
 
@@ -530,11 +439,6 @@ function procChatHistory(msg, isLive){
   var stn = stationList[message.from];
   var to = message.to;
 
-<<<<<<< Updated upstream
-  if(to === '0'){
-      to="<span style='border: ;background: red;padding: 5px;color: aliceblue;'>CQ</span>";
-  }
-=======
   var mf = message.from;
   if(mf.includes(userName)){
       mf = message.to;
@@ -553,7 +457,6 @@ function procChatHistory(msg, isLive){
 
   row.data('fromCall', message.from);
   row.data('toCall', message.to);
->>>>>>> Stashed changes
     
   var row = $("<tr>"
                        +"<td>"+message.date+"</td>"
@@ -667,22 +570,6 @@ function procUser(msg){
   addMapMarker(stn);
 }
 
-<<<<<<< Updated upstream
-function addMapMarker(stn){
-  var stnLoc = {lat: stn.lat, lng: stn.long};
-  var marker = new google.maps.Marker({position: stnLoc, map: map, title: stn.callsign});
-      var contentString = '<div id="content">'+
-      '<h4 id="firstHeading" class="firstHeading">'+stn.callsign+'</h1>'+
-      '<div id="bodyContent">'+
-          '<ul>'+
-          '<li>'+stn.name+'</li>'+
-          '<li>'+stn.locator+'</li>'+
-          '<li>'+parseInt(stn.distance).toLocaleString()+'km / '+parseInt(stn.bearing)+'&#176;</li>'+
-          '</ul>'+
-          '<button onclick="chatPopup(\''+stn.callsign+'\')">Chat</button>'+
-      '</div>'+
-      '</div>';
-=======
 function addMapMarker(stn) {
   var stnLoc = {
     lat: stn.lat,
@@ -710,7 +597,6 @@ function addMapMarker(stn) {
     '<button onclick="setScatterTarget(\'' + stn.locator + '\',\'' + stn.callsign + '\')" style="margin-left:4px">&#9992; Scatter</button>' +
     '</div>' +
     '</div>';
->>>>>>> Stashed changes
 
    var infowindow = new google.maps.InfoWindow({
      content: contentString
@@ -737,12 +623,6 @@ function procLoginError(msg){
 function procLogin(msg){
   $("#loginModal").modal('hide');
   $('#loginError').hide();
-<<<<<<< Updated upstream
-  if(connectState=='login'){
-    dataTableUsers.clear();
-    //$('#userList').empty();
-    $('#chatLog').empty();
-=======
   logUsage({user: userName, chat: chatId});
   if (connectState == 'login') {
     dataTableUsers.clear();
@@ -755,7 +635,6 @@ function procLogin(msg){
     listClusters();
     setCluster("ON4KST-2");
   } else {
->>>>>>> Stashed changes
     sendMsg("SPR|2|");
     sendMsg("SDXQ|"+chatId+"|1296001|99999999|");
     sendMsg("SMAQ|"+chatId+"|1296001|99999999|"); 
@@ -780,11 +659,6 @@ function setUsername(first, surname){
   $('#setNameText').val(first);
 }
 
-<<<<<<< Updated upstream
-function setAway(){
-  sendMsg("MSG|"+chatId+"|0|/AWAY|0|");
-  stationList[userName].setAway();
-=======
 function listClusters() {
   sendMsg("MSG|" + chatId + "|0|/LSTCLX|0|");
 }
@@ -809,17 +683,13 @@ function setAway() {
   sendMsg("MSG|" + chatId + "|0|/AWAY|0|");
   stationList[userName].setAway();
   statusUpdateChatLog(userName); 
->>>>>>> Stashed changes
   dataTableUsers.clear().rows.add(Object.values(stationList)).draw();
 }
 
 function setBack(){
   sendMsg("MSG|"+chatId+"|0|/BACK|0|"); 
   stationList[userName].setBack();
-<<<<<<< Updated upstream
-=======
   statusUpdateChatLog(userName); 
->>>>>>> Stashed changes
   dataTableUsers.clear().rows.add(Object.values(stationList)).draw();
 }
 
@@ -913,37 +783,6 @@ function sendMsg(msg){
   ws.send(myblob);
 }
 
-<<<<<<< Updated upstream
-
-//ws.open();
-function doLogin(){
-  chatId = $('#chatId').val();
-  userName = $('#userInput').val().toUpperCase();
-  password = $('#passInput').val();
-  if ($('#rememberMe').is(':checked')) {
-    var cookieData = { user: userName, pass: password};
-    setCookie("kst2youUserDetails",JSON.stringify(cookieData),90);
-  }else{
-    eraseCookie("kst2youUserDetails");
-  }
-  connectState='login';
-  websocketInit(websocketServerUrl);
-}
-
-// Function to delete all markers from the map
-function deleteAllMapMarkers() {
-  for (var key in stationList) {
-    if (stationList.hasOwnProperty(key) && stationList[key].marker) {
-      stationList[key].marker.setMap(null); // Remove the marker from the map
-    }
-  }
-}
-
-
-
-function doLogoff(){
-  $("#loginModal").modal({backdrop: 'static', keyboard: false});
-=======
 function doLogin() {
     chatId = $('#chatId').val();
     userName = $('#userInput').val().toUpperCase();
@@ -982,7 +821,6 @@ function doLogoff() {
     backdrop: 'static',
     keyboard: false
   });
->>>>>>> Stashed changes
   $('#loginError').hide();
   password='';
   if(typeof ws != 'undefined'){
@@ -998,40 +836,6 @@ function doLogoff() {
   connectState='logOff';
 }
 
-<<<<<<< Updated upstream
-var dataTableUsers;
-
-function initUserList(){
-      dataTableUsers = $('#userListTable').DataTable({
-        "paging": false,
-        "order": [[ 3, "asc" ]],
-        "ordering": true,
-        "info": true,
-         "data": userList, 
-         "columns": [
-          { data: 'decoratedCallsign'},
-          { data: 'name'},
-          { data: 'locator'},
-          { data: 'distance',
-            type: 'num',
-            render: function(data,type,row){
-            if(type == 'sort') return data;
-                return parseInt(row.distance).toLocaleString()+' / '+parseInt(row.bearing)+'\u{00B0}';          
-          }},
-          { data: 'lastSeen',
-            type: 'num',
-            render: function(data,type,row){
-              if(type == 'sort') return data;
-              var d = new Date(data);
-              return d.toLocaleDateString()+'  '+d.toLocaleTimeString();
-            }}
-        ],
-      });
-  
-     $('#userListTable tbody').on( 'click', 'tr', function () {
-       chatPopup( dataTableUsers.row( this ).data().callsign);
-     });
-=======
 function initUserList() {
   dataTableUsers = $('#userListTable').DataTable({
     "paging": false,
@@ -1073,27 +877,10 @@ function initUserList() {
   $('#userListTable tbody').on('click', 'tr', function() {
     chatPopup(dataTableUsers.row(this).data().callsign);
   });
->>>>>>> Stashed changes
 }
 
 function filterChatByDistance(){
   var dist = $('#maxDistance').val();
-<<<<<<< Updated upstream
-       $('#chatLog > tr').each(function(index,tr) {
-           if(typeof $(tr).data('distance') == 'undefined'){
-             // sigh ... 
-           }else if($(tr).data('distance') > dist){
-              $(tr).hide();
-           }else{
-              $(tr).show();
-           }
-       });
-}
-
-function chatPopup(callsign){
-  if(callsign==='0'){
-      return;
-=======
   var uname = userName.toLowerCase();
 
   $('#chatLog > tr').each(function(index, tr) {
@@ -1116,7 +903,6 @@ function chatPopup(callsign){
 function chatPopup(callsign) {
   if (callsign === '0') {
     return;
->>>>>>> Stashed changes
   }
   chatPopupCallsign = callsign;
   var chatUser =  stationList[callsign];
@@ -1194,23 +980,6 @@ function sendChat(){
      }
 }
 
-<<<<<<< Updated upstream
-$( document ).ready(function() {
-    if ((location.protocol !== 'https:') && (location.hostname != "127.0.0.1")) {   
-location.replace(`https:${location.href.substring(location.protocol.length)}`);
-    }  
-    initUserList();
-    initCqList();
-    var cookie = getCookie("kst2youUserDetails");
-    if(typeof cookie != 'undefined'){
-      try{
-        var cookieData = JSON.parse(cookie);
-        $('#userInput').val(cookieData.user);
-        $('#passInput').val(cookieData.pass);
-        $("#rememberMe").prop('checked', true);
-      }catch(e){
-        // whatever
-=======
 $(document).ready(function() {
   if ((location.protocol !== 'https:') && (location.hostname != "127.0.0.1")) {
       location.replace(`https:${location.href.substring(location.protocol.length)}`);
@@ -1252,17 +1021,11 @@ $(document).ready(function() {
          $('#chatId option[value="' + cookieData.chatId + '"]').prop('selected', true);
       }else{
          $('#chatId option[value="3"]').prop('selected', true);
->>>>>>> Stashed changes
       }
       
     }else{
       $("#rememberMe").prop('checked', false);
     }
-<<<<<<< Updated upstream
-    $('#loginModal').modal({backdrop: 'static', keyboard: false}) 
-    $('#loginError').hide();
-    $('#registerButton').click(function(){
-=======
   } else {
     $("#rememberMe").prop('checked', false);
     $('#chatId option[value="3"]').prop('selected', true);
@@ -1312,7 +1075,6 @@ $(document).ready(function() {
 
   $('#loginModal').keyup(function(e) {
     if (e.keyCode == 13) {
->>>>>>> Stashed changes
       doLogin();
     });
     $('#logOffButton').click(function(){
@@ -1357,29 +1119,6 @@ $(document).ready(function() {
        }
     });
 
-<<<<<<< Updated upstream
-    $('#aboutMe').change(function() {
-        if(this.checked) {
-          $('#chatLog > tr').filter(":not(:icontains('"+userName+"'))").hide();
-        }else{
-          $('#chatLog > tr').filter(":not(:icontains('"+userName+"'))").show();
-        }       
-    });
-  
-    $('#awayButton').change(function() {
-        if(this.checked) {
-          setAway();
-        }else{
-          setBack();
-        }       
-    });
-  
-    $('#maxDistance').change(function() { 
-       filterChatByDistance();
-    });
-  
-    $('#chatPopupSendButton').click(function(){
-=======
   $('#aboutMe').change(function() {
     if (this.checked) {
       $('#chatLog > tr').filter(":not(:icontains('" + userName + "'))").hide();
@@ -1421,23 +1160,9 @@ $(document).ready(function() {
 
   $('#chatPopupMessageInput').on('keydown', function(e) {
       if (e.keyCode == 13) { // Check if the pressed key is Enter
->>>>>>> Stashed changes
         sendChat();
     });
     
-<<<<<<< Updated upstream
-    $('#modalChat').on('shown.bs.modal', function () {
-        $('#chatPopupMessageInput').focus();
-        $('#chatPopupMessageInput').on('keydown', function(e) {
-            if (e.keyCode == 13) { // Check if the pressed key is Enter
-                sendChat();
-                return false; // Prevent the default behavior of the Enter key
-            }
-        });
-        
-        $('#chatPopupSendButton').on('click', function() {
-            sendChat();
-=======
  // $('#cqModal').on('shown.bs.modal', function() {
  //   $('#cqMesgText').focus();
  // });
@@ -1453,7 +1178,6 @@ $(document).ready(function() {
         return false;
       }
   });
->>>>>>> Stashed changes
 
             // Set focus back to the input box after clicking the send button
             $('#chatPopupMessageInput').focus();
@@ -1467,14 +1191,6 @@ $(document).ready(function() {
     $('#locationModal').modal('hide');
     drawMap();
   });
-<<<<<<< Updated upstream
-  
-   var supportsWebSockets = 'WebSocket' in window || 'MozWebSocket' in window;
-  
-    if(! supportsWebSockets){
-      alert("Your browser does not appear to support WebSockets, we use these for communication with the server. Can I suggest you try Google Chrome?");
-    }
-=======
     
   $('[data-toggle="tooltip"]').tooltip(); 
 
@@ -1485,7 +1201,6 @@ $(document).ready(function() {
   if (!supportsWebSockets) {
     alert("Your browser does not appear to support WebSockets, we use these for communication with the server. Can I suggest you try Google Chrome?");
   }
->>>>>>> Stashed changes
 });
 
 function setCookie(name,value,days) {

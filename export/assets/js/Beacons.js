@@ -1,8 +1,6 @@
 var beacons = {}; // Use an object instead of an array
 var beaconStates={};
 
-<<<<<<< Updated upstream
-=======
 var spotList = [];
 var dataTableSpots;
 
@@ -22,21 +20,8 @@ const modes = [
     { value: "EME", text: "EME"}
 ];
 
->>>>>>> Stashed changes
 function fetchBeacons(min,max) {
    beacons={};
-<<<<<<< Updated upstream
-   $.getJSON('https://storage.googleapis.com/kst2you/BeaconList.json', function (data) {
-        data.forEach(function (item) {
-            let frequencyKey = parseInt(item.frequency);
-            if((frequencyKey >= min) && (frequencyKey <= max)){
-                if (!beacons[frequencyKey]) {
-                    beacons[frequencyKey] = [];
-                }
-                beacons[frequencyKey].push(item);
-            }
- 
-=======
    beaconStates={};
    var url;
    if(window.location.hostname === 'kst2you.bss.design') {
@@ -66,7 +51,6 @@ function fetchBeacons(min,max) {
                 }
             }
 
->>>>>>> Stashed changes
         });
          $('#bandList').empty();
         var sortedKeys = Object.keys(beacons).map(Number).sort(function (a, b) {
@@ -111,12 +95,7 @@ function toggleBeacons(key) {
 function showBeacons(key){
     var list = beacons[key];
     for(i in list){
-<<<<<<< Updated upstream
-        console.log(beacons[key][i]);
-        addBeacon(beacons[key][i]);
-=======
         addBeacon(beacons[key][i],key);
->>>>>>> Stashed changes
     }    
 }
 
@@ -131,9 +110,6 @@ function hideBeacons(key) {
 }
 //{"callsign":"SR6XHZ","frequency":"10368.8300","locator":"JO70SS","status":"O"}
 
-<<<<<<< Updated upstream
-function addBeacon(bcn){
-=======
 function deleteAllBeacons() {
     for (var key in beacons) {
         hideBeacons(key);
@@ -142,7 +118,6 @@ function deleteAllBeacons() {
 }
 
 function addBeacon(bcn,key){
->>>>>>> Stashed changes
   loc = gridSquareToLatLon(bcn.locator);
   var bcnLoc = {lat: loc[0], lng: loc[1]};
   bcn.distance = distVincenty(myLatLong[0],myLatLong[1],loc[0],loc[1])/1000;
@@ -168,10 +143,7 @@ function addBeacon(bcn,key){
           '<li>Locator: '+bcn.locator+'</li>'+
           '<li>'+parseInt(bcn.distance).toLocaleString()+'km / '+parseInt(bcn.bearing)+'&#176;</li>'+
           '</ul>'+
-<<<<<<< Updated upstream
-=======
           '<button onclick="spotPopup(\'' + bcn.callsign + '\','+key+')">Spot</button>' +
->>>>>>> Stashed changes
       '</div>'+
       '</div>';
 
@@ -184,9 +156,6 @@ function addBeacon(bcn,key){
    });
 
    bcn.marker = marker;
-<<<<<<< Updated upstream
-}
-=======
 }
 
 function spotPopup(callsign,key) {
@@ -391,4 +360,3 @@ $(document).ready(function(){
 
 });
 
->>>>>>> Stashed changes
