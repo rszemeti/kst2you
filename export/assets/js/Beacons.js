@@ -177,11 +177,14 @@ function spotPopupUser(callsign) {
   }
   spotPopupCallsign = callsign;
   spotUser = stationList[callsign];
+  var _cachedMeta = (typeof ChatInbox !== 'undefined') ? ChatInbox.getMeta(callsign) : null;
+  var _locator = spotUser ? spotUser._locator : (_cachedMeta ? _cachedMeta.locator : null);
+  if (!_locator) { console.warn('spotPopupUser: no locator found for', callsign); return; }
   offset = 0.0;
   $('#userSpotCallsign').text(callsign);
-  $('#userSpotLocator').text(spotUser._locator);
+  $('#userSpotLocator').text(_locator);
   $('#userSpotFrequency').text("Enter freq");
-  let latLng = gridSquareToLatLon(spotUser._locator);
+  let latLng = gridSquareToLatLon(_locator);
   let dist = distVincenty(myLatLong[0], myLatLong[1], latLng[0], latLng[1]) / 1000;
   let brg = bearing(myLatLong[0], myLatLong[1], latLng[0], latLng[1]);
   $('#userSpotDistBearing').text(Math.round(dist)+"km/"+Math.round(brg)+'°');

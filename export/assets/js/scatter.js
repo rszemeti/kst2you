@@ -535,8 +535,31 @@
     if (e.key === 'Enter') window.scatterChatSend();
   });
 
+  // ── Last known in-path list (for dblclick message) ─
+  var _lastInPath = [];
+
   // ── Results rendering ──────────────────────────────
+  function sendASMessage (p) {
+    if (!scatterChatCallsign) return;
+    if (typeof sendMsg === 'undefined' || typeof chatId === 'undefined') return;
+    var call  = p.callsign || p.icao.toUpperCase();
+    var freq  = getFreqMHz();
+    var timeStr;
+    if (p.minsToEntry != null) {
+      timeStr = ' in ~' + Math.round(p.minsToEntry) + 'min';
+    } else if (p.minsInPath != null) {
+      timeStr = ' ~' + Math.round(p.minsInPath) + 'min remaining';
+    } else {
+      timeStr = '';
+    }
+    var total = _lastInPath.length;
+    var msg   = 'AS! ' + call + ' ' + freq + 'MHz' + timeStr +
+                (total > 1 ? ' (' + total + ' AC in path)' : '');
+    sendMsg('MSG|' + chatId + '|0|/CQ ' + scatterChatCallsign + ' ' + msg + '|0|');
+  }
+
   function renderScatterResults (inPath, approaching) {
+    _lastInPath = inPath;
     const list = document.getElementById('scatter-list');
     list.innerHTML = '';
     if (!inPath.length && !approaching.length) {
@@ -549,7 +572,12 @@
       h.innerHTML = '<span><i class="bi bi-airplane-fill me-1"></i>In Path Now</span>' +
                     '<span class="badge bg-primary">' + inPath.length + '</span>';
       list.appendChild(h);
-      inPath.forEach(function (p) { list.appendChild(makePlaneItem(p, false)); });
+      inPath.forEach(function (p) {
+        const el = makePlaneItem(p, false);
+        el.title = 'Double-click to send AS! alert to ' + scatterChatCallsign;
+        el.addEventListener('dblclick', function () { sendASMessage(p); });
+        list.appendChild(el);
+      });
     }
     if (approaching.length) {
       const h = document.createElement('div');
@@ -557,7 +585,14 @@
       h.innerHTML = '<span><i class="bi bi-arrow-right-circle me-1"></i>Approaching</span>' +
                     '<span class="badge bg-warning text-dark">' + approaching.length + '</span>';
       list.appendChild(h);
-      approaching.forEach(function (p) { list.appendChild(makePlaneItem(p, true)); });
+      approaching.forEach(function (p) {
+        const el = makePlaneItem(p, true);
+        if (scatterChatCallsign) {
+          el.title = 'Double-click to send AS! alert to ' + scatterChatCallsign;
+          el.addEventListener('dblclick', function () { sendASMessage(p); });
+        }
+        list.appendChild(el);
+      });
     }
   }
 

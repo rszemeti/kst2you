@@ -346,6 +346,7 @@ function doLogin() {
     chatId = $('#chatId').val();
     userName = $('#userInput').val().toUpperCase();
     password = $('#passInput').val();
+    if (typeof ChatInbox !== 'undefined') ChatInbox.init(userName);
 
     if ($('#rememberMe').is(':checked')) {
         var cookieData = {
@@ -514,8 +515,9 @@ function procChatMessage(msg, isLive) {
     }
     if(isLive){
         messageLog[message.from].push(message);
+        if (typeof ChatInbox !== 'undefined') ChatInbox.record(message, true);
     }else{
-        messageLog[message.from].unshift(message); 
+        messageLog[message.from].unshift(message);
     }
     if (message.from == chatPopupCallsign) {
       appendToCurrentChat(message);
@@ -527,10 +529,11 @@ function procChatMessage(msg, isLive) {
     }
     if(isLive){
         messageLog[message.to].push(message);
+        if (typeof ChatInbox !== 'undefined') ChatInbox.record(message, false);
     }else{
-        messageLog[message.to].unshift(message); 
+        messageLog[message.to].unshift(message);
     }
-   
+
     if (message.to == chatPopupCallsign) {
       appendToCurrentChat(message);
     }
@@ -776,6 +779,7 @@ function doLogin() {
     chatId = $('#chatId').val();
     userName = $('#userInput').val().toUpperCase();
     password = $('#passInput').val();
+    if (typeof ChatInbox !== 'undefined') ChatInbox.init(userName);
 
     if ($('#rememberMe').is(':checked')) {
         var cookieData = {
@@ -897,12 +901,29 @@ function chatPopup(callsign) {
     return;
   }
   chatPopupCallsign = callsign;
-  var chatUser = stationList[callsign];
+  if (typeof ChatInbox !== 'undefined') ChatInbox.markRead(callsign);
+  var _meta = (typeof ChatInbox !== 'undefined') ? ChatInbox.getMeta(callsign) : null;
+  var _distb = '', _distance = 9999;
+  if (_meta && _meta.locator && typeof gridSquareToLatLon === 'function') {
+    try {
+      var _ll = gridSquareToLatLon(_meta.locator);
+      _distance = Math.round(distVincenty(myLatLong[0], myLatLong[1], _ll[0], _ll[1]) / 1000);
+      _distb    = _distance + 'km / ' + Math.round(bearing(myLatLong[0], myLatLong[1], _ll[0], _ll[1])) + '°';
+    } catch(e) {}
+  }
+  var chatUser = stationList[callsign] || {
+    decoratedCallsign: callsign,
+    name:      _meta ? _meta.name    : '',
+    locator:   _meta ? _meta.locator : '',
+    distb:     _distb,
+    _distance: _distance,
+  };
   $('#chatWindow').empty();
   $('#chatPopupMessageInput').empty();
-  $('#chatPopupUser').text(chatUser.decoratedCallsign + " " + chatUser.name);
-  $('#chatPopupLocator').text(chatUser.locator);
-  $('#chatPopupBearing').text(chatUser.distb);
+  $('#chatPopupUser').text(chatUser.decoratedCallsign + (chatUser.name ? ' ' + chatUser.name : ''));
+  var isOnline = !!stationList[callsign];
+  $('#chatPopupLocator').text(chatUser.locator || '').css('color', '');
+  $('#chatPopupBearing').text(chatUser.distb  || '').css('color', '');
   $('#chatLocationUL').off('click').click(function(){
      showOnMap(chatUser);
   });
@@ -927,8 +948,19 @@ function chatPopup(callsign) {
   } else {
     $rotWrap.hide();
   }
+  $('#chatPopupMessageInput').prop('disabled', !isOnline)
+    .attr('placeholder', isOnline ? 'Write your message' : 'Station offline — history only');
+  $('#chatPopupSendButton').prop('disabled', !isOnline);
+  if (!isOnline) {
+    $('#chatWindow').append(
+      '<div style="text-align:center;padding:6px 10px;margin-bottom:6px;' +
+      'background:#fff3f3;border:1px solid #f5c6cb;border-radius:4px;' +
+      'color:#dc3545;font-size:11px;font-weight:600;letter-spacing:1px">' +
+      '⚠ OFFLINE — message history only</div>'
+    );
+  }
   $('#modalChat').modal('show');
-  $('#chatPopupMessageInput').focus();
+  if (isOnline) $('#chatPopupMessageInput').focus();
   if (typeof messageLog[callsign] !== 'undefined') {
     messageLog[callsign].forEach(showChatHistory);
   }
@@ -1037,6 +1069,7 @@ function sendChat() {
 }
 
 $(document).ready(function() {
+  if (typeof ChatInbox !== 'undefined') ChatInbox.buildUI();
   if ((location.protocol !== 'https:') && (location.hostname != "127.0.0.1")) {
       location.replace(`https:${location.href.substring(location.protocol.length)}`);
   }
