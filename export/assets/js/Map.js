@@ -99,6 +99,31 @@ function _DrawMap() {
   });
 
   drawCircles();
+
+  // Recalculate distance/bearing from new location and re-add all markers
+  for (var key in stationList) {
+    if (stationList.hasOwnProperty(key)) {
+      var stn = stationList[key];
+      stn.marker = null; // force re-creation on new map instance
+      // Recalculate distance and bearing from new position
+      if (key === userName) {
+        // Update self station lat/long to new position
+        stn.latLong = [myLatLong[0], myLatLong[1]];
+        stn._distance = 0;
+        stn._bearing = 0;
+      } else {
+        try {
+          stn._distance = distVincenty(myLatLong[0], myLatLong[1], stn.latLong[0], stn.latLong[1]) / 1000;
+          stn._bearing = bearing(myLatLong[0], myLatLong[1], stn.latLong[0], stn.latLong[1]);
+        } catch(e) {}
+      }
+      addMapMarker(stn);
+    }
+  }
+  // Refresh the user list table with updated distances
+  if (typeof dataTableUsers !== 'undefined') {
+    dataTableUsers.clear().rows.add(Object.values(stationList)).draw();
+  }
 }
 
 function drawCircles(){

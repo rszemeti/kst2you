@@ -405,6 +405,29 @@
     </div>
   </div><!-- /tab-scatter -->
 
+  <!-- ── BEACONS SPOTTED ── -->
+  <div class="tab-pane fade tab-scroll" role="tabpanel" id="tab-spots">
+    <div class="container-fluid pt-2">
+      <div class="table-responsive text-nowrap">
+        <table id="spotListTable" class="table table-sm table-striped table-bordered w-100">
+          <thead>
+            <tr>
+              <th>Call</th>
+              <th>Freq</th>
+              <th>Locator</th>
+              <th>Distance</th>
+              <th>Report</th>
+              <th>Mode</th>
+              <th>Spotter</th>
+              <th>Spot Date</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div><!-- /tab-spots -->
+
   <!-- ── ABOUT ── -->
   <div class="tab-pane fade tab-scroll" role="tabpanel" id="tab-about">
     <div class="container pt-3" style="max-width:800px">
@@ -943,13 +966,14 @@
   window.setScatterTarget = function (locator, callsign) {
     document.getElementById('scatter-loc-b').value = locator.toUpperCase();
     if (callsign) window.scatterChatSetTarget(callsign);
+    // Always switch to scatter tab first
+    bootstrap.Tab.getOrCreateInstance(
+      document.querySelector('#scatterTab [data-bs-toggle="tab"]')
+    ).show();
     if (scatterMapReady) {
       scatterScan();
     } else {
       scatterAutoScan = true;
-      bootstrap.Tab.getOrCreateInstance(
-        document.querySelector('#scatterTab [data-bs-toggle="tab"]')
-      ).show();
     }
   };
 
