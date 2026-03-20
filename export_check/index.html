@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+<link href="assets/img/favicon-32x32.png" rel="icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <title>Kst2You</title>
+    <meta name="description" content="An alternative interface to the ON4KST chat system.">
+    <link rel="stylesheet" href="assets/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="assets/fonts/fontawesome-all.min.css">
+    <link rel="stylesheet" href="assets/fonts/ionicons.min.css">
+    <link rel="stylesheet" href="assets/css/bss-overrides.css">
+    <link rel="stylesheet" href="assets/css/Bootstrap-Chat.css">
+    <link rel="stylesheet" href="assets/css/Bootstrap-DataTables.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.20/css/dataTables.bootstrap4.min.css" crossorigin="anonymous">
+    <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col">
+                <div class="row">
+                    <div class="col col-12 col-md-6">
+                        <div class="row">
+                            <div class="col"><span id="connState">Wait ...</span><span id="connCount"></span></div>
+                            <div class="col d-flex align-items-center text-nowrap"><button class="btn btn-primary mr-3" id="logOffButton" type="button">Log Off</button>
+                                <div class="form-check"><input class="form-check-input" type="checkbox" id="awayButton"><label class="form-check-label" for="awayButton">Away</label></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col col-12 col-md-6"><button class="btn btn-primary" id="cqButton" type="button">CQ</button><button class="btn btn-primary btn-group-vertical" id="setNameButton" type="button">Set Name</button></div>
+                </div>
+                <div class="row">
+                    <div class="col">
+                        <div>
+                            <ul class="nav nav-tabs" role="tablist">
+                                <li class="nav-item" role="presentation" id="chatTab"><a class="nav-link active" role="tab" data-toggle="tab" href="#tab-1">Chat</a></li>
+                                <li class="nav-item" role="presentation" id="userListTab"><a class="nav-link" role="tab" data-toggle="tab" href="#tab-2">User List</a></li>
+                                <li class="nav-item" role="presentation" id="mapTab"><a class="nav-link" role="tab" data-toggle="tab" href="#tab-3">Map</a></li>
+                                <li class="nav-item" role="presentation" id="spotsTab"><a class="nav-link" role="tab" data-toggle="tab" href="#tab-4">Beacons Spotted</a></li>
+                                <li class="nav-item" role="presentation" id="aboutTab"><a class="nav-link" role="tab" data-toggle="tab" href="#tab-5">About ...</a></li>
+                            </ul>
+                            <div class="tab-content">
+                                <div class="tab-pane active" role="tabpanel" id="tab-1">
+                                    <div class="row">
+                                        <div class="col text-nowrap"><span>Filter by distance&nbsp;</span><input type="number" id="maxDistance" value="" step="100" size="8"><span>km</span></div>
+                                        <div class="col text-nowrap">
+                                            <div class="form-check"><input class="form-check-input" type="checkbox" id="aboutMe"><label class="form-check-label">Only messages about me</label></div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col">
+                                            <div class="table-responsive">
+                                                <table class="table" id="chatLogTable">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Time</th>
+                                                            <th>From</th>
+                                                            <th>To</th>
+                                                            <th>Message</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="chatLog"></tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tab-pane" role="tabpanel" id="tab-2"><div class="bootstrap_datatables">
+          <div class="table-responsive">
+            <table id="userListTable" style="width:100%" class="table table-striped table-bordered">
+              <thead>
+                <tr>
+                  <th>Call</th>
+                  <th>Name</th>
+                  <th>Locator</th>
+                  <th>Distance/Bearing</th>
+                  <th>Last Seen</th>
+                </tr>
+              </thead>
+              <tbody>
+              </tbody>
+            </table>
+          </div>
+</div></div>
+                                <div class="tab-pane" role="tabpanel" id="tab-3">
+                                    <div class="row">
+                                        <div class="col col-12 col-md-11">
+                                            <div id="map"></div>
+                                            <div id="pathProfile" style="width: 100%;"></div>
+                                        </div>
+                                        <div class="col col-12 col-md-1" id="bandColumn"><button class="btn btn-warning btn-group-vertical" id="gridButton" type="button">Grid</button><button class="btn btn-warning active btn-group-vertical" id="circlesButton" type="button">Circles</button><span class="h6">Beacons</span>
+                                            <div id="bandList"></div><a href="https://beaconspot.uk/" target="_blank">Beaconspot.uk</a>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tab-pane" role="tabpanel" id="tab-4"><div class="bootstrap_datatables">
+          <div class="table-responsive text-nowrap">
+            <table id="spotListTable" style="width:100%" class="table table-striped table-bordered">
+              <thead>
+                <tr>
+                  <th>Call</th>
+                  <th>Freq</th>
+                  <th>Locator</th>
+                  <th>Distance</th>
+                  <th>Report</th>
+                  <th>Mode</th>
+                  <th>Spotter</th>
+                  <th>Spot Date</th>
+                </tr>
+              </thead>
+              <tbody>
+              </tbody>
+            </table>
+          </div>
+</div></div>
+                                <div class="tab-pane" role="tabpanel" id="tab-5">
+                                    <div class="row">
+                                        <div class="col">
+                                            <p>KST2YOU is a project by Robin Szemeti, G1YFG , it aims to provide a web-based interface to the KST service, accessible on any modern browser, regardless of the device. If you have feature request or comments, please contact me via my email as published on QRZ.com</p>
+                                            <hr>
+                                            <div>
+                                                <h1 class="text-primary h5">Beacon data from UK Microwave Group / Beaconspot.uk</h1>
+                                                <p>Beacon data is current data kindly supplied by Beaconspot, a website run by the UK Microwave group. If you enjoy microwave radio or would like to contribute to the upkeep of our servers, beacon network or just receive our monthly newsletter, please consider a&nbsp; subscription (just £6 a year at the time of writing) every little helps!&nbsp;&nbsp;<a class="font-weight-bold" href="https://www.beaconspot.uk/index2.php" target="_blank"><span style="text-decoration: underline;">BeaconSpot</span></a>&nbsp; and&nbsp;<a class="font-weight-bold" href="https://www.microwavers.org/index.htm?membership.htm" target="_blank">Microwavers.org</a>&nbsp;appreciate your support.</p>
+                                            </div>
+                                            <hr>
+                                            <p>Privacy: I do not store your passwords. These are only stored in your browser if you select "remember me". I do keep a log of callsigns that have used the service and any DXC cluster spots purely for statistics to see if it is being used by enough people to justify further development.&nbsp; I do not log your messages either sent or received. Since I started collecting numbers in late October 2023, there have been&nbsp;<span id="userCount"></span>&nbsp;logins to the service and&nbsp;<span id="spotCount"></span> spots reported</p>
+                                            <p>A basic write-up on the various function and features may be found on my blog&nbsp;<a href="https://g1yfg.blogspot.com/2021/12/kst2you-alternative-interface-to-kst.html">https://g1yfg.blogspot.com</a></p><p id="licencePanel"><a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png"></a><br>This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.</p>
+                                            <p><button class="btn btn-primary" id="beepTestButton" type="button">Beep Test</button>Test your audio here, this is the "beep" you will hear when a station calls you:&nbsp;</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal" role="dialog" tabindex="-1" id="modalChat">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="col-12 col-lg-12 col-xl-12 padMar text-right">
+                        <h5 class="text-primary pointer" data-dismiss="modal"><i class="icon ion-android-arrow-dropleft"></i>&nbsp; Hide Chat</h5>
+                        <div id="chatUserInfo">
+                            <ul id="chatLocationUL" data-toggle="tooltip" title="Show On Map">
+                                <li><span id="chatPopupLocator">Locator</span></li>
+                                <li><span id="chatPopupBearing">Bearing</span></li>
+                                <li><button class="btn btn-primary btn-sm" id="chatPopupSpotButton" type="button">Spot</button></li>
+                            </ul>
+                        </div><strong class="text-primary" id="chatPopupUser">G1YFG:</strong>
+                    </div><button class="close d-none" type="button" aria-label="Close" data-dismiss="modal"><span aria-hidden="true">×</span></button>
+                </div>
+                <div class="modal-body">
+                    <div class="col-12 col-xl-12 padMar" id="chatWindow"></div>
+                </div>
+                <div class="modal-footer">
+                    <div class="col-11 col-sm-11 col-md-11 col-lg-11 col-xl-11 padMar margenesCompletas10px"><input class="form-control-sm vichomChatInput" type="text" id="chatPopupMessageInput" placeholder="Write your message"><button class="btn btn-primary mx-auto d-block margenesTxts" id="chatPopupSendButton" type="button">SEND</button></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" role="dialog" tabindex="-1" id="loginModal">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">Login Details</h4><button class="close" type="button" aria-label="Close" data-dismiss="modal"><span aria-hidden="true">×</span></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger" role="alert" id="loginError"><span id="loginErrorMessage"><strong>Alert</strong> text.</span></div>
+                    <div>
+                        <div class="row">
+                            <div class="col-3"><label class="col-form-label">Chat Group</label></div>
+                            <div class="col"><select id="chatId"></select></div>
+                        </div>
+                        <div class="row">
+                            <div class="col-3"><label class="col-form-label">Callsign</label></div>
+                            <div class="col"><input type="text" id="userInput"></div>
+                        </div>
+                        <div class="row">
+                            <div class="col-3"><label class="col-form-label">Password</label></div>
+                            <div class="col"><input type="password" id="passInput"></div>
+                        </div>
+                        <div class="row">
+                            <div class="col-3"><label class="col-form-label">Register?</label></div>
+                            <div class="col">
+                                <p>To use this service, you need to have an account on the KST server, you can register&nbsp;<a href="http://www.on4kst.info/chat/register.php">here</a></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div class="row">
+                        <div class="col">
+                            <div class="form-check"><input class="form-check-input" type="checkbox" id="rememberMe"><label class="form-check-label">Remember me</label></div>
+                        </div>
+                    </div><button class="btn btn-primary" id="registerButton" type="button">Log In</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" role="dialog" tabindex="-1" id="locationModal">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">Location</h4><button class="close" type="button" aria-label="Close" data-dismiss="modal"><span aria-hidden="true">×</span></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col"><span>Latitude</span></div>
+                        <div class="col"><span id="currentLat"></span></div>
+                    </div>
+                    <div class="row">
+                        <div class="col"><span>Longitude</span></div>
+                        <div class="col"><span id="currentLng"></span></div>
+                    </div>
+                    <div class="row">
+                        <div class="col"><span>Dist/Bearing</span></div>
+                        <div class="col"><span id="arbitaryDistBearing"></span></div>
+                    </div>
+                    <div class="row" id="gridSquareRow">
+                        <div class="col"><span>Grid Square</span></div>
+                        <div class="col"><span id="currentGrid"></span></div>
+                    </div>
+                </div>
+                <div class="modal-footer"><button class="btn btn-light" type="button" data-dismiss="modal">Cancel</button><button class="btn btn-primary" id="setLocation" type="button">Set My Location</button></div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" role="dialog" tabindex="-1" id="bcnSpotModal">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">Beacon spot to DX Cluster</h4><button class="close" type="button" aria-label="Close" data-dismiss="modal"><span aria-hidden="true">×</span></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col"><span>Callsign</span></div>
+                        <div class="col"><span id="bcnSpotCallsign"></span></div>
+                    </div>
+                    <div class="row">
+                        <div class="col"><span>Frequency</span></div>
+                        <div class="col"><span id="bcnSpotFreq"></span><button class="btn" id="increaseFreq" type="button freqButton"><i class="far fa-arrow-alt-circle-up"></i></button><button class="btn" id="decreaseFreq" type="button freqButton"><i class="far fa-arrow-alt-circle-down"></i></button><span id="bcnOffset"></span></div>
+                    </div>
+                    <div class="row" id="gridSquareRow-1">
+                        <div class="col"><span>Grid Square</span></div>
+                        <div class="col"><span id="bcnSpotLocator"></span></div>
+                    </div>
+                    <div class="row" id="gridSquareRow-4">
+                        <div class="col"><span>Distance/bearing</span></div>
+                        <div class="col"><span id="bcnSpotDistBearing"></span></div>
+                    </div>
+                    <div class="row" id="gridSquareRow-2">
+                        <div class="col"><span>Propagation</span></div>
+                        <div class="col"><select id="bcnPropagationModes" class="propagationModes"></select></div>
+                    </div>
+                    <div class="row" id="gridSquareRow-3">
+                        <div class="col"><span>Report</span></div>
+                        <div class="col"><input type="text" id="bcnSpotReport" value="599"></div>
+                    </div>
+                </div>
+                <div class="modal-footer"><button class="btn btn-light" type="button" data-dismiss="modal">Cancel</button><button class="btn btn-primary" id="sendBcnSpot" type="button">Send Spot</button></div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" role="dialog" tabindex="-1" id="userSpotModal">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">Send spot to DX Cluster</h4><button class="close" type="button" aria-label="Close" data-dismiss="modal"><span aria-hidden="true">×</span></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col"><span>Callsign</span></div>
+                        <div class="col"><span id="userSpotCallsign"></span></div>
+                    </div>
+                    <div class="row">
+                        <div class="col"><span>Frequency</span></div>
+                        <div class="col">
+                            <div class="row">
+                                <div class="col"><input type="number" id="userSpotFrequency"></div>
+                                <div class="col"><span>MHz</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row" id="gridSquareRow-5">
+                        <div class="col"><span>Grid Square</span></div>
+                        <div class="col"><span id="userSpotLocator"></span></div>
+                    </div>
+                    <div class="row" id="gridSquareRow-6">
+                        <div class="col"><span>Distance/bearing</span></div>
+                        <div class="col"><span id="userSpotDistBearing"></span></div>
+                    </div>
+                    <div class="row" id="gridSquareRow-7">
+                        <div class="col"><span>Propagation</span></div>
+                        <div class="col"><select id="userPropagationModes" class="propagationModes"></select></div>
+                    </div>
+                    <div class="row" id="gridSquareRow-8">
+                        <div class="col"><span>Report</span></div>
+                        <div class="col"><input type="text" id="userSpotReport" value="599"></div>
+                    </div>
+                </div>
+                <div class="modal-footer"><button class="btn btn-light" type="button" data-dismiss="modal">Cancel</button><button class="btn btn-primary" id="sendUserSpot" type="button">Send Spot</button></div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" role="dialog" tabindex="-1" id="cqModal">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">CQ ...</h4><button class="close" type="button" aria-label="Close" data-dismiss="modal"><span aria-hidden="true">×</span></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row" id="cqDropDownRow">
+                        <div class="col"><span>Stored Messages</span><select id="cqMesgSelector">
+                                <optgroup label="This is a group" id="cqMesgList">
+                                    <option value="12" selected="">This is item 1</option>
+                                    <option value="13">This is item 2</option>
+                                    <option value="14">This is item 3</option>
+                                </optgroup>
+                            </select></div>
+                    </div>
+                    <div class="row">
+                        <div class="col"><span>Message Text</span><input class="form-control-plaintext" type="text" id="cqMesgText" value="" style="border-style: solid;border-color: var(--blue);" placeholder="type or select from dropdown"></div>
+                    </div>
+                </div>
+                <div class="modal-footer"><button class="btn btn-light" type="button" data-dismiss="modal">Cancel</button><button class="btn btn-primary" id="sendCqButton" type="button">Send</button></div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" role="dialog" tabindex="-1" id="setNameModal">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">Set Your Name</h4><button class="close" type="button" aria-label="Close" data-dismiss="modal"><span aria-hidden="true">×</span></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col">
+                            <div class="alert alert-success alert-warning" role="alert" id="setNameAlert"><span id="setNameAlertText"><strong>Warning</strong></span></div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col"><span>Name</span><input class="form-control-plaintext" type="text" id="setNameText" value="" style="border-style: solid;border-color: var(--blue);" placeholder=""></div>
+                    </div>
+                </div>
+                <div class="modal-footer"><button class="btn btn-light" type="button" data-dismiss="modal">Cancel</button><button class="btn btn-primary" id="sendSetNameButton" type="button">Set Name</button></div>
+            </div>
+        </div>
+    </div>
+    <script src="assets/js/jquery.min.js"></script>
+    <script src="assets/bootstrap/js/bootstrap.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.20/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.20/js/dataTables.bootstrap4.min.js"></script>
+    <script src="assets/js/Bootstrap-DataTables.js"></script>
+    <script src="assets/js/Beacons.js"></script>
+    <script src="assets/js/beep.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reconnecting-websocket/1.0.0/reconnecting-websocket.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=default"></script>
+    <script src="https://www.google.com/jsapi"></script>
+    <script src="assets/js/Kst.js"></script>
+    <script src="assets/js/Logging.js"></script>
+    <script src="assets/js/Maidenhead.js"></script>
+    <script src="assets/js/Map.js"></script>
+    <script src="assets/js/profile.js"></script>
+    <script src="assets/js/QRZ.js"></script>
+</body>
+
+</html>

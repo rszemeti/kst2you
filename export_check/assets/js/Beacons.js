@@ -138,7 +138,6 @@ function addBeacon(bcn,key){
           '<li>'+parseInt(bcn.distance).toLocaleString()+'km / '+parseInt(bcn.bearing)+'&#176;</li>'+
           '</ul>'+
           '<button onclick="spotPopup(\'' + bcn.callsign + '\','+key+')">Spot</button>' +
-          (window._rotatorUrl ? '<button onclick="window.rotatorPointTo(\'' + bcn.callsign + '\',\'' + bcn.locator + '\')" style="margin-left:4px">⟳ Rotate</button>' : '') +
       '</div>'+
       '</div>';
 

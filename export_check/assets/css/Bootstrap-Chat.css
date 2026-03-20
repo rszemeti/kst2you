@@ -1,0 +1,95 @@
+.bootstrap_chat {
+  background-color: #74EBD5;
+  min-height: 100vh;
+}
+
+.text-small {
+  font-size: 0.9rem;
+}
+
+.messages-box, .chat-box {
+  height: 510px;
+  overflow-y: scroll;
+}
+
+.rounded-lg {
+  border-radius: 0.5rem;
+}
+
+#modalChat {
+}
+
+.form-control-sm.vichomChatInput {
+  width: 100%;
+}
+
+#gridSquareRow {
+  font-weight: 800;
+  font-size: larger;
+}
+
+#logOffButton-1 {
+}
+
+#cqButton {
+}
+
+.col {
+  width: 30%;
+}
+
+#chatUserInfo {
+  position: absolute;
+  top: 5px;
+  text-align: left;
+  /*padding-top: 1px;*/
+  /*float: left;*/
+  /*align-content: start;*/
+}
+
+#logOffButton {
+  margin-left: 20px;
+}
+
+p {
+}
+
+#licencePanel {
+  border: solid;
+  align-content: center;
+}
+
+#licencePanel {
+}
+
+#setNameButton {
+  margin-left: 20px;
+}
+
+#chatWindow {
+  overflow-y: auto;
+  max-height: 60vh;
+}
+
+#bandColumn button {
+  margin-bottom: 10px;
+}
+
+#bcnSpotReport {
+  margin-top: 0.3em;
+}
+
+.freqButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 2px;
+  vertical-align: middle;
+  font-size: 0.8em;
+}
+
+.freqButton .focus {
+  outline: none;
+}
+

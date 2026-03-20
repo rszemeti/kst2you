@@ -284,6 +284,7 @@ const ScatterTrack = (() => {
   // ── Token cache ──
   let _token = null;
   let _tokenExpiry = 0;
+  let _requestCount = 0;
 
   async function getToken() {
     if (_token && Date.now() < _tokenExpiry) return _token;
@@ -343,6 +344,7 @@ const ScatterTrack = (() => {
       checkResponse(r);
       statesData = await r.json();
     }
+    _requestCount++;
 
     return (statesData.states || [])
       .filter(s => s[5] != null && s[6] != null && !s[8]) // airborne with position
@@ -546,6 +548,7 @@ const ScatterTrack = (() => {
           midpoint: mid, corridorDeg, freqMHz: _freqMHz,
           inPathCount: inPath.length, approachingCount: approaching.length,
           totalFetched: drPlanes.length,
+          requestCount: _requestCount, clientId: _opts.clientId || null,
         },
       });
     }
@@ -721,6 +724,8 @@ const ScatterTrack = (() => {
       inPathCount: inPath.length,
       approachingCount: approaching.length,
       totalFetched: planes.length,
+      requestCount: _requestCount,
+      clientId: _opts.clientId || null,
     };
 
     // Fire callback
@@ -867,6 +872,8 @@ const ScatterTrack = (() => {
           inPathCount: inPath.length,
           approachingCount: approaching.length,
           totalFetched: planes.length,
+      requestCount: _requestCount,
+      clientId: _opts.clientId || null,
         };
 
         if (_opts.onUpdate) _opts.onUpdate({ inPath, approaching, all: planes, pathInfo });

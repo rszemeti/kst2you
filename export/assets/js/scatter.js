@@ -8,6 +8,34 @@
   let scatterChatCallsign = null;
   const SCATTER_MAX_KM = 900;
 
+  // ── Rotator server discovery ────────────────────────
+  // Silently probes localhost ports; sets window._rotatorUrl if found.
+  (async function probeRotator() {
+    const ports = [5000, 5001, 8000, 8001, 3000];
+    for (const port of ports) {
+      try {
+        const r = await fetch('http://localhost:' + port + '/status', { signal: AbortSignal.timeout(800) });
+        if (r.ok) {
+          window._rotatorUrl = 'http://localhost:' + port;
+          const el = document.getElementById('scatter-rotator-status');
+          if (el) { el.textContent = 'Rotator: localhost:' + port; el.style.opacity = '1'; el.style.color = '#28a745'; }
+          // Table may already be drawn — inject buttons now
+          if ($.fn.DataTable.isDataTable('#userListTable')) injectUserListButtons();
+          return;
+        }
+      } catch (_) {}
+    }
+  })();
+
+  window.rotatorPointTo = function (callsign, locator) {
+    if (!window._rotatorUrl) return;
+    fetch(window._rotatorUrl + '/station', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ callsign, locator }),
+    }).catch(function () {});
+  };
+
   // ── Auto-fill Station A when KST login sets our locator ────
   // Wraps setMyLocator() from Kst.js after DOMContentLoaded.
   const _SELF_DOT = 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png';
@@ -126,13 +154,13 @@
     }, 200);
   });
 
-  // ── Inject ✈ scatter buttons into user list rows (≤900km only) ────
-  $(document).on('draw.dt', '#userListTable', function () {
-    $(this).DataTable().rows().every(function () {
+  // ── Inject ✈ scatter and ⟳ rotator buttons into user list rows ────
+  function injectUserListButtons() {
+    const dt = $('#userListTable').DataTable();
+    dt.rows().every(function () {
       const row  = this.data();
       const node = $(this.node());
-      if (node.find('.scatter-btn').length) return;
-      if (row.distance >= 5 && row.distance <= 900) {
+      if (!node.find('.scatter-btn').length && row.distance >= 5 && row.distance <= 900) {
         node.find('td:nth-child(3)').append(
           ' <button class="btn btn-outline-primary btn-sm py-0 px-1 scatter-btn"' +
           ' data-loc="' + row.locator + '" data-call="' + row.callsign + '"' +
@@ -140,12 +168,16 @@
         );
       }
     });
-  });
+  }
+
+  $(document).on('draw.dt', '#userListTable', injectUserListButtons);
 
   $(document).on('click', '.scatter-btn', function (e) {
     e.stopPropagation();
+    e.preventDefault();
     setScatterTarget($(this).data('loc'), $(this).data('call'));
   });
+
 
   // ── KST station markers on scatter map ─────────────
   let _stationMarkers = {}; // call → google.maps.Marker
@@ -215,6 +247,17 @@
   window.setScatterTarget = function (locator, callsign) {
     document.getElementById('scatter-loc-b').value = locator.toUpperCase();
     if (callsign) window.scatterChatSetTarget(callsign);
+    // Show/wire rotate button if rotator is available
+    var rotWrap = document.getElementById('scatter-rotate-wrap');
+    var rotBtn  = document.getElementById('scatter-rotate-btn');
+    if (rotWrap && rotBtn) {
+      if (window._rotatorUrl && locator) {
+        rotBtn.onclick = function () { window.rotatorPointTo(callsign || '', locator); };
+        rotWrap.style.display = 'block';
+      } else {
+        rotWrap.style.display = 'none';
+      }
+    }
     // Always switch to scatter tab first
     bootstrap.Tab.getOrCreateInstance(
       document.querySelector('#scatterTab [data-bs-toggle="tab"]')
@@ -396,6 +439,12 @@
           all.length + ' AC · ' + inPath.length + ' in path · ' + approaching.length + ' approaching',
           'ok'
         );
+        if (pathInfo) {
+          const oslClient   = document.getElementById('osl-client');
+          const oslRequests = document.getElementById('osl-requests');
+          if (oslClient)   oslClient.textContent   = pathInfo.clientId || 'anonymous';
+          if (oslRequests) oslRequests.textContent = pathInfo.requestCount || 0;
+        }
         renderScatterResults(inPath, approaching);
         updateScatterPathBar(pathInfo);
       }
@@ -444,7 +493,7 @@
     // Big callsign banner in right panel
     const banner   = document.getElementById('scatter-target-banner');
     const callDisp = document.getElementById('scatter-target-call');
-    if (banner)   { callDisp.textContent = scatterChatCallsign; banner.style.display = 'block'; }
+    if (banner)   { callDisp.textContent = scatterChatCallsign; banner.style.display = 'flex'; }
 
     // Refresh marker highlights to show new target in red
     refreshStationMarkers();
@@ -578,12 +627,22 @@
   }
 
   function scatterLog (msg, type) {
-    const c = document.getElementById('scatter-console');
+    const c = document.getElementById('osl-log');
+    if (!c) return;
+    const colours = { ok: '#28a745', err: '#dc3545', warn: '#fd7e14', info: '#ffc107' };
     const d = document.createElement('div');
-    d.className   = 'log-' + (type || 'info');
+    d.style.color     = colours[type] || colours.info;
+    d.style.lineHeight = '1.5';
     d.textContent = '[' + new Date().toUTCString().slice(17, 25) + '] ' + msg;
     c.appendChild(d);
     c.scrollTop = c.scrollHeight;
+    while (c.children.length > 200) c.removeChild(c.firstChild);
   }
+
+  const _oslClearBtn = document.getElementById('osl-clear-btn');
+  if (_oslClearBtn) _oslClearBtn.addEventListener('click', function () {
+    const c = document.getElementById('osl-log');
+    if (c) c.innerHTML = '';
+  });
 
 })();

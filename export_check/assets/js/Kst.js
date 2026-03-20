@@ -638,8 +638,6 @@ function addMapMarker(stn) {
     '<li>' + parseInt(stn.distance).toLocaleString() + 'km / ' + parseInt(stn.bearing) + '&#176;</li>' +
     '</ul>' +
     '<button onclick="chatPopup(\'' + stn.callsign + '\')">Chat</button>' +
-    (stn.distance >= 5 && stn.distance <= 900 ? '<button onclick="setScatterTarget(\'' + stn.locator + '\',\'' + stn.callsign + '\')" style="margin-left:4px">&#9992; Scatter</button>' : '') +
-    (window._rotatorUrl && stn.distance >= 1 ? '<button onclick="rotatorPointTo(\'' + stn.callsign + '\',\'' + stn.locator + '\')" style="margin-left:4px">&#x27f3; Rotate</button>' : '') +
     '</div>' +
     '</div>';
 
@@ -861,12 +859,11 @@ function initUserList() {
           var d = new Date(data);
           return d.toLocaleDateString() + '  ' + d.toLocaleTimeString();
         }
-      },
+      }
     ],
   });
 
-  $('#userListTable tbody').on('click', 'tr', function(e) {
-    if ($(e.target).closest('button').length) return;
+  $('#userListTable tbody').on('click', 'tr', function() {
     chatPopup(dataTableUsers.row(this).data().callsign);
   });
 }
@@ -904,29 +901,8 @@ function chatPopup(callsign) {
   $('#chatPopupLocator').text(chatUser.locator);
   $('#chatPopupBearing').text(chatUser.distb);
   $('#chatLocationUL').off('click').click(function(){
-     showOnMap(chatUser);
+     showOnMap(chatUser); 
   });
-  var $scatterWrap = $('#chatPopupScatterWrap');
-  if (chatUser.locator && chatUser._distance >= 5 && chatUser._distance <= 900) {
-    $scatterWrap.show();
-    $('#chatPopupScatterButton').off('click').on('click', function(e) {
-      e.stopPropagation();
-      bootstrap.Modal.getInstance(document.getElementById('modalChat')).hide();
-      window.setScatterTarget(chatUser.locator, callsign);
-    });
-  } else {
-    $scatterWrap.hide();
-  }
-  var $rotWrap = $('#chatPopupRotateWrap');
-  if (window._rotatorUrl && chatUser.locator) {
-    $rotWrap.show();
-    $('#chatPopupRotateButton').off('click').on('click', function(e) {
-      e.stopPropagation();
-      window.rotatorPointTo(callsign, chatUser.locator);
-    });
-  } else {
-    $rotWrap.hide();
-  }
   $('#modalChat').modal('show');
   $('#chatPopupMessageInput').focus();
   if (typeof messageLog[callsign] !== 'undefined') {
@@ -1043,7 +1019,7 @@ $(document).ready(function() {
   if (typeof initMap === "function") {
         // Dynamically load the Google Maps API.
         var script = document.createElement('script');
-        script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyCYgwKKCWkBljRcQ7j59VEL5hRK-ZZn4ZQ&callback=initMap";
+        script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyA609pI75YFCN-uINIw89OXESRxv56Btpk&callback=initMap";
         document.body.appendChild(script);
   } else {
         console.error("initMap function is not defined!");
