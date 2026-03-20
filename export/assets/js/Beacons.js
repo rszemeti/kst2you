@@ -1,9 +1,6 @@
 var beacons = {}; // Use an object instead of an array
 var beaconStates={};
 
-var spotList = [];
-var dataTableSpots;
-
 var spotBcn;
 
 const reportPattern = /^[1-5][1-9]{1,2}$|^[+-]?\s*[1-9][0-9]?\s*[dD][bB]$/;
@@ -21,57 +18,39 @@ const modes = [
 ];
 
 function fetchBeacons(min,max) {
+   deleteAllBeacons();
    beacons={};
    beaconStates={};
    var url;
    if(window.location.hostname === 'kst2you.bss.design') {
-       url = 'https://storage.googleapis.com/kst2you/BeaconList.json?t=spoon';
+       url = 'https://storage.googleapis.com/kst2you/BeaconList.json';
    } else{
-       url = 'https://storage.googleapis.com/kst2you/BeaconList.json?t=cup';
+       url = 'https://storage.googleapis.com/kst2you/BeaconListTest.json';
    }
    
    $.getJSON(url, function (data) {
         data.forEach(function (item) {
             let frequencyKey = parseInt(item.frequency);
-            if ((frequencyKey >= min) && (frequencyKey <= max)) {
-                const roundedKey = Math.floor(frequencyKey);
-
-                if (!beacons[roundedKey]) {
-                    beacons[roundedKey] = {};
+            if((frequencyKey >= min) && (frequencyKey <= max)){
+                if (!beacons[frequencyKey]) {
+                    beacons[frequencyKey] = {};
                 }
-                beacons[roundedKey][item.callsign] = item;
-                for (let i = 1; i <= 2; i++) {
-                    let j = roundedKey - i;
-                    if (beacons[j]) {
-                        for (const callsign in beacons[roundedKey]) {
-                            beacons[j][callsign] = beacons[roundedKey][callsign];
-                        }
-                        delete beacons[roundedKey];
-                    }
-                }
+                beacons[frequencyKey][item.callsign]=item;
             }
-
         });
-         $('#bandList').empty();
+        $('#bandList .bandButton').remove();
         var sortedKeys = Object.keys(beacons).map(Number).sort(function (a, b) {
             return a - b;
         });
-        var ul = $('<ul></ul>');
         sortedKeys.forEach(function (key) {
-            var li = $('<li></li>');
             var button = $('<button></button>').text(key).attr('id', "bcnButton"+key);
-            button.addClass('btn btn-secondary btn-group-vertical');
+            button.addClass('btn btn-secondary btn-group-vertical bandButton');
             // Add a click event listener to the button
             button.click(function () {
                 toggleBeacons(key);
             });
-            li.append(button);
-            li.css('margin-bottom', '10px')// Add the button to the li
-            ul.append(li);
+            $('#bandList').append(button);
         });
-
-        $('#bandList').empty().append(ul);
-        console.log(beacons);
     })
     .fail(function () {
         console.error('Error fetching data.');
@@ -95,7 +74,7 @@ function toggleBeacons(key) {
 function showBeacons(key){
     var list = beacons[key];
     for(i in list){
-        addBeacon(beacons[key][i],key);
+        addBeacon(beacons[key][i]);
     }    
 }
 
@@ -117,7 +96,7 @@ function deleteAllBeacons() {
     $('#bandList .bandButton').remove();
 }
 
-function addBeacon(bcn,key){
+function addBeacon(bcn){
   loc = gridSquareToLatLon(bcn.locator);
   var bcnLoc = {lat: loc[0], lng: loc[1]};
   bcn.distance = distVincenty(myLatLong[0],myLatLong[1],loc[0],loc[1])/1000;
@@ -143,7 +122,7 @@ function addBeacon(bcn,key){
           '<li>Locator: '+bcn.locator+'</li>'+
           '<li>'+parseInt(bcn.distance).toLocaleString()+'km / '+parseInt(bcn.bearing)+'&#176;</li>'+
           '</ul>'+
-          '<button onclick="spotPopup(\'' + bcn.callsign + '\','+key+')">Spot</button>' +
+          '<button onclick="spotPopup(\'' + bcn.callsign + '\','+parseInt(bcn.frequency)+')">Spot</button>' +
       '</div>'+
       '</div>';
 
@@ -176,24 +155,6 @@ function spotPopup(callsign,key) {
   $('#bcnReportInput').focus();
 }
 
-function spotPopupUser(callsign) {
-  if (callsign === '0') {
-    return;
-  }
-  spotPopupCallsign = callsign;
-  spotUser = stationList[callsign];
-  offset = 0.0;
-  $('#userSpotCallsign').text(callsign);
-  $('#userSpotLocator').text(spotUser._locator);
-  $('#userSpotFrequency').text("Enter freq");
-  let latLng = gridSquareToLatLon(spotUser._locator);
-  let dist = distVincenty(myLatLong[0], myLatLong[1], latLng[0], latLng[1]) / 1000;
-  let brg = bearing(myLatLong[0], myLatLong[1], latLng[0], latLng[1]);
-  $('#userSpotDistBearing').text(Math.round(dist)+"km/"+Math.round(brg)+'°');
-  $('#userSpotModal').modal('show');
-  $('#userReportInput').focus();
-}
-
 function spotData(callsign,freq,locator,mode,report) {
     data = {
         spotter_callsign: userName,
@@ -206,72 +167,6 @@ function spotData(callsign,freq,locator,mode,report) {
     };
     return data;
 }
-
-function formatFrequency(frequencyHz) {
-    if (frequencyHz <= 1000000) { // 2 GHz in Hz
-        return (frequencyHz / 1000).toFixed(3) + " MHz"; // Convert to MHz and format
-    } else {
-        return (frequencyHz / 1000000).toFixed(6) + " GHz"; // Convert to GHz and format
-    }
-}
-
-function initSpotList() {
-  dataTableSpots = $('#spotListTable').DataTable({
-    "paging": false,
-    "order": [
-      [7, "desc"]
-    ],
-    "ordering": true,
-    "info": true,
-    "data": spotList,
-    "columns": [{
-        data: 'callsign'
-      },
-      {
-        data: 'freq',
-        type: 'num',
-        render: function(data, type, row) {
-          if (type == 'sort') return data;
-          return formatFrequency(data);
-        }
-      },
-      {
-        data: 'locator'
-      },
-      {
-        data: 'distance',
-        type: 'num',
-        render: function(data, type, row) {
-          if (type == 'sort') return data;
-          return parseInt(row.distance).toLocaleString();
-        }
-      },
-      {
-        data: 'mode'
-      },
-      {
-        data: 'report'
-      },
-      {
-        data: 'spotter_callsign'
-      },
-      {
-        data: 'timestamp',
-        type: 'num',
-        render: function(data, type, row) {
-          if (type == 'sort') return data;
-          var d = new Date(data*1000);
-          return d.toLocaleDateString() + '  ' + d.toLocaleTimeString();
-        }
-      }
-    ],
-  });
-
-  //$('#spotListTable tbody').on('click', 'tr', function() {
-    //showBeaconOnMap(dataTableUsers.row(this).data().callsign);
-  //});
-}
-
 
 var offset=0;
 
@@ -327,36 +222,6 @@ $(document).ready(function(){
           alert("Reports must be of the form 599, 59 or -16dB");
         }
     }); 
-
-    // spotToCluster(callsign,freq,locator,mode,report)
-    $('#sendUserSpot').on('click', function() {
-        var currentFreq;
-        try {
-          currentFreq = parseFloat($('#userSpotFrequency').val()) * 1000.0;
-          if (isNaN(currentFreq) || currentFreq <= 0) {
-            throw new Error("Invalid frequency");
-          }
-        } catch (e) {
-          alert("Please enter a valid frequency in MHz");
-          return;
-        }
-        const mode = $('#userPropagationModes').val();
-        const spotcall = $('#userSpotCallsign').text();
-        const spotlocator = $('#userSpotLocator').text();
-        const report = $('#userSpotReport').val().trim();
-        if(reportPattern.test(report)){
-          //alert("Spotting "+spotcall+" at "+currentFreq+" at "+spotlocator+" via "+mode+" with report "+report);
-          const spot = spotData(spotcall, currentFreq, spotlocator, mode, report); 
-          spotToCluster(spot);
-          logSpot(spot);
-          $('#userSpotModal').modal('hide');
-        }else{
-          alert("Reports must be of the form 599, 59 or -16dB");
-        }
-    }); 
-    
-    initSpotList();
-    getSpots();
 
 });
 
