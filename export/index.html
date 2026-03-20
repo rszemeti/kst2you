@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
+<<<<<<< Updated upstream
     <meta charset="utf-8">
 <link href="assets/img/favicon-32x32.png" rel="icon">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
@@ -273,5 +273,1326 @@
     <script src="assets/js/Maidenhead.js"></script>
     <script src="assets/js/profile.js"></script>
 </body>
+=======
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+  <title>Kst2You</title>
+  <link href="assets/img/favicon-32x32.png" rel="icon">
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <!-- DataTables + Bootstrap 5 -->
+  <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+  <!-- Existing custom styles -->
+  <link rel="stylesheet" href="assets/css/Bootstrap-Chat.css">
+  <link rel="stylesheet" href="assets/css/styles.css">
 
+  <style>
+    /* ── Layout ── */
+    html, body { height: 100%; overflow: hidden; }
+
+    .tab-full   { height: calc(100vh - 82px); overflow: hidden; }
+    .tab-scroll { height: calc(100vh - 82px); overflow-y: auto; }
+
+    /* ── KST Map tab ── */
+    #tab-map.active { display: flex !important; flex-direction: column; }
+    .map-outer { display: flex; flex: 1; overflow: hidden; min-height: 0; }
+    #map { flex: 1; min-width: 0; min-height: 0; }
+
+    /* ── Scatter tab ── */
+    #tab-scatter.active { display: flex !important; flex-direction: column; }
+    .scatter-layout { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+
+    #scatter-map { flex: 1; min-width: 0; min-height: 200px; }
+
+    /* Right panel */
+    .scatter-right {
+      width: 260px; flex-shrink: 0;
+      display: flex; flex-direction: column;
+      border-left: 1px solid #dee2e6; overflow: hidden;
+    }
+    .sr-controls {
+      padding: 8px 10px; border-bottom: 1px solid #dee2e6;
+      background: #f8f9fa; flex-shrink: 0;
+    }
+    .sr-lbl { font-size: 11px; font-weight: 600; color: #495057; white-space: nowrap; }
+    .s-range-label { font-size: 11px; color: #0d6efd; font-weight: 600; }
+
+    .scatter-results-hdr {
+      padding: 6px 12px; border-bottom: 1px solid #dee2e6; background: #f8f9fa;
+      display: flex; justify-content: space-between; align-items: center;
+      flex-shrink: 0; font-size: 11px; font-weight: 700;
+      letter-spacing: 2px; text-transform: uppercase; color: #6c757d;
+    }
+
+    /* Chat strip */
+    .scatter-chat {
+      height: 130px; display: flex; flex-direction: column;
+      border-top: 2px solid #dee2e6; flex-shrink: 0;
+    }
+    .scs-feed { flex: 1; overflow-y: auto; padding: 3px 10px; font-size: 11px; }
+    .scs-msg  { padding: 1px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.6; }
+    .scs-time { color: #adb5bd; margin-right: 5px; font-family: monospace; }
+    .scs-from { color: #0d6efd; font-weight: 700; margin-right: 4px; font-family: monospace; }
+    .scs-text { color: #212529; }
+    .scs-compose {
+      display: flex; align-items: center; gap: 6px;
+      padding: 5px 8px; border-top: 1px solid #dee2e6;
+      background: #f8f9fa; flex-shrink: 0;
+    }
+    .scs-to   { font-size: 10px; color: #6c757d; white-space: nowrap; font-family: monospace; }
+    .scs-me   { color: #198754 !important; }
+    .scatter-plane-list { flex: 1; overflow-y: auto; }
+
+    .s-section-label {
+      padding: 5px 12px; font-size: 10px; font-weight: 700; letter-spacing: 2px;
+      text-transform: uppercase; background: #e9ecef; border-bottom: 1px solid #dee2e6;
+      color: #495057; display: flex; justify-content: space-between; align-items: center;
+      position: sticky; top: 0; z-index: 1;
+    }
+    .s-section-label.in-path     { background: #cfe2ff; color: #0a58ca; }
+    .s-section-label.approaching { background: #fff3cd; color: #856404; }
+
+    .plane-item { padding: 8px 12px; border-bottom: 1px solid #f0f0f0; }
+    .plane-item:hover { background: #f8f9fa; }
+    .pi-call      { font-weight: 700; font-size: 14px; font-family: monospace; color: #0d6efd; }
+    .pi-call.anon { color: #6c757d; font-size: 12px; }
+    .pi-call.app  { color: #856404; }
+    .pi-grade          { font-size: 10px; letter-spacing: 1px; margin: 0 4px; }
+    .pi-grade.grade-heavy  { color: #0033cc; }
+    .pi-grade.grade-medium { color: #0066ff; }
+    .pi-grade.grade-light  { color: #bbbbbb; }
+    .pi-doppler   { font-size: 12px; font-weight: 600; font-family: monospace; }
+    .pi-doppler.pos { color: #198754; }
+    .pi-doppler.neg { color: #0d6efd; }
+    .pi-meta { font-size: 11px; color: #6c757d; font-family: monospace; }
+    .pi-time     { font-size: 11px; color: #856404; }
+    .pi-time.rem { color: #0a58ca; }
+    .s-empty { padding: 20px 14px; font-size: 13px; color: #6c757d; line-height: 1.7; }
+
+    .scatter-path-bar {
+      padding: 6px 12px; border-top: 1px solid #dee2e6; background: #f8f9fa;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 3px 12px; flex-shrink: 0;
+    }
+    .scatter-path-bar .spf label {
+      color: #6c757d; display: block; font-size: 9px; text-transform: uppercase; letter-spacing: 1px;
+    }
+    .scatter-path-bar .spf span { color: #0d6efd; font-weight: 600; font-family: monospace; font-size: 11px; }
+
+    .scatter-console {
+      background: #212529; color: #adb5bd; font-family: monospace; font-size: 10px;
+      padding: 6px 10px; max-height: 70px; overflow-y: auto; flex-shrink: 0;
+    }
+    .scatter-console .log-ok   { color: #28a745; }
+    .scatter-console .log-err  { color: #dc3545; }
+    .scatter-console .log-info { color: #ffc107; }
+
+    .scatter-status {
+      background: #343a40; color: #adb5bd; font-size: 11px; padding: 3px 14px;
+      display: flex; gap: 20px; align-items: center; font-family: monospace; flex-shrink: 0;
+    }
+    .s-ok   { color: #28a745; }
+    .s-err  { color: #dc3545; }
+    .s-warn { color: #fd7e14; }
+    .s-info { color: #ffc107; }
+  </style>
+</head>
+
+<body>
+>>>>>>> Stashed changes
+
+<!-- ══════════════════════════════════════════════════════
+     NAVBAR
+══════════════════════════════════════════════════════ -->
+<nav class="navbar navbar-expand navbar-dark bg-primary py-1" id="mainNav">
+  <div class="container-fluid gap-2">
+    <span class="navbar-brand h6 mb-0 me-3">
+      <i class="bi bi-broadcast me-1"></i>KST2You
+    </span>
+    <span id="connState" class="text-white-50 small me-1">Wait …</span>
+    <span id="connCount" class="text-white-50 small"></span>
+    <button class="btn btn-sm btn-outline-light ms-auto" id="logOffButton" type="button">Log Off</button>
+    <div class="form-check mb-0 ms-2 text-white d-flex align-items-center gap-1">
+      <input class="form-check-input mt-0" type="checkbox" id="awayButton">
+      <label class="form-check-label small" for="awayButton">Away</label>
+    </div>
+    <button class="btn btn-sm btn-warning ms-2" id="cqButton" type="button">CQ</button>
+    <button class="btn btn-sm btn-outline-light ms-1" id="setNameButton" type="button">Set Name</button>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════════════════════
+     TAB NAV
+══════════════════════════════════════════════════════ -->
+<ul class="nav nav-tabs px-2 pt-1 flex-nowrap" id="mainTabs" role="tablist">
+  <li class="nav-item" id="chatTab" role="presentation">
+    <a class="nav-link active py-1" role="tab" data-bs-toggle="tab" href="#tab-chat">
+      <i class="bi bi-chat-dots me-1"></i>Chat
+    </a>
+  </li>
+  <li class="nav-item" id="userListTab" role="presentation">
+    <a class="nav-link py-1" role="tab" data-bs-toggle="tab" href="#tab-users">
+      <i class="bi bi-people me-1"></i>Users
+    </a>
+  </li>
+  <li class="nav-item" id="mapTab" role="presentation">
+    <a class="nav-link py-1" role="tab" data-bs-toggle="tab" href="#tab-map">
+      <i class="bi bi-map me-1"></i>Map
+    </a>
+  </li>
+  <li class="nav-item" id="scatterTab" role="presentation">
+    <a class="nav-link py-1" role="tab" data-bs-toggle="tab" href="#tab-scatter">
+      <i class="bi bi-airplane me-1"></i>Scatter
+    </a>
+  </li>
+  <li class="nav-item" id="spotsTab" role="presentation">
+    <a class="nav-link py-1" role="tab" data-bs-toggle="tab" href="#tab-spots">
+      <i class="bi bi-broadcast-pin me-1"></i>Beacons Spotted
+    </a>
+  </li>
+  <li class="nav-item" id="aboutTab" role="presentation">
+    <a class="nav-link py-1" role="tab" data-bs-toggle="tab" href="#tab-about">
+      <i class="bi bi-info-circle me-1"></i>About
+    </a>
+  </li>
+</ul>
+
+<!-- ══════════════════════════════════════════════════════
+     TAB CONTENT
+══════════════════════════════════════════════════════ -->
+<div class="tab-content" id="mainTabContent">
+
+  <!-- ── CHAT ── -->
+  <div class="tab-pane fade show active tab-scroll" role="tabpanel" id="tab-chat">
+    <div class="container-fluid pt-2">
+      <div class="row mb-2 align-items-center g-2">
+        <div class="col-auto d-flex align-items-center gap-2">
+          <label class="form-label mb-0 small">Filter by distance</label>
+          <input type="number" id="maxDistance" class="form-control form-control-sm" style="width:90px" step="100">
+          <span class="small">km</span>
+        </div>
+        <div class="col-auto">
+          <div class="form-check mb-0">
+            <input class="form-check-input" type="checkbox" id="aboutMe">
+            <label class="form-check-label small" for="aboutMe">Only messages about me</label>
+          </div>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm table-hover" id="chatLogTable">
+          <thead class="table-light">
+            <tr>
+              <th>Time</th>
+              <th>From</th>
+              <th>To</th>
+              <th>Message</th>
+            </tr>
+          </thead>
+          <tbody id="chatLog"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── USERS ── -->
+  <div class="tab-pane fade tab-scroll" role="tabpanel" id="tab-users">
+    <div class="container-fluid pt-2">
+      <div class="table-responsive">
+        <table id="userListTable" class="table table-sm table-striped table-bordered w-100">
+          <thead>
+            <tr>
+              <th>Call</th>
+              <th>Name</th>
+              <th>Locator</th>
+              <th>Distance / Bearing</th>
+              <th>Last Seen</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MAP ── -->
+  <div class="tab-pane fade tab-full" role="tabpanel" id="tab-map">
+    <div class="map-outer">
+      <div id="map"></div>
+      <div id="bandColumn" class="d-flex flex-column align-items-center border-start p-2 bg-light flex-shrink-0" style="width:84px;overflow-y:auto">
+        <button class="btn btn-warning btn-sm w-100 mb-1" id="gridButton" type="button">Grid</button>
+        <button class="btn btn-warning btn-sm w-100 active mb-2" id="circlesButton" type="button">Circles</button>
+        <span class="small fw-bold mb-1">Beacons</span>
+        <div id="bandList" class="d-flex flex-column w-100 gap-1"></div>
+        <a href="https://beaconspot.uk/" target="_blank" class="small mt-2 text-center">Beaconspot.uk</a>
+      </div>
+    </div>
+    <div id="pathProfile" style="width:100%"></div>
+  </div>
+
+  <!-- ── BEACONS SPOTTED ── -->
+  <div class="tab-pane fade tab-scroll" role="tabpanel" id="tab-spots">
+    <div class="container-fluid pt-2">
+      <div class="table-responsive text-nowrap">
+        <table id="spotListTable" class="table table-sm table-striped table-bordered w-100">
+          <thead>
+            <tr>
+              <th>Call</th>
+              <th>Freq</th>
+              <th>Locator</th>
+              <th>Distance</th>
+              <th>Report</th>
+              <th>Mode</th>
+              <th>Spotter</th>
+              <th>Spot Date</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SCATTER ── -->
+  <div class="tab-pane fade tab-full" role="tabpanel" id="tab-scatter">
+    <div class="scatter-layout">
+
+      <!-- Map (fills remaining space) -->
+      <div id="scatter-map"></div>
+
+      <!-- Right panel -->
+      <div class="scatter-right">
+
+        <!-- Target callsign banner -->
+        <div id="scatter-target-banner" style="display:none;padding:6px 10px;background:#0d6efd;color:#fff;text-align:center;flex-shrink:0;border-bottom:2px solid #0a58ca;">
+          <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;opacity:0.8;line-height:1">Target</div>
+          <div id="scatter-target-call" style="font-size:26px;font-weight:700;font-family:monospace;letter-spacing:2px;line-height:1.2">—</div>
+        </div>
+
+        <!-- Controls strip -->
+        <div class="sr-controls">
+          <!-- Station A → B -->
+          <div class="d-flex align-items-center gap-1 mb-2">
+            <span class="sr-lbl">A</span>
+            <input type="text" id="scatter-loc-a" class="form-control form-control-sm"
+                   placeholder="IO82UJ" maxlength="6"
+                   style="width:62px;text-transform:uppercase;font-family:monospace;font-size:11px">
+            <span class="sr-lbl text-muted">→</span>
+            <span class="sr-lbl">B</span>
+            <input type="text" id="scatter-loc-b" class="form-control form-control-sm"
+                   placeholder="JO22FB" maxlength="6"
+                   style="width:62px;text-transform:uppercase;font-family:monospace;font-size:11px">
+          </div>
+          <!-- Corridor slider -->
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <span class="sr-lbl">Corr&nbsp;<span class="s-range-label" id="scatter-corr-val">5°</span></span>
+            <input type="range" class="form-range" id="scatter-corridor" min="1" max="10" value="5" step="1">
+          </div>
+          <!-- Band + Scan/Clear -->
+          <div class="d-flex gap-1 mb-2">
+            <select id="scatter-band" class="form-select form-select-sm flex-fill" style="font-size:11px">
+              <option value="50">6m · 50 MHz</option>
+              <option value="144" selected>2m · 144 MHz</option>
+              <option value="432">70cm · 432 MHz</option>
+              <option value="1296">23cm · 1296 MHz</option>
+              <option value="custom">Custom…</option>
+            </select>
+            <button class="btn btn-primary btn-sm px-2" id="scatter-scan-btn" onclick="scatterScan()" title="Scan">
+              <i class="bi bi-play-fill"></i>
+            </button>
+            <button class="btn btn-outline-secondary btn-sm px-2" onclick="scatterClear()" title="Clear">
+              <i class="bi bi-stop-fill"></i>
+            </button>
+          </div>
+          <!-- Custom freq (hidden until needed) -->
+          <div id="scatter-custom-wrap" class="mb-2" style="display:none">
+            <input type="text" id="scatter-custom-freq" class="form-control form-control-sm" value="144" placeholder="MHz">
+          </div>
+          <!-- Credential status -->
+          <div class="d-flex align-items-center" style="font-size:10px;gap:6px">
+            <div id="scatter-cred-mini-ok" style="display:none;align-items:center;gap:4px">
+              <i class="bi bi-check-circle-fill text-success"></i>
+              <span id="scatter-cred-name" style="font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px">—</span>
+            </div>
+            <div id="scatter-cred-mini-none" style="display:flex;align-items:center;gap:4px" class="text-warning">
+              <i class="bi bi-exclamation-triangle-fill"></i><span>No credentials</span>
+            </div>
+            <button class="btn btn-link p-0 ms-auto" style="font-size:10px;text-decoration:none"
+                    data-bs-toggle="modal" data-bs-target="#scatterCredModal">creds</button>
+          </div>
+          <!-- Hidden: kept in DOM for JS -->
+          <div style="display:none">
+            <input type="range" id="scatter-lookahead" min="5" max="30" value="10" step="5">
+            <span id="scatter-look-val">10 min</span>
+            <input type="range" id="scatter-refresh" min="30" max="300" value="60" step="30">
+            <span id="scatter-refresh-val">60s</span>
+          </div>
+        </div><!-- /sr-controls -->
+
+        <!-- Aircraft count header -->
+        <div class="scatter-results-hdr">
+          <span>Aircraft</span>
+          <span class="badge bg-primary" id="scatter-count">0</span>
+        </div>
+
+        <!-- Plane list -->
+        <div class="scatter-plane-list" id="scatter-list">
+          <div class="s-empty">
+            <i class="bi bi-info-circle me-1"></i>
+            Set A &amp; B locators, press <i class="bi bi-play-fill"></i>
+          </div>
+        </div>
+
+        <!-- Path summary bar -->
+        <div class="scatter-path-bar" id="scatter-path-bar" style="display:none">
+          <div class="spf"><label>Distance</label><span id="s-pb-dist">—</span></div>
+          <div class="spf"><label>Bearing</label><span id="s-pb-bear">—</span></div>
+          <div class="spf"><label>In Path</label><span id="s-pb-in">—</span></div>
+          <div class="spf"><label>Approaching</label><span id="s-pb-app">—</span></div>
+        </div>
+
+        <!-- Scatter log -->
+        <div class="scatter-console" id="scatter-console"></div>
+
+      </div><!-- /scatter-right -->
+
+    </div><!-- /scatter-layout -->
+
+    <!-- KST Chat strip -->
+    <div class="scatter-chat">
+      <div class="scs-feed" id="scatter-chat-feed"></div>
+      <div class="scs-compose">
+        <span class="scs-to">→ <span id="scatter-chat-to">—</span></span>
+        <input type="text" class="form-control form-control-sm" id="scatter-chat-input"
+               placeholder="Message…" maxlength="200" style="flex:1">
+        <button class="btn btn-primary btn-sm" onclick="scatterChatSend()" title="Send">
+          <i class="bi bi-send-fill"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Status bar -->
+    <div class="scatter-status">
+      <span id="scatter-status" class="s-info">Ready</span>
+      <span>Last scan: <span id="scatter-last-scan">—</span></span>
+      <span class="ms-auto" style="opacity:.5;font-size:10px">OpenSky Network</span>
+    </div>
+  </div><!-- /tab-scatter -->
+
+  <!-- ── ABOUT ── -->
+  <div class="tab-pane fade tab-scroll" role="tabpanel" id="tab-about">
+    <div class="container pt-3" style="max-width:800px">
+      <p>KST2YOU is a project by Robin Szemeti, G1YFG. It aims to provide a web-based interface to the KST service, accessible on any modern browser, regardless of the device. If you have a feature request or comments, please contact me via my email as published on QRZ.com.</p>
+      <hr>
+      <h5 class="text-primary">Beacon data from UK Microwave Group / Beaconspot.uk</h5>
+      <p>Beacon data is current data kindly supplied by Beaconspot, a website run by the UK Microwave group. If you enjoy microwave radio or would like to contribute to the upkeep of our servers, beacon network or just receive our monthly newsletter, please consider a subscription (just £6 a year at the time of writing) — every little helps! <a class="fw-bold" href="https://www.beaconspot.uk/index2.php" target="_blank">BeaconSpot</a> and <a class="fw-bold" href="https://www.microwavers.org/index.htm?membership.htm" target="_blank">Microwavers.org</a> appreciate your support.</p>
+      <hr>
+      <p>Privacy: I do not store your passwords. These are only stored in your browser if you select "remember me". I do keep a log of callsigns that have used the service and any DXC cluster spots purely for statistics. I do not log your messages either sent or received. Since I started collecting numbers in late October 2023, there have been <span id="userCount"></span> logins to the service and <span id="spotCount"></span> spots reported.</p>
+      <p>A basic write-up on the various functions and features may be found on my blog <a href="https://g1yfg.blogspot.com/2021/12/kst2you-alternative-interface-to-kst.html">https://g1yfg.blogspot.com</a></p>
+      <p id="licencePanel">
+        <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">
+          <img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png">
+        </a><br>
+        This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
+      </p>
+      <p>
+        <button class="btn btn-primary" id="beepTestButton" type="button">Beep Test</button>
+        Test your audio here — this is the "beep" you will hear when a station calls you.
+      </p>
+    </div>
+  </div>
+
+</div><!-- /tab-content -->
+
+
+<!-- ══════════════════════════════════════════════════════
+     MODALS
+══════════════════════════════════════════════════════ -->
+
+<!-- Login -->
+<div class="modal fade" id="loginModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Login Details</h5>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-danger" id="loginError" style="display:none">
+          <span id="loginErrorMessage"><strong>Alert</strong> text.</span>
+        </div>
+        <div class="mb-2 row">
+          <label class="col-3 col-form-label">Chat Group</label>
+          <div class="col"><select id="chatId" class="form-select"></select></div>
+        </div>
+        <div class="mb-2 row">
+          <label class="col-3 col-form-label">Callsign</label>
+          <div class="col"><input type="text" id="userInput" class="form-control" autocomplete="username"></div>
+        </div>
+        <div class="mb-2 row">
+          <label class="col-3 col-form-label">Password</label>
+          <div class="col"><input type="password" id="passInput" class="form-control" autocomplete="current-password"></div>
+        </div>
+        <div class="mb-0 row">
+          <label class="col-3 col-form-label">Register?</label>
+          <div class="col">
+            <p class="small mb-0">To use this service you need a KST account. You can register <a href="http://www.on4kst.info/chat/register.php" target="_blank">here</a>.</p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer justify-content-between">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="rememberMe">
+          <label class="form-check-label" for="rememberMe">Remember me</label>
+        </div>
+        <button class="btn btn-primary" id="registerButton" type="button">Log In</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Chat Popup -->
+<div class="modal fade" id="modalChat" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <div class="d-flex align-items-center gap-3 flex-grow-1 me-2">
+          <strong class="text-primary" id="chatPopupUser"></strong>
+          <ul class="list-inline mb-0 small" id="chatLocationUL" style="cursor:pointer" title="Show On Map">
+            <li class="list-inline-item text-muted" id="chatPopupLocator"></li>
+            <li class="list-inline-item text-muted" id="chatPopupBearing"></li>
+            <li class="list-inline-item">
+              <button class="btn btn-primary btn-sm py-0 px-2" id="chatPopupSpotButton" type="button">Spot</button>
+            </li>
+          </ul>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body py-2" id="chatWindow"></div>
+      <div class="modal-footer py-1 gap-2">
+        <input class="form-control form-control-sm" type="text" id="chatPopupMessageInput" placeholder="Write your message" style="flex:1">
+        <button class="btn btn-primary btn-sm" id="chatPopupSendButton" type="button">Send</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Location -->
+<div class="modal fade" id="locationModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Location</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row mb-1"><div class="col-4">Latitude</div><div class="col" id="currentLat"></div></div>
+        <div class="row mb-1"><div class="col-4">Longitude</div><div class="col" id="currentLng"></div></div>
+        <div class="row mb-1"><div class="col-4">Dist / Bearing</div><div class="col" id="arbitaryDistBearing"></div></div>
+        <div class="row" id="gridSquareRow"><div class="col-4">Grid Square</div><div class="col" id="currentGrid"></div></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" type="button" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" id="setLocation" type="button">Set My Location</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Beacon Spot -->
+<div class="modal fade" id="bcnSpotModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Beacon spot to DX Cluster</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row mb-2"><div class="col-4">Callsign</div><div class="col fw-bold" id="bcnSpotCallsign"></div></div>
+        <div class="row mb-2">
+          <div class="col-4">Frequency</div>
+          <div class="col d-flex align-items-center gap-1">
+            <span id="bcnSpotFreq" class="fw-bold"></span>
+            <button class="btn btn-sm btn-outline-secondary py-0" id="increaseFreq" type="button"><i class="bi bi-arrow-up-circle"></i></button>
+            <button class="btn btn-sm btn-outline-secondary py-0" id="decreaseFreq" type="button"><i class="bi bi-arrow-down-circle"></i></button>
+            <span id="bcnOffset" class="small text-muted"></span>
+          </div>
+        </div>
+        <div class="row mb-2"><div class="col-4">Grid Square</div><div class="col" id="bcnSpotLocator"></div></div>
+        <div class="row mb-2"><div class="col-4">Dist / Bearing</div><div class="col" id="bcnSpotDistBearing"></div></div>
+        <div class="row mb-2">
+          <div class="col-4">Propagation</div>
+          <div class="col"><select id="bcnPropagationModes" class="form-select form-select-sm propagationModes"></select></div>
+        </div>
+        <div class="row mb-0">
+          <div class="col-4">Report</div>
+          <div class="col"><input type="text" id="bcnSpotReport" class="form-control form-control-sm" value="599"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" type="button" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" id="sendBcnSpot" type="button">Send Spot</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- User Spot -->
+<div class="modal fade" id="userSpotModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Send spot to DX Cluster</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row mb-2"><div class="col-4">Callsign</div><div class="col fw-bold" id="userSpotCallsign"></div></div>
+        <div class="row mb-2">
+          <div class="col-4">Frequency</div>
+          <div class="col d-flex align-items-center gap-1">
+            <input type="number" id="userSpotFrequency" class="form-control form-control-sm" style="width:110px">
+            <span class="small">MHz</span>
+          </div>
+        </div>
+        <div class="row mb-2"><div class="col-4">Grid Square</div><div class="col" id="userSpotLocator"></div></div>
+        <div class="row mb-2"><div class="col-4">Dist / Bearing</div><div class="col" id="userSpotDistBearing"></div></div>
+        <div class="row mb-2">
+          <div class="col-4">Propagation</div>
+          <div class="col"><select id="userPropagationModes" class="form-select form-select-sm propagationModes"></select></div>
+        </div>
+        <div class="row mb-0">
+          <div class="col-4">Report</div>
+          <div class="col"><input type="text" id="userSpotReport" class="form-control form-control-sm" value="599"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" type="button" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" id="sendUserSpot" type="button">Send Spot</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CQ -->
+<div class="modal fade" id="cqModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">CQ …</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-2" id="cqDropDownRow">
+          <label class="form-label small">Stored Messages</label>
+          <select id="cqMesgSelector" class="form-select form-select-sm">
+            <option value="" disabled selected>Choose a message</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label small">Message Text</label>
+          <input class="form-control form-control-sm" type="text" id="cqMesgText" placeholder="type or select from dropdown">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" type="button" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" id="sendCqButton" type="button">Send</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Set Name -->
+<div class="modal fade" id="setNameModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Set Your Name</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-warning" id="setNameAlert" style="display:none">
+          <span id="setNameAlertText"><strong>Warning</strong></span>
+        </div>
+        <div>
+          <label class="form-label small">Name</label>
+          <input class="form-control form-control-sm" type="text" id="setNameText" placeholder="">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" type="button" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" id="sendSetNameButton" type="button">Set Name</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SCATTER CREDENTIALS MODAL ── -->
+<div class="modal fade" id="scatterCredModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title mb-0"><i class="bi bi-key me-1"></i>OpenSky Credentials</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="scatter-cred-ok" style="display:none">
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-check-circle-fill text-success fs-5"></i>
+            <span style="font-family:monospace;font-weight:600" id="scatter-cred-name-modal">—</span>
+          </div>
+          <button class="btn btn-outline-secondary btn-sm w-100" onclick="scatterClearCreds()">
+            <i class="bi bi-arrow-repeat me-1"></i>Change Credentials
+          </button>
+        </div>
+        <div id="scatter-cred-drop">
+          <div id="scatter-drop-zone"
+               style="border:2px dashed #dee2e6;border-radius:6px;padding:28px 10px;
+                      text-align:center;font-size:11px;color:#6c757d;cursor:pointer;transition:all 0.15s"
+               ondragover="event.preventDefault();this.style.borderColor='#0d6efd';this.style.background='#f0f4ff'"
+               ondragleave="this.style.borderColor='#dee2e6';this.style.background=''"
+               ondrop="scatterCredDrop(event)"
+               onclick="document.getElementById('scatter-cred-file').click()">
+            <i class="bi bi-file-earmark-arrow-down d-block mb-2" style="font-size:32px"></i>
+            Drop <code>credentials.json</code><br>or click to browse
+          </div>
+          <input type="file" id="scatter-cred-file" accept=".json" style="display:none"
+                 onchange="scatterCredFile(this.files[0])">
+          <div id="scatter-cred-spinner" class="text-center mt-2" style="display:none;font-size:11px;color:#6c757d">
+            <div class="spinner-border spinner-border-sm text-primary me-1" role="status"></div>
+            Validating…
+          </div>
+          <div class="mt-2 text-muted" style="font-size:10px;line-height:1.5">
+            Stored in <code>localStorage</code> only.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden debug window (used by sendMsg in Kst.js) -->
+<div id="debugWindow" style="display:none"></div>
+
+
+<!-- ══════════════════════════════════════════════════════
+     SCRIPTS
+══════════════════════════════════════════════════════ -->
+
+<!-- jQuery (required by existing JS modules) -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<!-- Bootstrap 5 bundle (Popper included) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- DataTables + Bootstrap 5 integration -->
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<!-- Reconnecting WebSocket -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reconnecting-websocket/1.0.0/reconnecting-websocket.min.js"></script>
+<!-- Google jsapi — needed by profile.js for google.visualization charts -->
+<script src="https://www.google.com/jsapi"></script>
+
+<!-- ── App modules (load order matters) ── -->
+<script src="assets/js/beep.js"></script>
+<script src="assets/js/Kst.js"></script>
+<script src="assets/js/Logging.js"></script>
+<script src="assets/js/Maidenhead.js"></script>
+<script src="assets/js/Map.js"></script>
+<script src="assets/js/profile.js"></script>
+<script src="assets/js/QRZ.js"></script>
+<script src="assets/js/Beacons.js"></script>
+
+<!-- ScatterTrack module -->
+<script src="../opensky_integration/scatter-track.js"></script>
+
+
+<!-- ══════════════════════════════════════════════════════
+     SCATTER INTEGRATION
+══════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+
+  // ── State ──────────────────────────────────────────
+  let scatterMap = null;
+  let scatterMapReady = false;
+  let scatterAutoScan = false;
+  let scatterChatCallsign = null;
+
+  // ── Auto-fill Station A when KST login sets our locator ────
+  // Wraps setMyLocator() from Kst.js after DOMContentLoaded.
+  const _SELF_DOT = 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png';
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const _origSetLoc = window.setMyLocator;
+    window.setMyLocator = function (loc) {
+      _origSetLoc(loc);
+      const el = document.getElementById('scatter-loc-a');
+      if (el && !el.value) el.value = loc.toUpperCase();
+    };
+
+    // BS5: .modal(options) only initialises — doLogoff() needs an explicit show.
+    const _origLogoff = window.doLogoff;
+    window.doLogoff = function () {
+      _origLogoff();
+      $('#loginModal').modal('show');
+    };
+
+    // Load saved OpenSky credentials once DOM is ready
+    (function () {
+      const id     = localStorage.getItem('opensky_client_id')     || '';
+      const secret = localStorage.getItem('opensky_client_secret') || '';
+      if (id && secret) showCredsOk(id);
+    })();
+
+    // Wrap addMapMarker so own station always gets a blue dot on the main map.
+    const _origAddMapMarker = window.addMapMarker;
+    window.addMapMarker = function (stn) {
+      _origAddMapMarker(stn);
+      if (typeof userName !== 'undefined' && stn.callsign === userName && stn.marker) {
+        stn.marker.setIcon(_SELF_DOT);
+        // Keep blue even when away/back status changes
+        const _origAway = stn.setAway.bind(stn);
+        const _origBack = stn.setBack.bind(stn);
+        stn.setAway = function () { _origAway(); stn.marker.setIcon(_SELF_DOT); };
+        stn.setBack = function () { _origBack(); stn.marker.setIcon(_SELF_DOT); };
+      }
+    };
+  });
+
+  // ── Scatter map — lazy init on first tab show ───────
+  document.addEventListener('shown.bs.tab', function (e) {
+    if (e.target.getAttribute('href') !== '#tab-scatter') return;
+
+    // Pop credentials modal immediately if no creds saved
+    const hasCreds = localStorage.getItem('opensky_client_id') &&
+                     localStorage.getItem('opensky_client_secret');
+    if (!hasCreds) {
+      bootstrap.Modal.getOrCreateInstance(
+        document.getElementById('scatterCredModal')
+      ).show();
+    }
+
+    if (scatterMapReady) {
+      if (scatterAutoScan) { scatterAutoScan = false; scatterScan(); }
+      return;
+    }
+
+    // Google Maps is loaded dynamically by Kst.js; poll until ready.
+    const tryInit = setInterval(function () {
+      if (typeof google === 'undefined' || !google.maps) return;
+      clearInterval(tryInit);
+
+      // setTimeout lets the browser paint the flex layout before Maps measures the div
+      setTimeout(function () {
+        scatterMap = new google.maps.Map(document.getElementById('scatter-map'), {
+          center: { lat: 52.5, lng: 0.5 },
+          zoom: 6,
+          mapTypeId: 'roadmap',
+          zoomControl: true,
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: false,
+        });
+        scatterMapReady = true;
+        google.maps.event.trigger(scatterMap, 'resize');
+        scatterLog('Map ready', 'ok');
+
+        // Pre-fill Station A if already logged in
+        const locA = document.getElementById('scatter-loc-a');
+        if (locA && !locA.value && typeof myLoc !== 'undefined' && myLoc) {
+          locA.value = myLoc.toUpperCase();
+        }
+
+        // ── Path info overlay (bottom-left of map) ──────
+        const pathOverlay = document.createElement('div');
+        pathOverlay.id = 'scatter-map-overlay';
+        pathOverlay.style.cssText = [
+          'background:rgba(0,0,0,0.62)',
+          'color:#fff',
+          'font-family:monospace',
+          'font-size:15px',
+          'line-height:1.4',
+          'padding:6px 10px',
+          'border-radius:4px',
+          'margin:0 0 8px 8px',
+          'pointer-events:none',
+          'display:none',
+          'white-space:nowrap',
+        ].join(';');
+        scatterMap.controls[google.maps.ControlPosition.BOTTOM_LEFT].push(pathOverlay);
+
+        refreshStationMarkers();
+        if (scatterAutoScan) { scatterAutoScan = false; scatterScan(); }
+      }, 300);
+    }, 200);
+  });
+
+  // ── Inject ✈ scatter buttons into user list rows ────
+  // Runs after every DataTable draw without modifying Kst.js.
+  $(document).on('draw.dt', '#userListTable', function () {
+    $(this).find('tbody tr').each(function () {
+      if ($(this).find('.scatter-btn').length) return;
+      const locCell  = $(this).find('td:nth-child(3)');
+      const callCell = $(this).find('td:nth-child(1)');
+      const loc  = locCell.text().trim().substring(0, 6);
+      const call = callCell.text().trim().split(/\s/)[0]; // strip decorations
+      if (loc.length >= 4) {
+        locCell.append(
+          ' <button class="btn btn-outline-primary btn-sm py-0 px-1 scatter-btn"' +
+          ' data-loc="' + loc + '" data-call="' + call + '"' +
+          ' title="Check scatter path to ' + loc + '">✈</button>'
+        );
+      }
+    });
+  });
+
+  $(document).on('click', '.scatter-btn', function (e) {
+    e.stopPropagation();
+    setScatterTarget($(this).data('loc'), $(this).data('call'));
+  });
+
+  // ── KST station markers on scatter map ─────────────
+  let _stationMarkers = {}; // call → google.maps.Marker
+
+  const _DOT_BASE = 'https://maps.google.com/mapfiles/ms/icons/';
+  function stationDotUrl (isTarget, isAway) {
+    if (isTarget) return _DOT_BASE + 'yellow-dot.png';
+    return isAway  ? _DOT_BASE + 'red-dot.png' : _DOT_BASE + 'green-dot.png';
+  }
+
+  // Own station uses the same blue dot as the main map
+  function selfIcon () { return _SELF_DOT; }
+
+  function refreshStationMarkers () {
+    if (!scatterMapReady || !scatterMap) return;
+
+    const current = {}; // call → { loc, lat, lon, isAway }
+    $('#userListTable tbody tr').each(function () {
+      const loc       = $(this).find('td:nth-child(3)').text().trim().substring(0, 6);
+      const rawCall   = $(this).find('td:nth-child(1)').text().trim().split(/\s/)[0];
+      const call      = rawCall.replace(/^[\[(]|[\])]$/g, ''); // strip (CALL) decoration
+      if (loc.length >= 4 && call) {
+        const pos = ScatterTrack.geo.maidenheadToLatLon(loc);
+        if (pos) {
+          // Mirror away-status from the main map's stationList if available
+          const stnObj = (typeof stationList !== 'undefined') ? stationList[call] : null;
+          const isAway = stnObj ? stnObj.isAway() : false;
+          current[call] = { loc, lat: pos.lat, lon: pos.lon, isAway };
+        }
+      }
+    });
+
+    // Remove markers for stations no longer online
+    Object.keys(_stationMarkers).forEach(call => {
+      if (!current[call]) { _stationMarkers[call].setMap(null); delete _stationMarkers[call]; }
+    });
+
+    // Add/update markers
+    Object.entries(current).forEach(([call, info]) => {
+      const isSelf   = (typeof userName !== 'undefined') && call === userName;
+      const isTarget = call === scatterChatCallsign;
+      const icon     = isSelf ? selfIcon() : stationDotUrl(isTarget, info.isAway);
+      const zIdx     = isSelf ? 25 : isTarget ? 20 : 2;
+      if (_stationMarkers[call]) {
+        _stationMarkers[call].setIcon(icon);
+        _stationMarkers[call].setZIndex(zIdx);
+      } else {
+        const m = new google.maps.Marker({
+          position: { lat: info.lat, lng: info.lon },
+          map:      scatterMap,
+          title:    call + ' · ' + info.loc,
+          icon:     icon,
+          zIndex:   zIdx,
+        });
+        m.addListener('click', () => window.setScatterTarget(info.loc, call));
+        _stationMarkers[call] = m;
+      }
+    });
+  }
+
+  // Rebuild station markers on every user-list redraw
+  $(document).on('draw.dt', '#userListTable', function () {
+    refreshStationMarkers();
+  });
+
+  // ── Public: set Station B and switch to Scatter tab ─
+  window.setScatterTarget = function (locator, callsign) {
+    document.getElementById('scatter-loc-b').value = locator.toUpperCase();
+    if (callsign) window.scatterChatSetTarget(callsign);
+    if (scatterMapReady) {
+      scatterScan();
+    } else {
+      scatterAutoScan = true;
+      bootstrap.Tab.getOrCreateInstance(
+        document.querySelector('#scatterTab [data-bs-toggle="tab"]')
+      ).show();
+    }
+  };
+
+  // ── Range slider listeners ──────────────────────────
+  document.getElementById('scatter-corridor').addEventListener('input', function () {
+    document.getElementById('scatter-corr-val').textContent = this.value + '°';
+    if (scatterMapReady) ScatterTrack.setCorridorDeg(parseInt(this.value));
+  });
+  document.getElementById('scatter-lookahead').addEventListener('input', function () {
+    document.getElementById('scatter-look-val').textContent = this.value + ' min';
+  });
+  document.getElementById('scatter-refresh').addEventListener('input', function () {
+    document.getElementById('scatter-refresh-val').textContent = this.value + 's';
+  });
+  document.getElementById('scatter-band').addEventListener('change', function () {
+    document.getElementById('scatter-custom-wrap').style.display =
+      this.value === 'custom' ? 'block' : 'none';
+  });
+
+  function getFreqMHz () {
+    const v = document.getElementById('scatter-band').value;
+    return v === 'custom'
+      ? parseFloat(document.getElementById('scatter-custom-freq').value) || 144
+      : parseFloat(v);
+  }
+
+  // ── OpenSky credentials ────────────────────────────
+  // (loaded inside DOMContentLoaded above, once DOM is ready)
+
+  function showCredsOk (id) {
+    document.getElementById('scatter-cred-name').textContent       = id;
+    document.getElementById('scatter-cred-name-modal').textContent = id;
+    document.getElementById('scatter-cred-ok').style.display       = 'block';
+    document.getElementById('scatter-cred-drop').style.display     = 'none';
+    document.getElementById('scatter-cred-mini-ok').style.display  = 'flex';
+    document.getElementById('scatter-cred-mini-none').style.display = 'none';
+    const modal = bootstrap.Modal.getInstance(document.getElementById('scatterCredModal'));
+    if (modal) modal.hide();
+  }
+
+  function showCredsDrop () {
+    document.getElementById('scatter-cred-ok').style.display        = 'none';
+    document.getElementById('scatter-cred-drop').style.display      = 'block';
+    document.getElementById('scatter-cred-spinner').style.display   = 'none';
+    document.getElementById('scatter-cred-mini-ok').style.display   = 'none';
+    document.getElementById('scatter-cred-mini-none').style.display = 'flex';
+    const zone = document.getElementById('scatter-drop-zone');
+    zone.style.display     = 'block';
+    zone.style.borderColor = '#dee2e6';
+    zone.style.background  = '';
+  }
+
+  window.scatterClearCreds = function () {
+    localStorage.removeItem('opensky_client_id');
+    localStorage.removeItem('opensky_client_secret');
+    showCredsDrop();
+    scatterLog('Credentials cleared', 'info');
+  };
+
+  window.scatterCredDrop = function (event) {
+    event.preventDefault();
+    document.getElementById('scatter-drop-zone').style.borderColor = '#dee2e6';
+    document.getElementById('scatter-drop-zone').style.background  = '';
+    scatterCredFile(event.dataTransfer.files[0]);
+  };
+
+  window.scatterCredFile = function (file) {
+    if (!file || !file.name.endsWith('.json')) {
+      scatterLog('Please drop a .json file', 'err'); return;
+    }
+    const reader = new FileReader();
+    reader.onload = async function (e) {
+      try {
+        const json   = JSON.parse(e.target.result);
+        const id     = json.clientId     || json.client_id     || json.id     || '';
+        const secret = json.clientSecret || json.client_secret || json.secret || '';
+        if (!id || !secret) {
+          scatterLog('Could not find clientId / clientSecret in JSON', 'err'); return;
+        }
+        document.getElementById('scatter-drop-zone').style.display    = 'none';
+        document.getElementById('scatter-cred-spinner').style.display = 'block';
+        scatterLog('Validating credentials for: ' + id, 'info');
+        try {
+          await validateOpenSkyToken(id, secret);
+          localStorage.setItem('opensky_client_id',     id);
+          localStorage.setItem('opensky_client_secret', secret);
+          showCredsOk(id);
+          scatterLog('Credentials validated and saved: ' + id, 'ok');
+        } catch (err) {
+          document.getElementById('scatter-drop-zone').style.display    = 'block';
+          document.getElementById('scatter-cred-spinner').style.display = 'none';
+          const zone = document.getElementById('scatter-drop-zone');
+          zone.style.borderColor = '#dc3545';
+          zone.style.background  = '#fff5f5';
+          scatterLog('Validation failed: ' + err.message, 'err');
+          setTimeout(function () {
+            zone.style.borderColor = '#dee2e6';
+            zone.style.background  = '';
+          }, 3000);
+        }
+      } catch (err) {
+        scatterLog('Invalid JSON: ' + err.message, 'err');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  async function validateOpenSkyToken (id, secret) {
+    const r = await fetch(
+      'https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ grant_type: 'client_credentials', client_id: id, client_secret: secret })
+      }
+    );
+    const d = await r.json();
+    if (d.access_token) return true;
+    throw new Error(d.error_description || d.error || 'Invalid credentials');
+  }
+
+  // ── Scan / Clear ───────────────────────────────────
+  window.scatterScan = function () {
+    if (!scatterMapReady) {
+      scatterLog('Map not ready — open the Scatter tab first', 'err'); return;
+    }
+    const locA   = document.getElementById('scatter-loc-a').value.trim().toUpperCase();
+    const locB   = document.getElementById('scatter-loc-b').value.trim().toUpperCase();
+    if (locA.length < 4 || locB.length < 4) {
+      scatterLog('Please enter valid Maidenhead locators for both stations', 'err'); return;
+    }
+    const id     = localStorage.getItem('opensky_client_id')     || '';
+    const secret = localStorage.getItem('opensky_client_secret') || '';
+
+    document.getElementById('scatter-scan-btn').disabled = true;
+    scatterSetStatus('Scanning…', 'info');
+    scatterLog('Scanning ' + locA + ' → ' + locB + ' on ' + getFreqMHz() + ' MHz', 'info');
+
+    ScatterTrack.init(scatterMap, {
+      myLocator:     locA,
+      theirLocator:  locB,
+      band:          getFreqMHz(),
+      corridorDeg:   parseInt(document.getElementById('scatter-corridor').value),
+      lookaheadMins: parseInt(document.getElementById('scatter-lookahead').value),
+      refreshSecs:   parseInt(document.getElementById('scatter-refresh').value),
+      clientId:      id     || undefined,
+      clientSecret:  secret || undefined,
+      onUpdate: function (_ref) {
+        const inPath = _ref.inPath, approaching = _ref.approaching,
+              all    = _ref.all,   pathInfo    = _ref.pathInfo,
+              error  = _ref.error;
+        document.getElementById('scatter-scan-btn').disabled = false;
+        if (error) {
+          if (_ref.rateLimited) {
+            const msg = 'Rate limited — retrying in ' + _ref.retryAfter + 's';
+            scatterSetStatus(msg, 'warn');
+            scatterLog(msg, 'warn');
+          } else {
+            scatterSetStatus('Error: ' + error, 'err');
+            scatterLog(error, 'err');
+          }
+          return;
+        }
+        document.getElementById('scatter-last-scan').textContent =
+          new Date().toUTCString().slice(17, 25) + ' UTC';
+        document.getElementById('scatter-count').textContent = all.length;
+        scatterSetStatus(
+          all.length + ' AC · ' + inPath.length + ' in path · ' + approaching.length + ' approaching',
+          'ok'
+        );
+        scatterLog(all.length + ' AC — ' + inPath.length + ' in corridor, ' +
+                   approaching.length + ' approaching', 'ok');
+        renderScatterResults(inPath, approaching);
+        updateScatterPathBar(pathInfo);
+      }
+    });
+    ScatterTrack.scan();
+  };
+
+  window.scatterClear = function () {
+    ScatterTrack.clear();
+    document.getElementById('scatter-list').innerHTML =
+      '<div class="s-empty"><i class="bi bi-x-circle me-1"></i>Cleared.</div>';
+    document.getElementById('scatter-path-bar').style.display = 'none';
+    document.getElementById('scatter-count').textContent = '0';
+    scatterSetStatus('Cleared', 'info');
+    scatterLog('Cleared', 'info');
+  };
+
+  // ── Directed chat strip ────────────────────────────
+  function scHtml (s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function scatterChatAppend (msg) {
+    const feed = document.getElementById('scatter-chat-feed');
+    if (!feed) return;
+    const isMe = (msg.from === (window.userName || ''));
+    const div  = document.createElement('div');
+    div.className = 'scs-msg';
+    div.innerHTML =
+      '<span class="scs-from' + (isMe ? ' scs-me' : '') + '">' + scHtml(msg.from) + '</span>' +
+      '<span class="scs-text">' + scHtml(msg.text) + '</span>';
+    feed.appendChild(div);
+    feed.scrollTop = feed.scrollHeight;
+    while (feed.children.length > 150) feed.removeChild(feed.firstChild);
+  }
+
+  // Set the target callsign for the scatter chat and seed from message history
+  window.scatterChatSetTarget = function (callsign) {
+    if (!callsign || callsign === '0') return;
+    scatterChatCallsign = callsign.toUpperCase();
+    const feed = document.getElementById('scatter-chat-feed');
+    const toEl = document.getElementById('scatter-chat-to');
+    if (feed) feed.innerHTML = '';
+    if (toEl) toEl.textContent = scatterChatCallsign;
+
+    // Big callsign banner in right panel
+    const banner   = document.getElementById('scatter-target-banner');
+    const callDisp = document.getElementById('scatter-target-call');
+    if (banner)   { callDisp.textContent = scatterChatCallsign; banner.style.display = 'block'; }
+
+    // Refresh marker highlights to show new target in red
+    refreshStationMarkers();
+
+    // Seed with existing message history
+    if (window.messageLog && window.messageLog[scatterChatCallsign]) {
+      window.messageLog[scatterChatCallsign].forEach(scatterChatAppend);
+    }
+    if (feed) feed.scrollTop = feed.scrollHeight;
+  };
+
+  // Wrap appendToCurrentChat (global in Kst.js) to mirror directed messages here
+  (function () {
+    const _orig = window.appendToCurrentChat;
+    window.appendToCurrentChat = function (msg) {
+      if (_orig) _orig(msg);
+      if (scatterChatCallsign &&
+          (msg.from === scatterChatCallsign || msg.to === scatterChatCallsign)) {
+        scatterChatAppend(msg);
+      }
+    };
+  })();
+
+  window.scatterChatSend = function () {
+    const input = document.getElementById('scatter-chat-input');
+    const text  = input.value.trim();
+    if (!text) return;
+    if (!scatterChatCallsign) {
+      scatterLog('No target — click ✈ on a station first', 'err'); return;
+    }
+    if (typeof sendMsg === 'undefined' || typeof chatId === 'undefined') {
+      scatterLog('Not connected', 'err'); return;
+    }
+    sendMsg('MSG|' + chatId + '|0|/CQ ' + scatterChatCallsign + ' ' + text + '|0|');
+    input.value = '';
+  };
+
+  document.getElementById('scatter-chat-input').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') window.scatterChatSend();
+  });
+
+  // ── Results rendering ──────────────────────────────
+  function renderScatterResults (inPath, approaching) {
+    const list = document.getElementById('scatter-list');
+    list.innerHTML = '';
+    if (!inPath.length && !approaching.length) {
+      list.innerHTML = '<div class="s-empty"><i class="bi bi-search me-1"></i>No aircraft in corridor or approaching.</div>';
+      return;
+    }
+    if (inPath.length) {
+      const h = document.createElement('div');
+      h.className = 's-section-label in-path';
+      h.innerHTML = '<span><i class="bi bi-airplane-fill me-1"></i>In Path Now</span>' +
+                    '<span class="badge bg-primary">' + inPath.length + '</span>';
+      list.appendChild(h);
+      inPath.forEach(function (p) { list.appendChild(makePlaneItem(p, false)); });
+    }
+    if (approaching.length) {
+      const h = document.createElement('div');
+      h.className = 's-section-label approaching';
+      h.innerHTML = '<span><i class="bi bi-arrow-right-circle me-1"></i>Approaching</span>' +
+                    '<span class="badge bg-warning text-dark">' + approaching.length + '</span>';
+      list.appendChild(h);
+      approaching.forEach(function (p) { list.appendChild(makePlaneItem(p, true)); });
+    }
+  }
+
+  function makePlaneItem (p, isApproaching) {
+    const div = document.createElement('div');
+    div.className = 'plane-item';
+    const dPos = p.doppler != null && p.doppler >= 0;
+    const dopplerHtml = p.dopplerKHz
+      ? '<span class="pi-doppler ' + (dPos ? 'pos' : 'neg') + '">' + p.dopplerKHz + ' kHz</span>'
+      : '';
+    const timeHtml = isApproaching
+      ? '<div class="pi-time"><i class="bi bi-clock me-1"></i>Entry in ~' + Math.round(p.minsToEntry) + ' min</div>'
+      : p.minsInPath != null
+        ? '<div class="pi-time rem"><i class="bi bi-hourglass-split me-1"></i>~' + Math.round(p.minsInPath) + ' min remaining</div>'
+        : '';
+    const callClass = p.callsign ? (isApproaching ? 'app' : '') : 'anon';
+    const gradeStars = p.grade === 'heavy' ? '★★★' : p.grade === 'medium' ? '★★' : '★';
+    const gradeCls   = 'grade-' + (p.grade || 'light');
+    div.innerHTML =
+      '<div class="d-flex justify-content-between align-items-baseline mb-1">' +
+        '<span class="pi-call ' + callClass + '">' + (p.callsign || p.icao.toUpperCase()) + '</span>' +
+        '<span class="pi-grade ' + gradeCls + '">' + gradeStars + '</span>' +
+        dopplerHtml +
+      '</div>' +
+      '<div class="pi-meta">' +
+        (p.altFt    != null ? Math.round(p.altFt / 100) * 100 + ' ft' : '—') + ' · ' +
+        (p.velocity != null ? p.velocity + ' kt' : '—') + ' · ' +
+        (p.heading  != null ? p.heading  + '°'   : '—') + ' · ' +
+        Math.round(p.distFromMid) + ' km' +
+      '</div>' + timeHtml;
+    return div;
+  }
+
+  function updateScatterPathBar (pi) {
+    if (!pi) return;
+    document.getElementById('scatter-path-bar').style.display = 'grid';
+    document.getElementById('s-pb-dist').textContent = pi.distance + ' km';
+    document.getElementById('s-pb-bear').textContent = pi.bearing  + '°';
+    document.getElementById('s-pb-in').textContent   = pi.inPathCount;
+    document.getElementById('s-pb-app').textContent  = pi.approachingCount;
+
+    // Update the map overlay
+    const ov = document.getElementById('scatter-map-overlay');
+    if (ov) {
+      const locA = (document.getElementById('scatter-loc-a').value || '?').toUpperCase();
+      const locB = (document.getElementById('scatter-loc-b').value || '?').toUpperCase();
+      const callLine = scatterChatCallsign
+        ? '<span style="font-size:22px;font-weight:700;letter-spacing:2px;color:#7df">' + scatterChatCallsign + '</span><br>'
+        : '';
+      ov.innerHTML =
+        callLine +
+        '<span style="font-size:15px;font-weight:bold">' + locA + ' &#8594; ' + locB + '</span><br>' +
+        '<span style="font-size:13px">' + pi.distance + ' km &nbsp;·&nbsp; ' + pi.bearing + '°</span>';
+      ov.style.display = 'block';
+    }
+  }
+
+  // ── Status / log helpers ───────────────────────────
+  function scatterSetStatus (msg, type) {
+    const el = document.getElementById('scatter-status');
+    el.className  = 's-' + (type || 'info');
+    el.textContent = msg;
+  }
+
+  function scatterLog (msg, type) {
+    const c = document.getElementById('scatter-console');
+    const d = document.createElement('div');
+    d.className   = 'log-' + (type || 'info');
+    d.textContent = '[' + new Date().toUTCString().slice(17, 25) + '] ' + msg;
+    c.appendChild(d);
+    c.scrollTop = c.scrollHeight;
+  }
+
+})();
+</script>
+
+<!-- Show login modal on page load.
+     BS4: .modal(options) auto-showed (show:true default).
+     BS5 jQuery bridge: only initialises — explicit show needed. -->
+<script>
+  $(document).ready(function () {
+    $('#loginModal').modal('show');
+  });
+</script>
+
+</body>
 </html>

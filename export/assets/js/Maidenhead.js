@@ -145,6 +145,12 @@ function toRad(n) {
  return n * Math.PI / 180;
 };
 
+function distLocator(loc1,loc2){
+    latLon1=gridSquareToLatLon(loc1);
+    latLon2=gridSquareToLatLon(loc2);
+    return distVincenty(latLon1[0],latLon1[1],latLon2[0],latLon1[1])/1000;
+}
+
 function distVincenty(lat1, lon1, lat2, lon2) {
  var a = 6378137,
      b = 6356752.3142,

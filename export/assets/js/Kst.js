@@ -3,8 +3,13 @@ var settings=[];
 var debug;
 var ws;
 var connectState;
+var connCount = 0;
 
-const websocketServerUrl = "wss://live2.live-bidder.com/kst/"
+const websocketServerUrls = 
+      [
+          "wss://bff.live-bidder.com/kst/",
+          "wss://live2.live-bidder.com/kst/"
+      ];
 
 var lastMsg;
 var latestMessageTime = 0;
@@ -27,8 +32,12 @@ var userName;
 var password;
 
 var userList = [];
+var dataTableUsers;
+
+
 const locTest = RegExp('\w{6}');
 
+<<<<<<< Updated upstream
 var bandData = {
     1: {
         min: 50,
@@ -55,6 +64,29 @@ var bandData = {
         max: 52
     },
     
+=======
+var currentInfoWindow = null;
+
+const chatGroups = [
+    {id: '10', name: 'kHz (2000 m - 630 m)', min: 0, max: "1", defaultDistance: 20000},
+    {id: "4", name: 'low band (160 m - 40 m)', min: 1, max: "8", defaultDistance: 20000},
+    {id: '12', name: '28 MHz chat', min: 27, max: 29, defaultDistance: 20000},
+    {id: '11', name: 'WARC (30 m, 17 m, 12 m)', min: 5, max: 30, defaultDistance: 20000},
+    {id: "13", name: '40MHz (8m)', min: 40, max: 41, defaultDistance: 2000},
+    {id: "1", name: '50-70MHz', min: 50, max: 70, defaultDistance: 2000},
+    {id: "7", name: '50 MHz IARU R2', min: 50, max: 52, defaultDistance: 2000},
+    {id: "6", name: '50 MHz IARU R3', min: 50, max: 54, defaultDistance: 2000},
+    {id: "2", name: '144-432 MHz', min: 144, max: 432, defaultDistance: 2000},
+    {id: "8", name: '144 & 432 MHz IARU R2', min: 144, max: 438, defaultDistance: 1000},
+    {id: "9", name: '144 & 432 MHz IARU R3', min: 144, max: 438, defaultDistance: 1000},
+    {id: "3", name: 'Microwave', min: 1296, max: 300000, defaultDistance: 1000},
+    {id: "5", name: 'EME/JT65', min: 1, max: 7, defaultDistance: 25000},
+];
+
+function getBandDataById(chatId) {
+    chatIdString = chatId.toString();
+    return chatGroups.find(band => band.id == chatIdString);
+>>>>>>> Stashed changes
 }
 
 class Station{
@@ -84,8 +116,21 @@ class Station{
       this._distance='???';
     }
   }
+<<<<<<< Updated upstream
   
   get distance(){
+=======
+
+  get decoratedCallsign() {
+    if (this.isAway()) {
+      return "(" + this._callsign + ")";
+    } else {
+      return this._callsign;
+    }
+  }
+
+  get distance() {
+>>>>>>> Stashed changes
     return this._distance;
   }
   get bearing(){
@@ -95,6 +140,7 @@ class Station{
   isAway(){
     return this._isAway;
   }
+<<<<<<< Updated upstream
   
   setAway(){
     this._isAway=true;
@@ -102,6 +148,23 @@ class Station{
   
   setBack(){
     this._isAway=false;
+=======
+
+  setAway() {
+    this._isAway = true;
+    if (typeof this.marker != 'undefined') {
+      this.marker.setIcon('https://maps.google.com/mapfiles/ms/icons/red-dot.png');
+      this.marker.setTitle(this.decoratedCallsign);
+    }
+  }
+
+  setBack() {
+    this._isAway = false;
+    if (typeof this.marker != 'undefined') {
+      this.marker.setIcon('https://maps.google.com/mapfiles/ms/icons/green-dot.png');
+      this.marker.setTitle(this.decoratedCallsign);
+    }
+>>>>>>> Stashed changes
   }
   
   get callsign(){
@@ -186,6 +249,7 @@ class Message{
   }
 }
 
+<<<<<<< Updated upstream
 function websocketInit(url){
   
   debug = true;
@@ -202,9 +266,34 @@ function websocketInit(url){
       procMsgs(text);
     });
     reader.readAsText(msg.data,'ISO-8859-1');
+=======
 
-  };
+let urlId = 0;
+let retryCount = 0;
+const maxRetriesPerServer = 5;   // number of retries per server
+const websocketRetryDelay = 1000; // delay between retries in ms
 
+
+function websocketInit(urls) {
+    function connect() {
+        if (ws !== null) {
+            try {
+                ws.onclose = null;
+                ws.onerror = null;
+                ws.close();
+            } catch (e) {
+                console.warn('Error closing old WebSocket:', e);
+            }
+        }
+
+        const url = urls[urlId];
+        console.log('Connecting to: ' + url);
+>>>>>>> Stashed changes
+
+        ws = new WebSocket(url);
+        ws.binaryType = "arraybuffer";
+
+<<<<<<< Updated upstream
   ws.onopen = function() {
     $('#connState').text("connected"); sendMsg("LOGINC|"+userName+"|"+password+"|"+chatId+"|KST2You 1.0|20|20|1|"+latestMessageTime+"|"+latestMessageTime+"|");
   };
@@ -223,14 +312,153 @@ function websocketInit(url){
     lastError = evt;
     procWsError(evt)
   };
+=======
+        ws.onmessage = function (msg) {
+            if (msg.data instanceof ArrayBuffer) {
+                const text = new TextDecoder("utf-8").decode(msg.data);
+                procMsgs(text);
+            } else {
+                alert(msg.data);
+            }
+        };
 
+        ws.onopen = function () {
+            console.log('WebSocket connected.');
+            $('#connState').text("connected");
+            sendMsg("LOGINC|" + userName + "|" + password + "|" + chatId + "|KST2You 1.1|20|20|1|" + latestMessageTime + "|" + latestMessageTime + "|");
+            connectState = 'connected';
+
+            // 🟢 Successful connect -> reset retry count
+            retryCount = 0;
+        };
+
+        ws.onclose = function () {
+            if (connectState === 'logOff') {
+                $('#connState').text('connection closed');
+                $("#loginModal").modal();
+            } else {
+                console.warn('WebSocket closed. Attempting reconnect...');
+                attemptNextServer();
+            }
+        };
+
+        ws.onerror = function (evt) {
+            lastError = evt;
+            procWsError(evt);
+            console.error('WebSocket error:', evt);
+            attemptNextServer();
+        };
+    }
+
+    function attemptNextServer() {
+        if (retryCount < maxRetriesPerServer) {
+            retryCount++;
+            console.warn(`Retry ${retryCount}/${maxRetriesPerServer} on ${websocketServerUrls[urlId]}`);
+            setTimeout(connect, websocketRetryDelay); // Retry after a delay
+        } else {
+            retryCount = 0;
+            urlId++;
+            if (urlId < urls.length) {
+                console.warn(`Switching to next URL: ${urls[urlId]}`);
+                setTimeout(connect, 500); // short delay to try next server
+            } else {
+                console.error("Unable to connect to any servers.");
+>>>>>>> Stashed changes
+
+                if (ws) {
+                    try {
+                        ws.onclose = null;
+                        ws.onerror = null;
+                        ws.close();
+                    } catch (e) {
+                        console.warn('Error cleaning up WebSocket:', e);
+                    }
+                    ws = null;
+                }
+
+                connectState = 'logOff';
+                urlId = 0;
+
+                $('#loginError').show();
+                $("#loginModal").modal('show');
+                $('#loginErrorMessage').text("Unable to connect to any proxy server. Try refreshing your browser and if no luck, please try again later and let G1YFG know.");
+                alert("Unable to connect to any proxy server. Try refreshing your browser and if no luck, please try again later and let G1YFG know.");
+            }
+        }
+    }
+
+    connect();
 }
 
+<<<<<<< Updated upstream
 function procWsError(evt){
   $('#loginError').show();
   $("#loginModal").modal('show');
   $('#loginErrorMessage').text("Unable to connect to "+evt.target.url);
+=======
+function reconnect() {
+    if (connectState !== 'reconnecting') {
+        connectState = 'reconnecting';
+        $('#connState').text('re-connecting');
+        setTimeout(function () {
+            connCount++;
+            console.warn('Attempting to reconnect at ' + new Date());
+
+            urlId = 0;  // Always restart at server 0
+            retryCount = 0; // Also reset retry count
+
+            if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+                console.log('Closing existing WebSocket before reconnecting.');
+                try {
+                    ws.close();
+                } catch (e) {
+                    console.warn('Error force closing WebSocket:', e);
+                }
+                ws = null;
+            }
+
+            websocketInit(websocketServerUrls);
+        }, 5000); // Retry after 5 seconds
+    }
 }
+
+function doLogin() {
+    chatId = $('#chatId').val();
+    userName = $('#userInput').val().toUpperCase();
+    password = $('#passInput').val();
+
+    if ($('#rememberMe').is(':checked')) {
+        var cookieData = {
+            user: userName,
+            pass: password,
+            chatId: chatId,
+        };
+        setCookie("kst2youUserDetails", JSON.stringify(cookieData), 90);
+    } else {
+        eraseCookie("kst2youUserDetails");
+    }
+
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+        console.log('Closing existing WebSocket before login.');
+        try {
+            ws.close();
+        } catch (e) {
+            console.warn('Error closing WebSocket on login attempt:', e);
+        }
+        ws = null;
+    }
+
+    connectState = 'login';
+    connCount = 0;
+    urlId = 0;       // Reset to start at server 0
+    retryCount = 0;  // Reset retry count
+    websocketInit(websocketServerUrls);
+}
+function procWsError(evt) {
+    console.warn("Error connecting to " + evt.target.url);
+>>>>>>> Stashed changes
+}
+
 
 let incompleteMessage = '';
 
@@ -302,9 +530,30 @@ function procChatHistory(msg, isLive){
   var stn = stationList[message.from];
   var to = message.to;
 
+<<<<<<< Updated upstream
   if(to === '0'){
       to="<span style='border: ;background: red;padding: 5px;color: aliceblue;'>CQ</span>";
   }
+=======
+  var mf = message.from;
+  if(mf.includes(userName)){
+      mf = message.to;
+  }
+  var mt = message.to;
+  if(mt.includes(userName)){
+      mt = message.from;
+  }
+    
+  var row = $("<tr>" +
+    "<td>" + message.date + "</td>" +
+    '<td class="from" onclick="chatPopup(\'' + mf + '\')" >' + decorate(message.from) + "</td>" +
+    '<td class="to" onclick="chatPopup(\'' + mt + '\')"  >' + decorate(message.to) + "</td>" +
+    "<td>" + message.text + "</td>" +
+    "</tr>");
+
+  row.data('fromCall', message.from);
+  row.data('toCall', message.to);
+>>>>>>> Stashed changes
     
   var row = $("<tr>"
                        +"<td>"+message.date+"</td>"
@@ -418,6 +667,7 @@ function procUser(msg){
   addMapMarker(stn);
 }
 
+<<<<<<< Updated upstream
 function addMapMarker(stn){
   var stnLoc = {lat: stn.lat, lng: stn.long};
   var marker = new google.maps.Marker({position: stnLoc, map: map, title: stn.callsign});
@@ -432,6 +682,35 @@ function addMapMarker(stn){
           '<button onclick="chatPopup(\''+stn.callsign+'\')">Chat</button>'+
       '</div>'+
       '</div>';
+=======
+function addMapMarker(stn) {
+  var stnLoc = {
+    lat: stn.lat,
+    lng: stn.long
+  };
+  var marker = new google.maps.Marker({
+    position: stnLoc,
+    map: map,
+    title: stn.decoratedCallsign
+  });
+  if (stn.isAway()) {
+    marker.setIcon('https://maps.google.com/mapfiles/ms/icons/red-dot.png');
+  } else {  
+    marker.setIcon('https://maps.google.com/mapfiles/ms/icons/green-dot.png');
+  }
+  var contentString = '<div id="content">' +
+    '<h4 id="firstHeading" class="firstHeading">' + stn.callsign + '</h1>' +
+    '<div id="bodyContent">' +
+    '<ul>' +
+    '<li>' + stn.name + '</li>' +
+    '<li>' + stn.locator + '</li>' +
+    '<li>' + parseInt(stn.distance).toLocaleString() + 'km / ' + parseInt(stn.bearing) + '&#176;</li>' +
+    '</ul>' +
+    '<button onclick="chatPopup(\'' + stn.callsign + '\')">Chat</button>' +
+    '<button onclick="setScatterTarget(\'' + stn.locator + '\',\'' + stn.callsign + '\')" style="margin-left:4px">&#9992; Scatter</button>' +
+    '</div>' +
+    '</div>';
+>>>>>>> Stashed changes
 
    var infowindow = new google.maps.InfoWindow({
      content: contentString
@@ -458,10 +737,25 @@ function procLoginError(msg){
 function procLogin(msg){
   $("#loginModal").modal('hide');
   $('#loginError').hide();
+<<<<<<< Updated upstream
   if(connectState=='login'){
     dataTableUsers.clear();
     //$('#userList').empty();
     $('#chatLog').empty();
+=======
+  logUsage({user: userName, chat: chatId});
+  if (connectState == 'login') {
+    dataTableUsers.clear();
+    //$('#userList').empty();
+    $('#chatLog').empty();
+    //sendMsg("SPR|2|");
+    //sendMsg("SDXQ|" + chatId + "|1296001|99999999|");
+    //sendMsg("SMAQ|" + chatId + "|1296001|99999999|");
+    sendMsg("SDONE|" + chatId + "|");
+    listClusters();
+    setCluster("ON4KST-2");
+  } else {
+>>>>>>> Stashed changes
     sendMsg("SPR|2|");
     sendMsg("SDXQ|"+chatId+"|1296001|99999999|");
     sendMsg("SMAQ|"+chatId+"|1296001|99999999|"); 
@@ -486,15 +780,46 @@ function setUsername(first, surname){
   $('#setNameText').val(first);
 }
 
+<<<<<<< Updated upstream
 function setAway(){
   sendMsg("MSG|"+chatId+"|0|/AWAY|0|");
   stationList[userName].setAway();
+=======
+function listClusters() {
+  sendMsg("MSG|" + chatId + "|0|/LSTCLX|0|");
+}
+
+function setCluster(cluster) {
+  sendMsg("MSG|" + chatId + "|0|/SETCLX "+cluster+"|0|");
+}
+
+function showCluster() {
+  sendMsg("MSG|" + chatId + "|0|/SHCLX|0|");
+}
+
+function spotToCluster(spot) {
+  const info = spot.report +" "+spot.spotter_locator+"<"+spot.mode+">"+spot.locator+" K2U";
+  const msg = "MSG|" + chatId + "|0|/DX "+spot.freq+" "+spot.callsign+" "+info+"|0|";
+  //alert(msg);
+  spot.msg_text=msg;
+  sendMsg(msg);
+}
+
+function setAway() {
+  sendMsg("MSG|" + chatId + "|0|/AWAY|0|");
+  stationList[userName].setAway();
+  statusUpdateChatLog(userName); 
+>>>>>>> Stashed changes
   dataTableUsers.clear().rows.add(Object.values(stationList)).draw();
 }
 
 function setBack(){
   sendMsg("MSG|"+chatId+"|0|/BACK|0|"); 
   stationList[userName].setBack();
+<<<<<<< Updated upstream
+=======
+  statusUpdateChatLog(userName); 
+>>>>>>> Stashed changes
   dataTableUsers.clear().rows.add(Object.values(stationList)).draw();
 }
 
@@ -588,6 +913,7 @@ function sendMsg(msg){
   ws.send(myblob);
 }
 
+<<<<<<< Updated upstream
 
 //ws.open();
 function doLogin(){
@@ -617,6 +943,46 @@ function deleteAllMapMarkers() {
 
 function doLogoff(){
   $("#loginModal").modal({backdrop: 'static', keyboard: false});
+=======
+function doLogin() {
+    chatId = $('#chatId').val();
+    userName = $('#userInput').val().toUpperCase();
+    password = $('#passInput').val();
+
+    if ($('#rememberMe').is(':checked')) {
+        var cookieData = {
+            user: userName,
+            pass: password,
+            chatId: chatId,
+        };
+        setCookie("kst2youUserDetails", JSON.stringify(cookieData), 90);
+    } else {
+        eraseCookie("kst2youUserDetails");
+    }
+
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+        console.log('Closing existing WebSocket before login.');
+        try {
+            ws.close();
+        } catch (e) {
+            console.warn('Error closing WebSocket on login attempt:', e);
+        }
+        ws = null; // ✅ Clean start
+    }
+
+    connectState = 'login';  // <--- IMPORTANT
+    connCount = 0;
+    urlId = 0;               // <--- IMPORTANT
+    websocketInit(websocketServerUrls);
+}
+
+
+function doLogoff() {
+  $("#loginModal").modal({
+    backdrop: 'static',
+    keyboard: false
+  });
+>>>>>>> Stashed changes
   $('#loginError').hide();
   password='';
   if(typeof ws != 'undefined'){
@@ -632,6 +998,7 @@ function doLogoff(){
   connectState='logOff';
 }
 
+<<<<<<< Updated upstream
 var dataTableUsers;
 
 function initUserList(){
@@ -664,10 +1031,54 @@ function initUserList(){
      $('#userListTable tbody').on( 'click', 'tr', function () {
        chatPopup( dataTableUsers.row( this ).data().callsign);
      });
+=======
+function initUserList() {
+  dataTableUsers = $('#userListTable').DataTable({
+    "paging": false,
+    "order": [
+      [3, "asc"]
+    ],
+    "ordering": true,
+    "info": true,
+    "data": userList,
+    "columns": [{
+        data: 'decoratedCallsign'
+      },
+      {
+        data: 'name'
+      },
+      {
+        data: 'locator'
+      },
+      {
+        data: 'distance',
+        type: 'num',
+        render: function(data, type, row) {
+          if (type == 'sort') return data;
+          return parseInt(row.distance).toLocaleString() + ' / ' + parseInt(row.bearing) + '\u{00B0}';
+        }
+      },
+      {
+        data: 'lastSeen',
+        type: 'num',
+        render: function(data, type, row) {
+          if (type == 'sort') return data;
+          var d = new Date(data);
+          return d.toLocaleDateString() + '  ' + d.toLocaleTimeString();
+        }
+      }
+    ],
+  });
+
+  $('#userListTable tbody').on('click', 'tr', function() {
+    chatPopup(dataTableUsers.row(this).data().callsign);
+  });
+>>>>>>> Stashed changes
 }
 
 function filterChatByDistance(){
   var dist = $('#maxDistance').val();
+<<<<<<< Updated upstream
        $('#chatLog > tr').each(function(index,tr) {
            if(typeof $(tr).data('distance') == 'undefined'){
              // sigh ... 
@@ -682,6 +1093,30 @@ function filterChatByDistance(){
 function chatPopup(callsign){
   if(callsign==='0'){
       return;
+=======
+  var uname = userName.toLowerCase();
+
+  $('#chatLog > tr').each(function(index, tr) {
+    var $tr = $(tr);
+    var distance = $tr.data('distance');
+    var rowText = $tr.text().toLowerCase();
+
+    // Always show rows that mention the current user
+    if (rowText.includes(uname)) {
+      $tr.show();
+    } else if (typeof distance !== 'undefined' && distance > dist) {
+      $tr.hide();
+    } else {
+      $tr.show();
+    }
+  });
+}
+
+
+function chatPopup(callsign) {
+  if (callsign === '0') {
+    return;
+>>>>>>> Stashed changes
   }
   chatPopupCallsign = callsign;
   var chatUser =  stationList[callsign];
@@ -759,6 +1194,7 @@ function sendChat(){
      }
 }
 
+<<<<<<< Updated upstream
 $( document ).ready(function() {
     if ((location.protocol !== 'https:') && (location.hostname != "127.0.0.1")) {   
 location.replace(`https:${location.href.substring(location.protocol.length)}`);
@@ -774,14 +1210,109 @@ location.replace(`https:${location.href.substring(location.protocol.length)}`);
         $("#rememberMe").prop('checked', true);
       }catch(e){
         // whatever
+=======
+$(document).ready(function() {
+  if ((location.protocol !== 'https:') && (location.hostname != "127.0.0.1")) {
+      location.replace(`https:${location.href.substring(location.protocol.length)}`);
+  }
+  if (typeof initMap === "function") {
+        // Dynamically load the Google Maps API.
+        var script = document.createElement('script');
+        script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyCYgwKKCWkBljRcQ7j59VEL5hRK-ZZn4ZQ&callback=initMap";
+        document.body.appendChild(script);
+  } else {
+        console.error("initMap function is not defined!");
+  }
+  initUserList();
+  initCqList();
+
+  $('#chatId').empty();
+  var optgroup = $('<optgroup>').attr('label', 'Select Chat Group'); 
+  $.each(chatGroups, function(index, chatGroup) {
+    var option = $('<option>')
+        .attr('value', chatGroup.id)
+        .text(chatGroup.name)
+        .data('min', chatGroup.min)
+        .data('max', chatGroup.max)
+        .data('defaultDistance', chatGroup.defaultDistance);
+    
+     optgroup.append(option);
+  });
+
+  $('#chatId').append(optgroup);  
+    
+  var cookie = getCookie("kst2youUserDetails");
+  if (typeof cookie != 'undefined') {
+    try {
+      var cookieData = JSON.parse(cookie);
+      $('#userInput').val(cookieData.user);
+      $('#passInput').val(cookieData.pass);
+      $("#rememberMe").prop('checked', true);
+      if (cookieData.chatId !== null && cookieData.chatId !== undefined) {
+         $('#chatId option[value="' + cookieData.chatId + '"]').prop('selected', true);
+      }else{
+         $('#chatId option[value="3"]').prop('selected', true);
+>>>>>>> Stashed changes
       }
       
     }else{
       $("#rememberMe").prop('checked', false);
     }
+<<<<<<< Updated upstream
     $('#loginModal').modal({backdrop: 'static', keyboard: false}) 
     $('#loginError').hide();
     $('#registerButton').click(function(){
+=======
+  } else {
+    $("#rememberMe").prop('checked', false);
+    $('#chatId option[value="3"]').prop('selected', true);
+  }
+    
+
+  $('#loginModal').modal({
+    backdrop: 'static',
+    keyboard: false
+  })
+  $('#loginError').hide();
+  $('#registerButton').click(function() {
+    doLogin();
+  });
+  $('#logOffButton').click(function() {
+    doLogoff();
+  });
+  $('#cqButton').click(function() {
+    cqModalShow();
+  });  
+    
+  $('#setNameButton').click(function() {
+    $('#setNameModal').modal('show');
+  });
+
+  $('#setNameAlert').hide();
+
+  $('#sendSetNameButton').click(function() {
+    setName();
+  });
+
+  $('#beepTestButton').click(function() {
+    playBeep();
+  });
+
+  $("#chatPopup").on('shown.bs.modal', function() {
+    $(this).find('#chatPopupMessageInput').focus();
+  });
+
+  $('#sendCqButton').click(function() {
+    sendCqMesg();
+  });
+
+  $('#cqMesgSelector').change(function() { 
+      $('#cqMesgText').val(cqMesgList[$(this).val()]);
+  });
+
+  $('#loginModal').keyup(function(e) {
+    if (e.keyCode == 13) {
+>>>>>>> Stashed changes
       doLogin();
     });
     $('#logOffButton').click(function(){
@@ -826,6 +1357,7 @@ location.replace(`https:${location.href.substring(location.protocol.length)}`);
        }
     });
 
+<<<<<<< Updated upstream
     $('#aboutMe').change(function() {
         if(this.checked) {
           $('#chatLog > tr').filter(":not(:icontains('"+userName+"'))").hide();
@@ -847,9 +1379,53 @@ location.replace(`https:${location.href.substring(location.protocol.length)}`);
     });
   
     $('#chatPopupSendButton').click(function(){
+=======
+  $('#aboutMe').change(function() {
+    if (this.checked) {
+      $('#chatLog > tr').filter(":not(:icontains('" + userName + "'))").hide();
+    } else {
+      $('#chatLog > tr').filter(":not(:icontains('" + userName + "'))").show();
+      filterChatByDistance();
+    }
+  });
+
+  $('#awayButton').change(function() {
+    if (this.checked) {
+      setAway();
+    } else {
+      setBack();
+    }
+  });
+
+  $('#maxDistance').change(function() {
+    filterChatByDistance();
+  });
+
+  $('#chatPopupSendButton').click(function() {
+    sendChat();
+    $('#chatPopupMessageInput').focus();
+  });
+
+  $('#chatPopupSpotButton').off('click').on('click', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (typeof spotPopupUser === 'function') {
+      spotPopupUser(chatPopupCallsign);
+    }
+    return false;
+  });
+
+  $('#modalChat').on('shown.bs.modal', function() {
+    $('#chatPopupMessageInput').focus();
+  });
+
+  $('#chatPopupMessageInput').on('keydown', function(e) {
+      if (e.keyCode == 13) { // Check if the pressed key is Enter
+>>>>>>> Stashed changes
         sendChat();
     });
     
+<<<<<<< Updated upstream
     $('#modalChat').on('shown.bs.modal', function () {
         $('#chatPopupMessageInput').focus();
         $('#chatPopupMessageInput').on('keydown', function(e) {
@@ -861,6 +1437,23 @@ location.replace(`https:${location.href.substring(location.protocol.length)}`);
         
         $('#chatPopupSendButton').on('click', function() {
             sendChat();
+=======
+ // $('#cqModal').on('shown.bs.modal', function() {
+ //   $('#cqMesgText').focus();
+ // });
+    
+  $('#cqMesgText').on('keydown', function(e) {
+      if (e.keyCode == 13) {
+        sendCqMesg();
+        if (e.preventDefault) {
+          e.preventDefault();
+        } else {
+          e.returnValue = false;
+        }
+        return false;
+      }
+  });
+>>>>>>> Stashed changes
 
             // Set focus back to the input box after clicking the send button
             $('#chatPopupMessageInput').focus();
@@ -874,12 +1467,25 @@ location.replace(`https:${location.href.substring(location.protocol.length)}`);
     $('#locationModal').modal('hide');
     drawMap();
   });
+<<<<<<< Updated upstream
   
    var supportsWebSockets = 'WebSocket' in window || 'MozWebSocket' in window;
   
     if(! supportsWebSockets){
       alert("Your browser does not appear to support WebSockets, we use these for communication with the server. Can I suggest you try Google Chrome?");
     }
+=======
+    
+  $('[data-toggle="tooltip"]').tooltip(); 
+
+  $('#chatTab a').tab('show');
+
+  var supportsWebSockets = 'WebSocket' in window || 'MozWebSocket' in window;
+
+  if (!supportsWebSockets) {
+    alert("Your browser does not appear to support WebSockets, we use these for communication with the server. Can I suggest you try Google Chrome?");
+  }
+>>>>>>> Stashed changes
 });
 
 function setCookie(name,value,days) {

@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ScatterTrack · Demo</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<style>
+  html, body { height: 100%; overflow: hidden; }
+  body { display: flex; flex-direction: column; font-size: 14px; }
+  .app-body { display: flex; flex: 1; overflow: hidden; min-height: 0; }
+
+  .config-panel {
+    width: 260px; flex-shrink: 0; overflow-y: auto;
+    border-right: 1px solid #dee2e6; background: #f8f9fa;
+  }
+  .config-panel .section { padding: 12px 14px; border-bottom: 1px solid #dee2e6; }
+  .config-panel .section-title {
+    font-size: 10px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; color: #6c757d; margin-bottom: 10px;
+  }
+  .config-panel label { font-size: 11px; font-weight: 600; color: #495057; margin-bottom: 2px; }
+  .range-label { font-size: 11px; color: #0d6efd; font-weight: 600; }
+
+  #map { flex: 1; min-width: 0; }
+
+  .results-panel {
+    width: 280px; flex-shrink: 0; border-left: 1px solid #dee2e6;
+    display: flex; flex-direction: column; overflow: hidden; background: #fff;
+  }
+  .results-header {
+    padding: 10px 12px; border-bottom: 1px solid #dee2e6; background: #f8f9fa;
+    display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
+  }
+  .results-header .title {
+    font-size: 11px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; color: #6c757d;
+  }
+  .plane-list { flex: 1; overflow-y: auto; }
+
+  .section-label {
+    padding: 5px 12px; font-size: 10px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; background: #e9ecef; border-bottom: 1px solid #dee2e6;
+    color: #495057; display: flex; justify-content: space-between; align-items: center;
+    position: sticky; top: 0; z-index: 1;
+  }
+  .section-label.in-path { background: #cfe2ff; color: #0a58ca; }
+  .section-label.approaching { background: #fff3cd; color: #856404; }
+
+  .plane-item { padding: 8px 12px; border-bottom: 1px solid #f0f0f0; transition: background 0.1s; }
+  .plane-item:hover { background: #f8f9fa; }
+
+  .pi-callsign { font-weight: 700; font-size: 14px; font-family: monospace; color: #0d6efd; }
+  .pi-callsign.anon { color: #6c757d; font-size: 12px; }
+  .pi-callsign.approaching-call { color: #856404; }
+  .pi-doppler { font-size: 12px; font-weight: 600; font-family: monospace; }
+  .pi-doppler.pos { color: #198754; }
+  .pi-doppler.neg { color: #0d6efd; }
+  .pi-meta { font-size: 11px; color: #6c757d; font-family: monospace; }
+  .pi-time { font-size: 11px; color: #856404; }
+  .pi-time.remaining { color: #0a58ca; }
+  .empty-msg { padding: 20px 14px; font-size: 13px; color: #6c757d; line-height: 1.7; }
+
+  .path-bar {
+    padding: 6px 12px; border-top: 1px solid #dee2e6; background: #f8f9fa;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 3px 12px; flex-shrink: 0;
+  }
+  .path-bar .pf { font-size: 10px; }
+  .path-bar .pf label { color: #6c757d; display: block; font-size: 9px; text-transform: uppercase; letter-spacing: 1px; }
+  .path-bar .pf span { color: #0d6efd; font-weight: 600; font-family: monospace; }
+
+  .console {
+    background: #212529; color: #adb5bd; font-family: monospace; font-size: 10px;
+    padding: 6px 10px; max-height: 70px; overflow-y: auto; flex-shrink: 0;
+  }
+  .console .log-ok { color: #28a745; }
+  .console .log-err { color: #dc3545; }
+  .console .log-info { color: #ffc107; }
+
+  .status-bar {
+    background: #343a40; color: #adb5bd; font-size: 11px; padding: 4px 14px;
+    display: flex; gap: 20px; align-items: center; flex-shrink: 0; font-family: monospace;
+  }
+  .status-ok { color: #28a745; }
+  .status-err { color: #dc3545; }
+  .status-info { color: #ffc107; }
+</style>
+</head>
+<body>
+
+<nav class="navbar navbar-dark bg-primary py-1 flex-shrink-0">
+  <div class="container-fluid">
+    <span class="navbar-brand mb-0 h6">
+      <i class="bi bi-airplane me-2"></i>ScatterTrack
+      <small class="text-white-50 fw-normal ms-2" style="font-size:11px">Aircraft Scatter Path Tool · Demo</small>
+    </span>
+    <span id="clock" class="text-white-50" style="font-size:11px;font-family:monospace">--:--:-- UTC</span>
+  </div>
+</nav>
+
+<div class="app-body">
+
+  <div class="config-panel">
+    <div class="section">
+      <div class="section-title">Stations</div>
+      <div class="mb-2">
+        <label class="form-label">Station A (Your locator)</label>
+        <input type="text" id="loc-a" class="form-control form-control-sm"
+               value="IO82UJ" maxlength="6" style="text-transform:uppercase;font-family:monospace">
+      </div>
+      <div class="mb-0">
+        <label class="form-label">Station B (Their locator)</label>
+        <input type="text" id="loc-b" class="form-control form-control-sm"
+               value="JO22FB" maxlength="6" style="text-transform:uppercase;font-family:monospace">
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Parameters</div>
+      <div class="mb-2">
+        <label class="form-label">Band</label>
+        <select id="band" class="form-select form-select-sm">
+          <option value="50">6m — 50 MHz</option>
+          <option value="144" selected>2m — 144 MHz</option>
+          <option value="432">70cm — 432 MHz</option>
+          <option value="1296">23cm — 1296 MHz</option>
+          <option value="custom">Custom…</option>
+        </select>
+      </div>
+      <div class="mb-2" id="custom-wrap" style="display:none">
+        <label class="form-label">Custom frequency (MHz)</label>
+        <input type="text" id="custom-freq" class="form-control form-control-sm" value="144">
+      </div>
+      <div class="mb-2">
+        <label class="form-label d-flex justify-content-between">
+          Corridor <span class="range-label" id="corr-val">5°</span>
+        </label>
+        <input type="range" class="form-range" id="corridor" min="1" max="10" value="5" step="1">
+      </div>
+      <div class="mb-2">
+        <label class="form-label d-flex justify-content-between">
+          Lookahead <span class="range-label" id="look-val">10 min</span>
+        </label>
+        <input type="range" class="form-range" id="lookahead" min="5" max="30" value="10" step="5">
+      </div>
+      <div class="mb-0">
+        <label class="form-label d-flex justify-content-between">
+          Auto-refresh <span class="range-label" id="refresh-val">60s</span>
+        </label>
+        <input type="range" class="form-range" id="refresh" min="30" max="300" value="60" step="30">
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">OpenSky Credentials</div>
+
+      <!-- Logged-in state -->
+      <div id="cred-loggedin" style="display:none">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <i class="bi bi-check-circle-fill text-success"></i>
+          <span style="font-family:monospace;font-size:13px;font-weight:600" id="cred-id-display">—</span>
+        </div>
+        <button class="btn btn-outline-secondary btn-sm w-100" onclick="clearCredentials()">
+          <i class="bi bi-arrow-repeat me-1"></i>Change Credentials
+        </button>
+      </div>
+
+      <!-- Drop zone state -->
+      <div id="cred-dropzone-wrap">
+        <div id="drop-zone" style="
+            border: 2px dashed #dee2e6; border-radius: 6px; padding: 14px 10px;
+            text-align: center; font-size: 11px; color: #6c757d;
+            cursor: pointer; transition: all 0.15s;
+          "
+          ondragover="event.preventDefault(); this.style.borderColor='#0d6efd'; this.style.background='#f0f4ff';"
+          ondragleave="this.style.borderColor='#dee2e6'; this.style.background='';"
+          ondrop="handleCredentialsDrop(event)"
+          onclick="document.getElementById('cred-file').click()"
+        >
+          <i class="bi bi-file-earmark-arrow-down d-block mb-1" style="font-size:20px"></i>
+          Drop <code>credentials.json</code> here<br>or click to browse
+        </div>
+        <input type="file" id="cred-file" accept=".json" style="display:none"
+               onchange="handleCredentialsFile(this.files[0])">
+        <div id="cred-validating" class="text-center mt-2" style="display:none;font-size:11px;color:#6c757d">
+          <div class="spinner-border spinner-border-sm text-primary me-1" role="status"></div>
+          Validating credentials…
+        </div>
+        <div class="mt-2 text-muted" style="font-size:10px;line-height:1.5">
+          Stored in <code>localStorage</code> only. Leave blank for anonymous access.
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="d-grid gap-1">
+        <button class="btn btn-primary btn-sm" id="scan-btn" onclick="doScan()">
+          <i class="bi bi-play-fill me-1"></i>Scan
+        </button>
+        <button class="btn btn-outline-secondary btn-sm" onclick="doClear()">
+          <i class="bi bi-stop-fill me-1"></i>Clear
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="map"></div>
+
+  <div class="results-panel">
+    <div class="results-header">
+      <span class="title">Contacts</span>
+      <span class="badge bg-primary" id="total-count">0</span>
+    </div>
+    <div class="plane-list" id="plane-list">
+      <div class="empty-msg">
+        <i class="bi bi-info-circle me-1"></i>
+        Enter two Maidenhead locators and press Scan.
+      </div>
+    </div>
+    <div class="path-bar" id="path-bar" style="display:none">
+      <div class="pf"><label>Distance</label><span id="pb-dist">—</span></div>
+      <div class="pf"><label>Bearing</label><span id="pb-bear">—</span></div>
+      <div class="pf"><label>In Path</label><span id="pb-in">—</span></div>
+      <div class="pf"><label>Approaching</label><span id="pb-app">—</span></div>
+    </div>
+    <div class="console" id="console"></div>
+  </div>
+
+</div>
+
+<div class="status-bar">
+  <span id="status-msg" class="status-info">Ready</span>
+  <span>Last scan: <span id="last-scan">—</span></span>
+  <span class="ms-auto">OpenSky Network</span>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCYgwKKCWkBljRcQ7j59VEL5hRK-ZZn4ZQ&callback=initMap"></script>
+<script src="scatter-track.js"></script>
+<script>
+  let map;
+
+  setInterval(() => {
+    document.getElementById('clock').textContent = new Date().toUTCString().slice(17,25) + ' UTC';
+  }, 1000);
+
+  function initMap() {
+    map = new google.maps.Map(document.getElementById('map'), {
+      center: { lat: 52.5, lng: 0.5 }, zoom: 6,
+      mapTypeId: 'roadmap', zoomControl: true,
+      mapTypeControl: false, streetViewControl: false, fullscreenControl: false,
+    });
+    log('Google Maps ready', 'ok');
+    loadCredentials();
+  }
+
+  function loadCredentials() {
+    const id     = localStorage.getItem('opensky_client_id')     || '';
+    const secret = localStorage.getItem('opensky_client_secret') || '';
+    if (id && secret) {
+      showLoggedIn(id);
+      log('Credentials loaded: ' + id, 'info');
+    }
+  }
+
+  function showLoggedIn(id) {
+    document.getElementById('cred-id-display').textContent = id;
+    document.getElementById('cred-loggedin').style.display    = 'block';
+    document.getElementById('cred-dropzone-wrap').style.display = 'none';
+  }
+
+  function showDropZone() {
+    document.getElementById('cred-loggedin').style.display    = 'none';
+    document.getElementById('cred-dropzone-wrap').style.display = 'block';
+    document.getElementById('cred-validating').style.display  = 'none';
+    const zone = document.getElementById('drop-zone');
+    zone.style.borderColor = '#dee2e6';
+    zone.style.background  = '';
+    zone.innerHTML = '<i class="bi bi-file-earmark-arrow-down d-block mb-1" style="font-size:20px"></i>Drop <code>credentials.json</code> here<br>or click to browse';
+  }
+
+  function clearCredentials() {
+    localStorage.removeItem('opensky_client_id');
+    localStorage.removeItem('opensky_client_secret');
+    showDropZone();
+    log('Credentials cleared', 'info');
+  }
+
+  async function validateCredentials(id, secret) {
+    const r = await fetch('https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ grant_type: 'client_credentials', client_id: id, client_secret: secret })
+    });
+    const d = await r.json();
+    if (d.access_token) return true;
+    throw new Error(d.error_description || d.error || 'Invalid credentials');
+  }
+
+  document.getElementById('corridor').addEventListener('input', function() {
+    const deg = parseInt(this.value);
+    document.getElementById('corr-val').textContent = deg + '°';
+    ScatterTrack.setCorridorDeg(deg);
+  });
+  document.getElementById('lookahead').addEventListener('input', function() {
+    document.getElementById('look-val').textContent = this.value + ' min';
+  });
+  document.getElementById('refresh').addEventListener('input', function() {
+    document.getElementById('refresh-val').textContent = this.value + 's';
+  });
+  document.getElementById('band').addEventListener('change', function() {
+    document.getElementById('custom-wrap').style.display = this.value === 'custom' ? 'block' : 'none';
+  });
+
+  function getFreqMHz() {
+    const v = document.getElementById('band').value;
+    return v === 'custom' ? parseFloat(document.getElementById('custom-freq').value) || 144 : parseFloat(v);
+  }
+
+  function doScan() {
+    if (!map) { log('Map not ready', 'err'); return; }
+    const locA   = document.getElementById('loc-a').value.trim().toUpperCase();
+    const locB   = document.getElementById('loc-b').value.trim().toUpperCase();
+    const id     = localStorage.getItem('opensky_client_id')     || '';
+    const secret = localStorage.getItem('opensky_client_secret') || '';
+    document.getElementById('scan-btn').disabled = true;
+    setStatus('Scanning…', 'info');
+    log('Scanning ' + locA + ' → ' + locB + ' on ' + getFreqMHz() + ' MHz', 'info');
+
+    ScatterTrack.init(map, {
+      myLocator: locA, theirLocator: locB,
+      band: getFreqMHz(),
+      corridorDeg:   parseInt(document.getElementById('corridor').value),
+      lookaheadMins: parseInt(document.getElementById('lookahead').value),
+      refreshSecs:   parseInt(document.getElementById('refresh').value),
+      clientId:      id     || undefined,
+      clientSecret:  secret || undefined,
+      onUpdate({ inPath, approaching, all, pathInfo, error }) {
+        document.getElementById('scan-btn').disabled = false;
+        if (error) { setStatus('Error: ' + error, 'err'); log(error, 'err'); return; }
+        document.getElementById('last-scan').textContent = new Date().toUTCString().slice(17,25) + ' UTC';
+        document.getElementById('total-count').textContent = all.length;
+        setStatus(all.length + ' AC · ' + inPath.length + ' in path · ' + approaching.length + ' approaching', 'ok');
+        log(all.length + ' AC — ' + inPath.length + ' in corridor, ' + approaching.length + ' approaching', 'ok');
+        renderResults(inPath, approaching);
+        updatePathBar(pathInfo);
+      }
+    });
+    ScatterTrack.scan();
+  }
+
+  function doClear() {
+    ScatterTrack.clear();
+    document.getElementById('plane-list').innerHTML = '<div class="empty-msg"><i class="bi bi-x-circle me-1"></i>Cleared.</div>';
+    document.getElementById('path-bar').style.display = 'none';
+    document.getElementById('total-count').textContent = '0';
+    setStatus('Cleared', 'info');
+    log('Cleared', 'info');
+  }
+
+  function renderResults(inPath, approaching) {
+    const list = document.getElementById('plane-list');
+    list.innerHTML = '';
+    if (!inPath.length && !approaching.length) {
+      list.innerHTML = '<div class="empty-msg"><i class="bi bi-search me-1"></i>No aircraft in corridor or approaching.</div>';
+      return;
+    }
+    if (inPath.length) {
+      const h = document.createElement('div');
+      h.className = 'section-label in-path';
+      h.innerHTML = '<span><i class="bi bi-airplane-fill me-1"></i>In Path Now</span><span class="badge bg-primary">' + inPath.length + '</span>';
+      list.appendChild(h);
+      inPath.forEach(p => list.appendChild(makePlaneItem(p, false)));
+    }
+    if (approaching.length) {
+      const h = document.createElement('div');
+      h.className = 'section-label approaching';
+      h.innerHTML = '<span><i class="bi bi-arrow-right-circle me-1"></i>Approaching</span><span class="badge bg-warning text-dark">' + approaching.length + '</span>';
+      list.appendChild(h);
+      approaching.forEach(p => list.appendChild(makePlaneItem(p, true)));
+    }
+  }
+
+  function makePlaneItem(p, isApproaching) {
+    const div = document.createElement('div');
+    div.className = 'plane-item';
+    const dkHz = p.dopplerKHz;
+    const dPos = p.doppler != null && p.doppler >= 0;
+    const dopplerHtml = dkHz ? '<span class="pi-doppler ' + (dPos?'pos':'neg') + '">' + dkHz + ' kHz</span>' : '';
+    const timeHtml = isApproaching
+      ? '<div class="pi-time"><i class="bi bi-clock me-1"></i>Entry in ~' + Math.round(p.minsToEntry) + ' min</div>'
+      : p.minsInPath != null
+        ? '<div class="pi-time remaining"><i class="bi bi-hourglass-split me-1"></i>~' + Math.round(p.minsInPath) + ' min remaining</div>'
+        : '';
+    div.innerHTML =
+      '<div class="d-flex justify-content-between align-items-baseline mb-1">' +
+        '<span class="pi-callsign ' + (p.callsign ? (isApproaching ? 'approaching-call' : '') : 'anon') + '">' +
+          (p.callsign || p.icao.toUpperCase()) + '</span>' +
+        dopplerHtml +
+      '</div>' +
+      '<div class="pi-meta">' +
+        (p.altFt != null ? Math.round(p.altFt/100)*100 + ' ft' : '—') + ' &nbsp;·&nbsp; ' +
+        (p.velocity != null ? p.velocity + ' kt' : '—') + ' &nbsp;·&nbsp; ' +
+        (p.heading  != null ? p.heading  + '°'   : '—') + ' &nbsp;·&nbsp; ' +
+        Math.round(p.distFromMid) + ' km' +
+      '</div>' + timeHtml;
+    return div;
+  }
+
+  function updatePathBar(pi) {
+    if (!pi) return;
+    document.getElementById('path-bar').style.display = 'grid';
+    document.getElementById('pb-dist').textContent = pi.distance + ' km';
+    document.getElementById('pb-bear').textContent = pi.bearing + '°';
+    document.getElementById('pb-in').textContent   = pi.inPathCount;
+    document.getElementById('pb-app').textContent  = pi.approachingCount;
+  }
+
+  function setStatus(msg, type) {
+    const el = document.getElementById('status-msg');
+    el.className = 'status-' + (type || 'info');
+    el.textContent = msg;
+  }
+
+  function handleCredentialsDrop(event) {
+    event.preventDefault();
+    const zone = document.getElementById('drop-zone');
+    zone.style.borderColor = '#dee2e6';
+    zone.style.background  = '';
+    const file = event.dataTransfer.files[0];
+    if (!file) return;
+    handleCredentialsFile(file);
+  }
+
+  function handleCredentialsFile(file) {
+    if (!file || !file.name.endsWith('.json')) {
+      log('Please drop a .json file', 'err'); return;
+    }
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+      try {
+        const json = JSON.parse(e.target.result);
+        const id     = json.clientId     || json.client_id     || json.id     || '';
+        const secret = json.clientSecret || json.client_secret || json.secret || '';
+        if (!id || !secret) {
+          log('Could not find clientId/clientSecret in JSON', 'err'); return;
+        }
+
+        // Show validating spinner
+        document.getElementById('drop-zone').style.display      = 'none';
+        document.getElementById('cred-validating').style.display = 'block';
+        log('Validating credentials for: ' + id, 'info');
+
+        try {
+          await validateCredentials(id, secret);
+          // Success — save and show logged-in state
+          localStorage.setItem('opensky_client_id',     id);
+          localStorage.setItem('opensky_client_secret', secret);
+          showLoggedIn(id);
+          log('Credentials validated and saved: ' + id, 'ok');
+        } catch(err) {
+          // Validation failed — reset drop zone
+          document.getElementById('drop-zone').style.display      = 'block';
+          document.getElementById('cred-validating').style.display = 'none';
+          const zone = document.getElementById('drop-zone');
+          zone.style.borderColor = '#dc3545';
+          zone.style.background  = '#fff5f5';
+          log('Validation failed: ' + err.message, 'err');
+          setTimeout(() => {
+            zone.style.borderColor = '#dee2e6';
+            zone.style.background  = '';
+          }, 3000);
+        }
+      } catch(err) {
+        log('Invalid JSON: ' + err.message, 'err');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function log(msg, type) {
+    const c = document.getElementById('console');
+    const d = document.createElement('div');
+    d.className = 'log-' + (type || 'info');
+    d.textContent = '[' + new Date().toUTCString().slice(17,25) + '] ' + msg;
+    c.appendChild(d);
+    c.scrollTop = c.scrollHeight;
+  }
+</script>
+</body>
+</html>
