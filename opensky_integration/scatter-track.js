@@ -69,8 +69,8 @@ const ScatterTrack = (() => {
   // ── Constants ──
   const R_EARTH = 6371;   // km, geometric Earth radius
   const R_EFF   = 8495;   // km, effective radius with k=4/3 atmospheric refraction
-  const OPENSKY_BASE  = 'https://opensky-network.org/api';
-  const OPENSKY_TOKEN_URL = 'https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token';
+  const OPENSKY_BASE      = 'https://opensky-network.org/api';
+  const TOKEN_PROXY_URL   = 'https://opensky-token-proxy.robin-c5d.workers.dev/';
 
   // ────────────────────────────────────────────────
   // Geo helpers
@@ -284,15 +284,27 @@ const ScatterTrack = (() => {
   // ── Token cache ──
   let _token = null;
   let _tokenExpiry = 0;
-  let _requestCount = 0;
+
+  // ── Daily API call counter (persisted to localStorage, keyed by UTC date) ──
+  function utcDateKey() {
+    return 'opensky_calls_' + new Date().toISOString().slice(0, 10); // e.g. opensky_calls_2026-03-21
+  }
+  function loadDailyCount() {
+    const key = utcDateKey();
+    const stored = localStorage.getItem(key);
+    return stored ? parseInt(stored, 10) : 0;
+  }
+  function saveDailyCount(n) {
+    localStorage.setItem(utcDateKey(), n);
+  }
+  let _requestCount = loadDailyCount();
 
   async function getToken() {
     if (_token && Date.now() < _tokenExpiry) return _token;
-    const r = await fetch(OPENSKY_TOKEN_URL, {
+    const r = await fetch(TOKEN_PROXY_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        grant_type:    'client_credentials',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         client_id:     _opts.clientId,
         client_secret: _opts.clientSecret,
       })
@@ -345,6 +357,7 @@ const ScatterTrack = (() => {
       statesData = await r.json();
     }
     _requestCount++;
+    saveDailyCount(_requestCount);
 
     return (statesData.states || [])
       .filter(s => s[5] != null && s[6] != null && !s[8]) // airborne with position
