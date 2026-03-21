@@ -1,163 +1,73 @@
-# kst2you
-An alternative interface to KST chat
+# KST2You
 
-## Adding a Proxy Server to Support This Site
+A modern web interface for the [ON4KST](https://www.on4kst.info/) VHF/UHF chat system, with aircraft scatter tracking and beacon monitoring.
 
-Follow these steps to set up a proxy server to support the KST2You interface:
+## [Launch KST2You](https://rszemeti.github.io/kst2you/)
 
-### 1. Install Python 3 and pip
-If Python 3 and pip are not installed on your system, install them using the following command:
+---
 
-```bash
-sudo yum install python3 pip
-```
+## Features
 
-### 2. Install Websockify
-Install Websockify using pip:
+- **Chat** — Live KST chat with distance filtering and personal message highlighting
+- **Users** — Sortable user list showing callsign, locator, distance, and bearing from your QTH
+- **Map** — Real-time map of active stations
+- **Aircraft Scatter** — Live aircraft overlay using [ADS-B One](https://www.adsbone.org/) data, showing potential scatter paths between you and other stations
+- **Beacons** — Spotted beacon log with band and locator information
+- **Contest Log** — Session QSO logging
 
-```bash
-sudo pip install websockify
-```
+## Getting Started
 
-### 3. Install Nginx and Certbot
-Install Nginx to serve as a reverse proxy and Certbot to obtain SSL certificates:
-
-```bash
-sudo yum install nginx certbot python3-certbot-nginx
-```
-
-### 4. Obtain SSL Certificates with Certbot
-Use Certbot to generate SSL certificates for your domain:
-
-```bash
-sudo certbot --nginx -d yourdomain.com
-```
-
-Follow the interactive prompts to verify your domain and obtain the certificates. Certbot will automatically configure Nginx to use the certificates.
-
-### 5. Create a Systemd Script
-Set up a `systemd` service to proxy KST chat onto a local port (e.g., port 6000). This port is local only, so no need to open it in the firewall.
-
-#### Example Systemd Script
-Create a file named `/etc/systemd/system/kst2you.service` with the following content:
-
-```ini
-[Unit]
-Description=KST Websockify Proxy Service
-After=network.target
-
-[Service]
-Type=simple
-ExecStart=/usr/local/bin/websockify 0.0.0.0:6000 www.on4kst.info:23001
-Restart=on-failure
-User=nobody
-WorkingDirectory=/tmp
-StandardOutput=syslog
-StandardError=syslog
-SyslogIdentifier=kst2you
-
-[Install]
-WantedBy=multi-user.target
-```
-
-### 6. Reload and Enable the Service
-After creating the service file, reload the systemd daemon to recognize the new service:
-
-```bash
-sudo systemctl daemon-reload
-```
-
-Enable the service to start automatically on boot:
-
-```bash
-sudo systemctl enable kst2you
-```
-
-### 7. Start the Service
-Start the proxy service:
-
-```bash
-sudo systemctl start kst2you
-```
-
-### 8. Verify the Service
-Check the status of the service to ensure it is running:
-
-```bash
-sudo systemctl status kst2you
-```
-
-To confirm that the proxy is working, verify that the local port (6000) is listening:
-
-```bash
-ss -tuln | grep 6000
-```
-
-### 9. Configure Nginx for SSL Termination
-Set up Nginx to reverse proxy requests to the Websockify service and expose it securely over HTTPS. The proxy will be accessible at `/kst/`.
-
-#### Example Nginx Configuration
-Add the following configuration to your Nginx site configuration (e.g., `/etc/nginx/conf.d/kst2you.conf`):
-
-```nginx
-server {
-    listen 443 ssl;
-    server_name yourdomain.com;
-
-    ssl_certificate /etc/letsencrypt/live/yourdomain.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/yourdomain.com/privkey.pem;
-
-    # SSL settings (optional for better security)
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
-
-    location /kst/ {
-        proxy_pass http://127.0.0.1:6000/;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-
-        # Optional WebSocket timeout settings
-        proxy_read_timeout 60s;
-        proxy_send_timeout 60s;
-    }
-}
-
-server {
-    listen 80;
-    server_name yourdomain.com;
-
-    # Redirect all HTTP traffic to HTTPS
-    location / {
-        return 301 https://$host$request_uri;
-    }
-}
-```
-
-### 10. Reload Nginx
-After adding the configuration, reload Nginx to apply the changes:
-
-```bash
-sudo nginx -t  # Test the configuration for errors
-sudo systemctl reload nginx
-```
-
-### 11. Automatically Renew SSL Certificates
-Certbot can automatically renew SSL certificates. Add the following to your crontab to check for renewals regularly:
-
-```bash
-sudo crontab -e
-```
-
-Add this line to renew certificates and reload Nginx:
-
-```bash
-0 0 * * * certbot renew --quiet && systemctl reload nginx
-```
-
-You have now successfully set up a proxy server for KST2You. External clients can securely access the chat interface through your configured reverse proxy at `/kst/`. 
-
-Let me know when your proxy is up and running, I will test it and add it to the list of proxies used in the software, improving the reliability for everyone, let me know if you need further assistance!
+1. Open [KST2You](https://rszemeti.github.io/kst2you/) in your browser
+2. Enter your KST callsign and password when prompted
+3. The app connects to KST via a community-maintained proxy network — no local software needed
 
 
+## Using KST2You
+
+### Chat
+
+The Chat tab shows the live KST message stream. Use the distance filter to limit what you see to stations within a given range, or tick **Only messages about me** to show only messages addressed to your callsign.
+
+Click any callsign in the **From** or **To** column to open a private chat window for that station. The chat window shows your full message history with that station, your distance and bearing to them, and a text box to send a direct message. If the station is between 5 and 900 km away a **Check Scatter** button appears — clicking it switches straight to the Scatter tab with that station pre-loaded as the target. Messages are stored locally in your browser so the history survives a page reload.
+
+An unread-message badge in the navbar tracks incoming directed messages while you are in another tab.
+
+### Map
+
+The Map tab shows all active KST stations plotted on a Google Map, centred on your locator. Your own position is shown as a blue dot; other stations are green (active) or red (away). Distance rings are drawn at 100, 200, 300, 500, and 1000 km. An optional Maidenhead grid overlay can be toggled on.
+
+Click any station marker to see a pop-up with their callsign and a **Chat** button that opens the private chat window for that station. Double-click anywhere on the map to get the grid square, distance, and bearing to that point.
+
+### Users
+
+The Users tab is a sortable, searchable table of everyone currently logged in to KST, with callsign, name, locator, distance/bearing from your QTH, and last-seen time. Click any row to open a chat window with that station. Each locator cell has a small ✈ button — clicking it jumps straight to the Scatter tab with that station set as the target.
+
+### Aircraft Scatter
+
+The Scatter tab lets you check whether any aircraft are currently in a position to provide a scatter path between you and another station.
+
+Station A (your locator) is filled in automatically when you log in. Set Station B to the target station's locator — or click ✈ next to their entry in the Users tab, or click their callsign on the scatter map. Choose the band, adjust the corridor angle and lookahead time if needed, then press **Scan**.
+
+Aircraft that fall within the scatter corridor are plotted on the map and listed below it. Click any aircraft icon for flight details. The map also shows all online KST stations (blue = you, yellow = current target, green = active, red = away), so you can switch target simply by clicking a station marker.
+
+If a rotator controller web server is running on localhost, KST2You will detect it automatically and a **Point Rotator** button will appear in the chat window and scatter controls.
+
+### Contest Mode
+
+Contest mode adds a session log and keeps track of which stations you have worked or skipped. When active, a **Worked / Skip** scoreboard badge appears in the navbar and a **Session Log** tab is added.
+
+In any chat window, buttons let you mark that station as **Worked** or **Skip**. Worked stations are greyed out in the user list and dimmed on the map; skipped stations are hidden, keeping the display focused on new opportunities.
+
+## Running Your Own Proxy
+
+KST2You relies on WebSocket proxies to bridge the KST TCP chat service into the browser. If you'd like to contribute a proxy and help improve reliability for all users, see [KST_PROXY_SETUP.md](KST_PROXY_SETUP.md) for setup instructions.
+
+Once your proxy is running, get in touch and it can be added to the pool.
+
+## Aircraft Data
+
+Aircraft scatter data is provided by [ADS-B One](https://www.adsbone.org/) — a community-run, feeder-supported ADS-B aggregator. Many thanks to the ADS-B One team and their network of volunteer feeders.
+
+## Contributing
+
+Pull requests are welcome. The site is a static single-page app deployed via GitHub Pages — all source is under [docs/](docs/).
