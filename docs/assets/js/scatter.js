@@ -8,68 +8,6 @@
   let scatterChatCallsign = null;
   const SCATTER_MAX_KM = 900;
 
-  // ── OpenSky Authenticator (local proxy) ────────────
-  const LOCAL_PROXY_URL   = 'http://localhost:7329/token';
-  const REFRESH_AUTH_SECS = 10;
-  const REFRESH_ANON_SECS = 60;
-  let   _authenticatorAvailable = false;
-  let   _authPollTimer = null;
-
-  async function checkAuthenticator() {
-    try {
-      const r = await fetch(LOCAL_PROXY_URL, {
-        method: 'OPTIONS',
-        signal: AbortSignal.timeout(1500),
-      });
-      return r.ok || r.status === 204;
-    } catch (_) { return false; }
-  }
-
-  async function _pollAuthenticator() {
-    const wasAvailable = _authenticatorAvailable;
-    _authenticatorAvailable = await checkAuthenticator();
-
-    if (_authenticatorAvailable && !wasAvailable) {
-      // Authenticator just appeared
-      const hasCreds = localStorage.getItem('opensky_client_id') &&
-                       localStorage.getItem('opensky_client_secret');
-      if (!hasCreds) {
-        scatterLog('OpenSky Authenticator detected — enter credentials to enable 10s refresh', 'ok');
-        bootstrap.Modal.getOrCreateInstance(
-          document.getElementById('scatterCredModal')
-        ).show();
-      } else {
-        scatterLog('OpenSky Authenticator detected — switching to 10s refresh', 'ok');
-        updateAuthStatus();
-      }
-    } else if (!_authenticatorAvailable && wasAvailable) {
-      scatterLog('OpenSky Authenticator no longer available — switched to anonymous mode', 'warn');
-      updateAuthStatus();
-    }
-  }
-
-  function updateAuthStatus() {
-    const hasCreds = localStorage.getItem('opensky_client_id') &&
-                     localStorage.getItem('opensky_client_secret');
-    const authenticated = _authenticatorAvailable && hasCreds;
-    const badge = document.getElementById('scatter-refresh-badge');
-    if (badge) {
-      badge.textContent        = authenticated ? REFRESH_AUTH_SECS + 's' : REFRESH_ANON_SECS + 's';
-      badge.style.background   = authenticated ? '#198754' : '#6c757d';
-      badge.title              = authenticated
-        ? 'Authenticated — ' + REFRESH_AUTH_SECS + 's refresh via local proxy'
-        : 'Anonymous — ' + REFRESH_ANON_SECS + 's refresh';
-    }
-  }
-
-  // Start polling — every 30s
-  _authPollTimer = setInterval(_pollAuthenticator, 30000);
-  // Check immediately on load too
-  checkAuthenticator().then(function (found) {
-    _authenticatorAvailable = found;
-    updateAuthStatus();
-  });
-
   // ── Rotator server discovery ────────────────────────
   // Silently probes localhost ports; sets window._rotatorUrl if found.
   (async function probeRotator() {
@@ -126,13 +64,6 @@
       $('#loginModal').modal('show');
     };
 
-    // Load saved OpenSky credentials once DOM is ready
-    (function () {
-      const id     = localStorage.getItem('opensky_client_id')     || '';
-      const secret = localStorage.getItem('opensky_client_secret') || '';
-      if (id && secret) showCredsOk(id);
-    })();
-
     // Wrap addMapMarker so own station always gets a blue dot on the main map.
     const _origAddMapMarker = window.addMapMarker;
     window.addMapMarker = function (stn) {
@@ -151,15 +82,6 @@
   // ── Scatter map — lazy init on first tab show ───────
   document.addEventListener('shown.bs.tab', function (e) {
     if (e.target.getAttribute('href') !== '#tab-scatter') return;
-
-    // Pop credentials modal immediately if no creds saved
-    const hasCreds = localStorage.getItem('opensky_client_id') &&
-                     localStorage.getItem('opensky_client_secret');
-    if (!hasCreds) {
-      bootstrap.Modal.getOrCreateInstance(
-        document.getElementById('scatterCredModal')
-      ).show();
-    }
 
     if (scatterMapReady) {
       if (scatterAutoScan) { scatterAutoScan = false; scatterScan(); }
@@ -354,100 +276,6 @@
       : parseFloat(v);
   }
 
-  // ── OpenSky credentials ────────────────────────────
-
-  function showCredsOk (id) {
-    document.getElementById('scatter-cred-name').textContent       = id;
-    document.getElementById('scatter-cred-name-modal').textContent = id;
-    document.getElementById('scatter-cred-ok').style.display       = 'block';
-    document.getElementById('scatter-cred-drop').style.display     = 'none';
-    document.getElementById('scatter-cred-mini-ok').style.display  = 'flex';
-    document.getElementById('scatter-cred-mini-none').style.display = 'none';
-    const modal = bootstrap.Modal.getInstance(document.getElementById('scatterCredModal'));
-    if (modal) modal.hide();
-  }
-
-  function showCredsDrop () {
-    document.getElementById('scatter-cred-ok').style.display        = 'none';
-    document.getElementById('scatter-cred-drop').style.display      = 'block';
-    document.getElementById('scatter-cred-spinner').style.display   = 'none';
-    document.getElementById('scatter-cred-mini-ok').style.display   = 'none';
-    document.getElementById('scatter-cred-mini-none').style.display = 'flex';
-    const zone = document.getElementById('scatter-drop-zone');
-    zone.style.display     = 'block';
-    zone.style.borderColor = '#dee2e6';
-    zone.style.background  = '';
-  }
-
-  window.scatterClearCreds = function () {
-    localStorage.removeItem('opensky_client_id');
-    localStorage.removeItem('opensky_client_secret');
-    showCredsDrop();
-    scatterLog('Credentials cleared', 'info');
-  };
-
-  window.scatterCredDrop = function (event) {
-    event.preventDefault();
-    document.getElementById('scatter-drop-zone').style.borderColor = '#dee2e6';
-    document.getElementById('scatter-drop-zone').style.background  = '';
-    scatterCredFile(event.dataTransfer.files[0]);
-  };
-
-  window.scatterCredFile = function (file) {
-    if (!file || !file.name.endsWith('.json')) {
-      scatterLog('Please drop a .json file', 'err'); return;
-    }
-    const reader = new FileReader();
-    reader.onload = async function (e) {
-      try {
-        const json   = JSON.parse(e.target.result);
-        const id     = json.clientId     || json.client_id     || json.id     || '';
-        const secret = json.clientSecret || json.client_secret || json.secret || '';
-        if (!id || !secret) {
-          scatterLog('Could not find clientId / clientSecret in JSON', 'err'); return;
-        }
-        document.getElementById('scatter-drop-zone').style.display    = 'none';
-        document.getElementById('scatter-cred-spinner').style.display = 'block';
-        scatterLog('Validating credentials for: ' + id, 'info');
-        try {
-          await validateOpenSkyToken(id, secret);
-          localStorage.setItem('opensky_client_id',     id);
-          localStorage.setItem('opensky_client_secret', secret);
-          showCredsOk(id);
-          scatterLog('Credentials validated and saved: ' + id, 'ok');
-        } catch (err) {
-          document.getElementById('scatter-drop-zone').style.display    = 'block';
-          document.getElementById('scatter-cred-spinner').style.display = 'none';
-          const zone = document.getElementById('scatter-drop-zone');
-          zone.style.borderColor = '#dc3545';
-          zone.style.background  = '#fff5f5';
-          scatterLog('Validation failed: ' + err.message, 'err');
-          setTimeout(function () {
-            zone.style.borderColor = '#dee2e6';
-            zone.style.background  = '';
-          }, 3000);
-        }
-      } catch (err) {
-        scatterLog('Invalid JSON: ' + err.message, 'err');
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  async function validateOpenSkyToken (id, secret) {
-    if (!_authenticatorAvailable) {
-      throw new Error('OpenSky Authenticator is not running — please start it first');
-    }
-    const r = await fetch(LOCAL_PROXY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ client_id: id, client_secret: secret }),
-    });
-    const d = await r.json();
-    if (d.access_token) return true;
-    throw new Error(d.error_description || d.error || 'Invalid credentials');
-  }
-
   // ── Scan / Clear ───────────────────────────────────
   window.scatterScan = function () {
     if (!scatterMapReady) {
@@ -458,24 +286,17 @@
     if (locA.length < 4 || locB.length < 4) {
       scatterLog('Please enter valid Maidenhead locators for both stations', 'err'); return;
     }
-    const id     = localStorage.getItem('opensky_client_id')     || '';
-    const secret = localStorage.getItem('opensky_client_secret') || '';
-
     document.getElementById('scatter-scan-btn').disabled = true;
     scatterSetStatus('Scanning…', 'info');
     scatterLog('Scanning ' + locA + ' → ' + locB + ' on ' + getFreqMHz() + ' MHz', 'info');
 
-    const useProxy = _authenticatorAvailable && id && secret;
     ScatterTrack.init(scatterMap, {
       myLocator:     locA,
       theirLocator:  locB,
       band:          getFreqMHz(),
       corridorDeg:   parseInt(document.getElementById('scatter-corridor').value),
       lookaheadMins: parseInt(document.getElementById('scatter-lookahead').value),
-      refreshSecs:   useProxy ? REFRESH_AUTH_SECS : REFRESH_ANON_SECS,
-      clientId:      id     || undefined,
-      clientSecret:  secret || undefined,
-      tokenProxyUrl: useProxy ? LOCAL_PROXY_URL : undefined,
+      refreshSecs:   10,
       onUpdate: function (_ref) {
         const inPath     = _ref.inPath, approaching = _ref.approaching,
               all        = _ref.all,   pathInfo    = _ref.pathInfo,

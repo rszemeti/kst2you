@@ -227,21 +227,6 @@
           <div id="scatter-custom-wrap" class="mb-1" style="display:none">
             <input type="text" id="scatter-custom-freq" class="form-control form-control-sm" value="144" placeholder="MHz">
           </div>
-          <!-- Credential status -->
-          <div class="d-flex align-items-center" style="font-size:10px;gap:6px">
-            <div id="scatter-cred-mini-ok" style="display:none;align-items:center;gap:4px">
-              <i class="bi bi-check-circle-fill text-success"></i>
-              <span id="scatter-cred-name" style="font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px">—</span>
-            </div>
-            <div id="scatter-cred-mini-none" style="display:flex;align-items:center;gap:4px" class="text-warning">
-              <i class="bi bi-exclamation-triangle-fill"></i><span>No credentials</span>
-            </div>
-            <span id="scatter-refresh-badge"
-                  style="font-size:9px;padding:1px 5px;border-radius:8px;background:#6c757d;color:#fff;white-space:nowrap"
-                  title="Auto-refresh interval">60s</span>
-            <button class="btn btn-link p-0 ms-auto" style="font-size:10px;text-decoration:none"
-                    data-bs-toggle="modal" data-bs-target="#scatterCredModal">creds</button>
-          </div>
           <!-- Hidden: kept in DOM for JS -->
           <div style="display:none">
             <input type="text" id="scatter-loc-a" maxlength="6">
@@ -650,48 +635,6 @@
 </div>
 
 <!-- ── SCATTER CREDENTIALS MODAL ── -->
-<div class="modal fade" id="scatterCredModal" tabindex="-1">
-  <div class="modal-dialog modal-sm">
-    <div class="modal-content">
-      <div class="modal-header py-2">
-        <h6 class="modal-title mb-0"><i class="bi bi-key me-1"></i>OpenSky Credentials</h6>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <div id="scatter-cred-ok" style="display:none">
-          <div class="d-flex align-items-center gap-2 mb-3">
-            <i class="bi bi-check-circle-fill text-success fs-5"></i>
-            <span style="font-family:monospace;font-weight:600" id="scatter-cred-name-modal">—</span>
-          </div>
-          <button class="btn btn-outline-secondary btn-sm w-100" onclick="scatterClearCreds()">
-            <i class="bi bi-arrow-repeat me-1"></i>Change Credentials
-          </button>
-        </div>
-        <div id="scatter-cred-drop">
-          <div id="scatter-drop-zone"
-               style="border:2px dashed #dee2e6;border-radius:6px;padding:28px 10px;
-                      text-align:center;font-size:11px;color:#6c757d;cursor:pointer;transition:all 0.15s"
-               ondragover="event.preventDefault();this.style.borderColor='#0d6efd';this.style.background='#f0f4ff'"
-               ondragleave="this.style.borderColor='#dee2e6';this.style.background=''"
-               ondrop="scatterCredDrop(event)"
-               onclick="document.getElementById('scatter-cred-file').click()">
-            <i class="bi bi-file-earmark-arrow-down d-block mb-2" style="font-size:32px"></i>
-            Drop <code>credentials.json</code><br>or click to browse
-          </div>
-          <input type="file" id="scatter-cred-file" accept=".json" style="display:none"
-                 onchange="scatterCredFile(this.files[0])">
-          <div id="scatter-cred-spinner" class="text-center mt-2" style="display:none;font-size:11px;color:#6c757d">
-            <div class="spinner-border spinner-border-sm text-primary me-1" role="status"></div>
-            Validating…
-          </div>
-          <div class="mt-2 text-muted" style="font-size:10px;line-height:1.5">
-            Stored in <code>localStorage</code> only.
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- Hidden debug window (used by sendMsg in Kst.js) -->
 <div id="debugWindow" style="display:none"></div>
@@ -727,6 +670,8 @@
 <script src="assets/js/Beacons.js"></script>
 
 <!-- ScatterTrack module -->
+<script src="assets/js/data_sources/airplanes_live.js"></script>
+<script src="assets/js/data_sources/opensky.js"></script>
 <script src="assets/js/scatter-track.js"></script>
 
 

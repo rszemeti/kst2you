@@ -281,99 +281,30 @@ const ScatterTrack = (() => {
   // OpenSky fetch
   // ────────────────────────────────────────────────
 
-  // ── Token cache ──
-  let _token = null;
-  let _tokenExpiry = 0;
-
   // ── Daily API call counter (persisted to localStorage, keyed by UTC date) ──
   function utcDateKey() {
-    return 'opensky_calls_' + new Date().toISOString().slice(0, 10); // e.g. opensky_calls_2026-03-21
+    return 'opensky_calls_' + new Date().toISOString().slice(0, 10);
   }
   function loadDailyCount() {
-    const key = utcDateKey();
-    const stored = localStorage.getItem(key);
+    const stored = localStorage.getItem(utcDateKey());
     return stored ? parseInt(stored, 10) : 0;
   }
   function saveDailyCount(n) {
     localStorage.setItem(utcDateKey(), n);
   }
   let _requestCount = loadDailyCount();
+  let _datasource   = null;
 
-  async function getToken() {
-    if (_token && Date.now() < _tokenExpiry) return _token;
-    const r = await fetch(_opts.tokenProxyUrl || DEFAULT_TOKEN_PROXY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        client_id:     _opts.clientId,
-        client_secret: _opts.clientSecret,
-      })
-    });
-    if (r.status === 429) {
-      const retryAfter = parseInt(r.headers.get('Retry-After') || '60', 10);
-      const err = new Error(`OpenSky auth rate limited, retry in ${retryAfter}s`);
-      err.rateLimited = true;
-      err.retryAfter  = retryAfter;
-      throw err;
-    }
-    if (!r.ok) throw new Error(`OpenSky auth failed (${r.status})`);
-    const d = await r.json();
-    _token = d.access_token;
-    _tokenExpiry = Date.now() + ((d.expires_in - 30) * 1000);
-    return _token;
-  }
-
-  async function fetchPlanes(latA, lonA, latB, lonB) {
-    const latMin = Math.min(latA, latB) - 2;
-    const latMax = Math.max(latA, latB) + 2;
-    const lonMin = Math.min(lonA, lonB) - 2;
-    const lonMax = Math.max(lonA, lonB) + 2;
-
-    const url = `${OPENSKY_BASE}/states/all?lamin=${latMin}&lomin=${lonMin}&lamax=${latMax}&lomax=${lonMax}`;
-
-    let statesData;
-
-    function checkResponse(r) {
-      if (r.status === 429) {
-        const retryAfter = parseInt(r.headers.get('Retry-After') || '60', 10);
-        const err = new Error(`OpenSky API error 429 — rate limited, retry in ${retryAfter}s`);
-        err.rateLimited = true;
-        err.retryAfter  = retryAfter;
-        throw err;
-      }
-      if (!r.ok) throw new Error(`OpenSky API error ${r.status}`);
-    }
-
-    if (_opts.clientId && _opts.clientSecret) {
-      // ── OAuth2 Bearer token ──
-      const token = await getToken();
-      const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-      checkResponse(r);
-      statesData = await r.json();
-    } else {
-      // ── Anonymous fallback ──
-      const r = await fetch(url);
-      checkResponse(r);
-      statesData = await r.json();
-    }
-    _requestCount++;
-    saveDailyCount(_requestCount);
-
-    return (statesData.states || [])
-      .filter(s => s[5] != null && s[6] != null && !s[8]) // airborne with position
-      .map(s => ({
-        icao:     s[0],
-        callsign: (s[1] || '').trim() || null,
-        country:  s[2],
-        lat:      s[6],
-        lon:      s[5],
-        alt:      s[7]  ? Math.round(s[7])           : null,
-        altFt:    s[7]  ? Math.round(s[7] * 3.28084) : null,
-        velocity: s[9]  ? Math.round(s[9] * 1.94384) : null, // m/s → knots
-        heading:  s[10] != null ? Math.round(s[10])  : null,
-        vrate:    s[11] ? Math.round(s[11] * 196.85) : null, // m/s → fpm
-        squawk:   s[14] || null,
-      }));
+  // ── Datasource context — passed to external datasource files ──
+  function makeDatasourceCtx() {
+    return {
+      geo: { haversine, bearing, destPoint },
+      counter: {
+        increment() { _requestCount++; saveDailyCount(_requestCount); }
+      },
+      opts:      _opts,
+      constants: { OPENSKY_BASE, DEFAULT_TOKEN_PROXY_URL },
+    };
   }
 
   // ────────────────────────────────────────────────
@@ -632,18 +563,82 @@ const ScatterTrack = (() => {
   // Main scan
   // ────────────────────────────────────────────────
 
-  async function _scan() {
-    if (!_stationA || !_stationB) return;
-
+  function _processPlanes(rawPlanes, partial) {
     const corridorDeg = _corridorDeg;
     const freqMHz     = _freqMHz;
     const lookahead   = _lookahead;
 
-    let rawPlanes;
+    const diamond = buildDiamond(
+      _stationA.lat, _stationA.lon,
+      _stationB.lat, _stationB.lon,
+      corridorDeg
+    );
+    _lastDiamond = diamond;
+    const mid = diamond.mid;
+
+    const planes = rawPlanes.map(p => {
+      const visA    = isVisibleFrom(_stationA.lat, _stationA.lon, 0, p.lat, p.lon, p.alt, _minElevDeg);
+      const visB    = isVisibleFrom(_stationB.lat, _stationB.lon, 0, p.lat, p.lon, p.alt, _minElevDeg);
+      const isIn    = inCorridor(p.lat, p.lon, corridorDeg) && visA && visB;
+      const dHz     = calcDoppler(p, freqMHz);
+      const dkHz    = dHz != null ? (dHz >= 0 ? '+' : '') + (dHz / 1000).toFixed(2) : null;
+      const distMid = haversine(mid.lat, mid.lon, p.lat, p.lon);
+      let minsToEntry = null, minsInPath = null;
+      if (isIn) { minsInPath  = predictExit(p, corridorDeg); }
+      else       { minsToEntry = predictEntry(p, lookahead, corridorDeg); }
+      return {
+        ...p,
+        inPath: isIn, visA, visB,
+        grade:       gradeAircraft(p),
+        distFromMid: distMid,
+        doppler:     dHz,
+        dopplerKHz:  dkHz,
+        minsToEntry, minsInPath,
+        elevA: elevationDeg(_stationA.lat, _stationA.lon, 0, p.lat, p.lon, p.alt),
+        elevB: elevationDeg(_stationB.lat, _stationB.lon, 0, p.lat, p.lon, p.alt),
+      };
+    });
+
+    const inPath = planes.filter(p => p.inPath).sort((a, b) => a.distFromMid - b.distFromMid);
+    const approaching = planes.filter(p => !p.inPath && p.minsToEntry != null).sort((a, b) => a.minsToEntry - b.minsToEntry);
+    _lastPlanes = planes;
+
+    clearMapOverlays();
+    drawPathLine(_stationA.lat, _stationA.lon, _stationB.lat, _stationB.lon, !_mapFitted);
+    _mapFitted = true;
+    drawDiamondOnMap(diamond);
+    drawPlanesOnMap([...inPath, ...approaching, ...planes.filter(p => !p.inPath && p.minsToEntry == null)]);
+
+    const pathInfo = {
+      stationA: _stationA, stationB: _stationB,
+      distance:  Math.round(diamond.dist),
+      bearing:   Math.round(diamond.bearAB),
+      midpoint:  mid, corridorDeg, freqMHz,
+      inPathCount:      inPath.length,
+      approachingCount: approaching.length,
+      totalFetched:     planes.length,
+      requestCount:     _requestCount,
+      datasource:       _datasource ? _datasource.name : null,
+      clientId:         _opts.clientId || null,
+    };
+
+    if (_opts.onUpdate) {
+      _opts.onUpdate({ inPath, approaching, all: planes, pathInfo, partial: !!partial });
+    }
+
+    _lastScanTime = Date.now();
+    _startDR();
+  }
+
+  async function _scan() {
+    if (!_stationA || !_stationB) return;
     try {
-      rawPlanes = await fetchPlanes(
+      const ctx = makeDatasourceCtx();
+      await _datasource.fetchPlanes(
         _stationA.lat, _stationA.lon,
-        _stationB.lat, _stationB.lon
+        _stationB.lat, _stationB.lon,
+        (rawPlanes) => _processPlanes(rawPlanes, true),
+        ctx
       );
     } catch (e) {
       console.error('ScatterTrack fetch error:', e);
@@ -651,104 +646,11 @@ const ScatterTrack = (() => {
         const waitSecs = e.retryAfter || 60;
         _stopRefresh();
         setTimeout(() => { _scan(); _startRefresh(); }, waitSecs * 1000);
-        if (_opts.onUpdate) {
-          _opts.onUpdate({ error: e.message, rateLimited: true, retryAfter: waitSecs, inPath: [], approaching: [], all: [], pathInfo: null });
-        }
+        if (_opts.onUpdate) _opts.onUpdate({ error: e.message, rateLimited: true, retryAfter: waitSecs, inPath: [], approaching: [], all: [], pathInfo: null });
       } else if (_opts.onUpdate) {
         _opts.onUpdate({ error: e.message, inPath: [], approaching: [], all: [], pathInfo: null });
       }
-      return;
     }
-
-    // Build diamond geometry
-    const diamond = buildDiamond(
-      _stationA.lat, _stationA.lon,
-      _stationB.lat, _stationB.lon,
-      corridorDeg
-    );
-    _lastDiamond = diamond;
-
-    const mid = diamond.mid;
-
-    // Enrich each plane
-    const planes = rawPlanes.map(p => {
-      const visA    = isVisibleFrom(_stationA.lat, _stationA.lon, 0, p.lat, p.lon, p.alt, _minElevDeg);
-      const visB    = isVisibleFrom(_stationB.lat, _stationB.lon, 0, p.lat, p.lon, p.alt, _minElevDeg);
-      const isIn    = inCorridor(p.lat, p.lon, corridorDeg) && visA && visB;
-      const dHz     = calcDoppler(p, freqMHz);
-      const dkHz    = dHz != null
-        ? (dHz >= 0 ? '+' : '') + (dHz / 1000).toFixed(2)
-        : null;
-      const distMid = haversine(mid.lat, mid.lon, p.lat, p.lon);
-
-      let minsToEntry = null;
-      let minsInPath  = null;
-
-      if (isIn) {
-        minsInPath = predictExit(p, corridorDeg);
-      } else {
-        minsToEntry = predictEntry(p, lookahead, corridorDeg);
-      }
-
-      return {
-        ...p,
-        inPath:       isIn,
-        visA,
-        visB,
-        grade:        gradeAircraft(p),
-        distFromMid:  distMid,
-        doppler:      dHz,
-        dopplerKHz:   dkHz,
-        minsToEntry,
-        minsInPath,
-        elevA: elevationDeg(_stationA.lat, _stationA.lon, 0, p.lat, p.lon, p.alt),
-        elevB: elevationDeg(_stationB.lat, _stationB.lon, 0, p.lat, p.lon, p.alt),
-      };
-    });
-
-    // Split and sort
-    const inPath = planes
-      .filter(p => p.inPath)
-      .sort((a, b) => a.distFromMid - b.distFromMid);
-
-    const approaching = planes
-      .filter(p => !p.inPath && p.minsToEntry != null)
-      .sort((a, b) => a.minsToEntry - b.minsToEntry);
-
-    const all = planes;
-    _lastPlanes = planes;
-
-    // Redraw map overlays
-    clearMapOverlays();
-    drawPathLine(_stationA.lat, _stationA.lon, _stationB.lat, _stationB.lon, !_mapFitted);
-    _mapFitted = true;
-    drawDiamondOnMap(diamond);
-    drawPlanesOnMap([...inPath, ...approaching, ...planes.filter(p => !p.inPath && p.minsToEntry == null)]);
-
-    // Path summary
-    const pathInfo = {
-      stationA:    _stationA,
-      stationB:    _stationB,
-      distance:    Math.round(diamond.dist),
-      bearing:     Math.round(diamond.bearAB),
-      midpoint:    mid,
-      corridorDeg,
-      freqMHz,
-      inPathCount: inPath.length,
-      approachingCount: approaching.length,
-      totalFetched: planes.length,
-      requestCount: _requestCount,
-      clientId: _opts.clientId || null,
-    };
-
-    // Fire callback
-    if (_opts.onUpdate) {
-      _opts.onUpdate({ inPath, approaching, all, pathInfo });
-    }
-
-    // Start dead-reckoning animation between scans
-    _lastScanTime = Date.now();
-    _startDR();
   }
 
   // ────────────────────────────────────────────────
@@ -787,6 +689,8 @@ const ScatterTrack = (() => {
       _lookahead   = opts.lookaheadMins || 10;
       _refreshSecs = opts.refreshSecs   || 60;
 
+      // Always use airplanes.live for now
+      _datasource = AirplanesLiveDatasource;
 
       if (opts.myLocator)    this.setStationA(opts.myLocator);
       if (opts.theirLocator) this.setStationB(opts.theirLocator);

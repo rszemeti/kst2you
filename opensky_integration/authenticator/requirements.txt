@@ -1,6 +1,0 @@
-flask
-requests
-pystray
-pillow
-pyinstaller
-can
