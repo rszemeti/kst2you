@@ -1,5 +1,4 @@
 # Deploy static content to GitHub Pages on release tags only
-# Also builds OpenSkyAuthenticator.exe and attaches it to the release
 name: Deploy static content to Pages
 
 on:
@@ -30,48 +29,7 @@ env:
 
 jobs:
 
-  build-authenticator:
-    runs-on: windows-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Install dependencies
-        run: pip install -r opensky_integration/authenticator/requirements.txt
-      - name: Build exe
-        run: |
-          cd opensky_integration/authenticator
-          pyinstaller --onefile --windowed --name "OpenSkyAuthenticator" opensky_auth.py
-      - name: Upload exe artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: OpenSkyAuthenticator
-          path: |
-            opensky_integration/authenticator/dist/OpenSkyAuthenticator.exe
-            opensky_integration/authenticator/README.md
-
-  attach-to-release:
-    needs: build-authenticator
-    runs-on: ubuntu-latest
-    if: github.event_name == 'release'
-    steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: OpenSkyAuthenticator
-          path: artifacts
-      - name: Attach files to release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            artifacts/dist/OpenSkyAuthenticator.exe
-            artifacts/README.md
-
   deploy:
-    needs: build-authenticator
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
