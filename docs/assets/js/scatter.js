@@ -8,6 +8,68 @@
   let scatterChatCallsign = null;
   const SCATTER_MAX_KM = 900;
 
+  // ── OpenSky Authenticator (local proxy) ────────────
+  const LOCAL_PROXY_URL   = 'http://localhost:7329/token';
+  const REFRESH_AUTH_SECS = 10;
+  const REFRESH_ANON_SECS = 60;
+  let   _authenticatorAvailable = false;
+  let   _authPollTimer = null;
+
+  async function checkAuthenticator() {
+    try {
+      const r = await fetch(LOCAL_PROXY_URL, {
+        method: 'OPTIONS',
+        signal: AbortSignal.timeout(1500),
+      });
+      return r.ok || r.status === 204;
+    } catch (_) { return false; }
+  }
+
+  async function _pollAuthenticator() {
+    const wasAvailable = _authenticatorAvailable;
+    _authenticatorAvailable = await checkAuthenticator();
+
+    if (_authenticatorAvailable && !wasAvailable) {
+      // Authenticator just appeared
+      const hasCreds = localStorage.getItem('opensky_client_id') &&
+                       localStorage.getItem('opensky_client_secret');
+      if (!hasCreds) {
+        scatterLog('OpenSky Authenticator detected — enter credentials to enable 10s refresh', 'ok');
+        bootstrap.Modal.getOrCreateInstance(
+          document.getElementById('scatterCredModal')
+        ).show();
+      } else {
+        scatterLog('OpenSky Authenticator detected — switching to 10s refresh', 'ok');
+        updateAuthStatus();
+      }
+    } else if (!_authenticatorAvailable && wasAvailable) {
+      scatterLog('OpenSky Authenticator no longer available — switched to anonymous mode', 'warn');
+      updateAuthStatus();
+    }
+  }
+
+  function updateAuthStatus() {
+    const hasCreds = localStorage.getItem('opensky_client_id') &&
+                     localStorage.getItem('opensky_client_secret');
+    const authenticated = _authenticatorAvailable && hasCreds;
+    const badge = document.getElementById('scatter-refresh-badge');
+    if (badge) {
+      badge.textContent        = authenticated ? REFRESH_AUTH_SECS + 's' : REFRESH_ANON_SECS + 's';
+      badge.style.background   = authenticated ? '#198754' : '#6c757d';
+      badge.title              = authenticated
+        ? 'Authenticated — ' + REFRESH_AUTH_SECS + 's refresh via local proxy'
+        : 'Anonymous — ' + REFRESH_ANON_SECS + 's refresh';
+    }
+  }
+
+  // Start polling — every 30s
+  _authPollTimer = setInterval(_pollAuthenticator, 30000);
+  // Check immediately on load too
+  checkAuthenticator().then(function (found) {
+    _authenticatorAvailable = found;
+    updateAuthStatus();
+  });
+
   // ── Rotator server discovery ────────────────────────
   // Silently probes localhost ports; sets window._rotatorUrl if found.
   (async function probeRotator() {
@@ -373,14 +435,14 @@
   };
 
   async function validateOpenSkyToken (id, secret) {
-    const r = await fetch(
-      'https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ grant_type: 'client_credentials', client_id: id, client_secret: secret })
-      }
-    );
+    if (!_authenticatorAvailable) {
+      throw new Error('OpenSky Authenticator is not running — please start it first');
+    }
+    const r = await fetch(LOCAL_PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_id: id, client_secret: secret }),
+    });
     const d = await r.json();
     if (d.access_token) return true;
     throw new Error(d.error_description || d.error || 'Invalid credentials');
@@ -403,15 +465,17 @@
     scatterSetStatus('Scanning…', 'info');
     scatterLog('Scanning ' + locA + ' → ' + locB + ' on ' + getFreqMHz() + ' MHz', 'info');
 
+    const useProxy = _authenticatorAvailable && id && secret;
     ScatterTrack.init(scatterMap, {
       myLocator:     locA,
       theirLocator:  locB,
       band:          getFreqMHz(),
       corridorDeg:   parseInt(document.getElementById('scatter-corridor').value),
       lookaheadMins: parseInt(document.getElementById('scatter-lookahead').value),
-      refreshSecs:   parseInt(document.getElementById('scatter-refresh').value),
+      refreshSecs:   useProxy ? REFRESH_AUTH_SECS : REFRESH_ANON_SECS,
       clientId:      id     || undefined,
       clientSecret:  secret || undefined,
+      tokenProxyUrl: useProxy ? LOCAL_PROXY_URL : undefined,
       onUpdate: function (_ref) {
         const inPath     = _ref.inPath, approaching = _ref.approaching,
               all        = _ref.all,   pathInfo    = _ref.pathInfo,

@@ -70,7 +70,7 @@ const ScatterTrack = (() => {
   const R_EARTH = 6371;   // km, geometric Earth radius
   const R_EFF   = 8495;   // km, effective radius with k=4/3 atmospheric refraction
   const OPENSKY_BASE      = 'https://opensky-network.org/api';
-  const TOKEN_PROXY_URL   = 'https://opensky-token-proxy.robin-c5d.workers.dev/';
+  const DEFAULT_TOKEN_PROXY_URL = 'http://localhost:7329/token';
 
   // ────────────────────────────────────────────────
   // Geo helpers
@@ -301,7 +301,7 @@ const ScatterTrack = (() => {
 
   async function getToken() {
     if (_token && Date.now() < _tokenExpiry) return _token;
-    const r = await fetch(TOKEN_PROXY_URL, {
+    const r = await fetch(_opts.tokenProxyUrl || DEFAULT_TOKEN_PROXY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
