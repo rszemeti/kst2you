@@ -445,7 +445,7 @@
           if (oslClient)   oslClient.textContent   = pathInfo.clientId || 'anonymous';
           if (oslRequests) oslRequests.textContent = pathInfo.requestCount || 0;
         }
-        renderScatterResults(inPath, approaching);
+        renderScatterResults(inPath, approaching, predicted);
         updateScatterPathBar(pathInfo);
       }
     });
@@ -485,6 +485,7 @@
   window.scatterChatSetTarget = function (callsign) {
     if (!callsign || callsign === '0') return;
     scatterChatCallsign = callsign.toUpperCase();
+    _inPathIcaos = new Set();   // reset so first scan after target change alerts fresh
     const feed = document.getElementById('scatter-chat-feed');
     const toEl = document.getElementById('scatter-chat-to');
     if (feed) feed.innerHTML = '';
@@ -536,7 +537,10 @@
   });
 
   // ── Last known in-path list (for dblclick message) ─
-  var _lastInPath = [];
+  var _lastInPath    = [];
+  var _inPathIcaos   = new Set();   // tracks ICAOs currently in path for new-entry detection
+
+  // playPlaneAlert() is defined in planeAlert.js (encoded WAV, same pattern as beep.js)
 
   // ── Results rendering ──────────────────────────────
   function sendASMessage (p) {
@@ -558,8 +562,18 @@
     sendMsg('MSG|' + chatId + '|0|/CQ ' + scatterChatCallsign + ' ' + msg + '|0|');
   }
 
-  function renderScatterResults (inPath, approaching) {
+  function renderScatterResults (inPath, approaching, isPredicted) {
     _lastInPath = inPath;
+
+    // Beep for each plane that has newly entered the corridor (real scan only)
+    if (!isPredicted) {
+      var newCount = 0;
+      inPath.forEach(function (p) { if (!_inPathIcaos.has(p.icao)) newCount++; });
+      for (var i = 0; i < newCount; i++) {
+        setTimeout(playPlaneAlert, i * 250);   // stagger if multiple arrive at once
+      }
+      _inPathIcaos = new Set(inPath.map(function (p) { return p.icao; }));
+    }
     const list = document.getElementById('scatter-list');
     list.innerHTML = '';
     if (!inPath.length && !approaching.length) {

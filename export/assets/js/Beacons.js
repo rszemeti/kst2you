@@ -24,12 +24,7 @@ function fetchBeacons(min,max) {
    deleteAllBeacons();
    beacons={};
    beaconStates={};
-   var url;
-   if(window.location.hostname === 'kst2you.bss.design') {
-       url = 'https://storage.googleapis.com/kst2you/BeaconList.json?t=spoon';
-   } else{
-       url = 'https://storage.googleapis.com/kst2you/BeaconList.json?t=cup';
-   }
+   var url = 'https://storage.googleapis.com/kst2you/BeaconList.json';
    
    $.getJSON(url, function (data) {
         data.forEach(function (item) {

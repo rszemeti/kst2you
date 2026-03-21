@@ -346,7 +346,8 @@ function doLogin() {
     chatId = $('#chatId').val();
     userName = $('#userInput').val().toUpperCase();
     password = $('#passInput').val();
-    if (typeof ChatInbox !== 'undefined') ChatInbox.init(userName);
+    if (typeof ChatInbox   !== 'undefined') ChatInbox.init(userName);
+    if (typeof ContestLog  !== 'undefined') ContestLog.init(userName);
 
     if ($('#rememberMe').is(':checked')) {
         var cookieData = {
@@ -662,7 +663,31 @@ function addMapMarker(stn) {
   });
   stn.infowindow = infowindow;
   stn.marker = marker;
+  // Apply contest state to new marker
+  if (typeof ContestLog !== 'undefined') {
+    _applyContestMarker(stn.callsign, marker);
+  }
 }
+
+function _applyContestMarker(callsign, marker) {
+  if (!marker) return;
+  var opacity = (typeof ContestLog !== 'undefined') ? ContestLog.getMapOpacity(callsign) : 1;
+  if (opacity === 0) {
+    marker.setMap(null);
+  } else {
+    if (!marker.getMap()) marker.setMap(map);
+    marker.setOpacity(opacity);
+  }
+}
+
+// Called by ContestLog when state changes — refreshes all station map markers
+window.contestRefreshMapMarkers = function() {
+  if (typeof stationList === 'undefined') return;
+  Object.keys(stationList).forEach(function(call) {
+    var stn = stationList[call];
+    if (stn && stn.marker) _applyContestMarker(call, stn.marker);
+  });
+};
 
 function procLoginError(msg) {
   $('#loginError').show();
@@ -779,7 +804,8 @@ function doLogin() {
     chatId = $('#chatId').val();
     userName = $('#userInput').val().toUpperCase();
     password = $('#passInput').val();
-    if (typeof ChatInbox !== 'undefined') ChatInbox.init(userName);
+    if (typeof ChatInbox   !== 'undefined') ChatInbox.init(userName);
+    if (typeof ContestLog  !== 'undefined') ContestLog.init(userName);
 
     if ($('#rememberMe').is(':checked')) {
         var cookieData = {
@@ -867,6 +893,17 @@ function initUserList() {
         }
       },
     ],
+    createdRow: function(row, data) {
+      $(row).attr('data-callsign', data.callsign);
+      if (typeof ContestLog !== 'undefined' && ContestLog.isActive()) {
+        var state = ContestLog.getState(data.callsign);
+        if (state) {
+          var display = state === 'worked' ? ContestLog.getSetting('workedDisplay') : ContestLog.getSetting('skipDisplay');
+          if (display === 'hide') { $(row).hide(); }
+          else { $(row).addClass('clog-greyed'); }
+        }
+      }
+    },
   });
 
   $('#userListTable tbody').on('click', 'tr', function(e) {
@@ -947,6 +984,29 @@ function chatPopup(callsign) {
     });
   } else {
     $rotWrap.hide();
+  }
+  // Contest mark buttons
+  var $contestWrap = $('#chatContestWrap');
+  if (typeof ContestLog !== 'undefined') {
+    $contestWrap.show();
+    var _cstate = ContestLog.getState(callsign);
+    var $badge = $('#chatContestBadge');
+    $badge.text(_cstate === 'worked' ? '✓ Worked' : _cstate === 'skip' ? '✗ Skip' : '');
+    $badge.attr('class', 'chat-contest-badge ms-1' + (_cstate ? ' clog-' + _cstate : ' d-none'));
+    $('#chatWorkedButton').off('click').on('click', function(e) {
+      e.stopPropagation();
+      ContestLog.mark(callsign, 'worked', chatUser.locator, chatUser._distance,
+        chatUser.locator ? Math.round(bearing(myLatLong[0], myLatLong[1],
+          gridSquareToLatLon(chatUser.locator)[0], gridSquareToLatLon(chatUser.locator)[1])) : null);
+    });
+    $('#chatSkipButton').off('click').on('click', function(e) {
+      e.stopPropagation();
+      ContestLog.mark(callsign, 'skip', chatUser.locator, chatUser._distance,
+        chatUser.locator ? Math.round(bearing(myLatLong[0], myLatLong[1],
+          gridSquareToLatLon(chatUser.locator)[0], gridSquareToLatLon(chatUser.locator)[1])) : null);
+    });
+  } else {
+    $contestWrap.hide();
   }
   $('#chatPopupMessageInput').prop('disabled', !isOnline)
     .attr('placeholder', isOnline ? 'Write your message' : 'Station offline — history only');
@@ -1076,7 +1136,7 @@ $(document).ready(function() {
   if (typeof initMap === "function") {
         // Dynamically load the Google Maps API.
         var script = document.createElement('script');
-        script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyCYgwKKCWkBljRcQ7j59VEL5hRK-ZZn4ZQ&callback=initMap";
+        script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyA609pI75YFCN-uINIw89OXESRxv56Btpk&callback=initMap";
         document.body.appendChild(script);
   } else {
         console.error("initMap function is not defined!");
@@ -1147,6 +1207,38 @@ $(document).ready(function() {
 
   $('#beepTestButton').click(function() {
     playBeep();
+  });
+
+  $('#planeAlertTestButton').click(function() {
+    if (typeof window.playPlaneAlert === 'function') window.playPlaneAlert();
+  });
+
+  // ── Contest mode settings UI ──────────────────────────
+  // Sync dropdowns when About tab opens (in case ContestLog already has settings loaded)
+  $('a[href="#tab-about"]').on('shown.bs.tab', function() {
+    if (typeof ContestLog === 'undefined') return;
+    var active = ContestLog.isActive();
+    $('#contest-mode-active').prop('checked', active);
+    $('#contest-worked-display').val(ContestLog.getSetting('workedDisplay'));
+    $('#contest-skip-display').val(ContestLog.getSetting('skipDisplay'));
+    $('#contest-map-display').val(ContestLog.getSetting('mapDisplay'));
+    $('.contest-settings-detail').toggle(active);
+  });
+  $('a[href="#tab-contest"]').on('shown.bs.tab', function() {
+    if (typeof ContestLog !== 'undefined') ContestLog.renderLogTab();
+  });
+  $('#contest-mode-active').on('change', function() {
+    if (typeof ContestLog !== 'undefined') ContestLog.setActive(this.checked);
+    $('.contest-settings-detail').toggle(this.checked);
+  });
+  $('#contest-worked-display').on('change', function() {
+    if (typeof ContestLog !== 'undefined') ContestLog.setSetting('workedDisplay', this.value);
+  });
+  $('#contest-skip-display').on('change', function() {
+    if (typeof ContestLog !== 'undefined') ContestLog.setSetting('skipDisplay', this.value);
+  });
+  $('#contest-map-display').on('change', function() {
+    if (typeof ContestLog !== 'undefined') ContestLog.setSetting('mapDisplay', this.value);
   });
 
   $("#chatPopup").on('shown.bs.modal', function() {

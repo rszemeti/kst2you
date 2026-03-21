@@ -17,6 +17,7 @@
 
   <link rel="stylesheet" href="assets/css/scatter.css">
   <link rel="stylesheet" href="assets/css/chat-inbox.css">
+  <link rel="stylesheet" href="assets/css/contest.css">
 </head>
 
 <body>
@@ -31,6 +32,7 @@
     </span>
     <span id="connState" class="text-white-50 small me-1">Wait …</span>
     <span id="connCount" class="text-white-50 small"></span>
+    <span id="contest-score" class="contest-score-badge" style="display:none"></span>
     <div class="form-check mb-0 ms-auto text-white d-flex align-items-center gap-1">
       <input class="form-check-input mt-0" type="checkbox" id="awayButton">
       <label class="form-check-label small" for="awayButton">Away</label>
@@ -68,6 +70,11 @@
   <li class="nav-item" id="spotsTab" role="presentation">
     <a class="nav-link py-1" role="tab" data-bs-toggle="tab" href="#tab-spots">
       <i class="bi bi-broadcast-pin me-1"></i>Beacons Spotted
+    </a>
+  </li>
+  <li class="nav-item" id="contest-log-tab-li" role="presentation" style="display:none">
+    <a class="nav-link py-1" role="tab" data-bs-toggle="tab" href="#tab-contest">
+      <i class="bi bi-trophy me-1"></i>Session Log
     </a>
   </li>
   <li class="nav-item" id="aboutTab" role="presentation">
@@ -316,6 +323,12 @@
     </div>
   </div><!-- /tab-spots -->
 
+  <!-- ── CONTEST LOG ── -->
+  <div class="tab-pane fade tab-scroll" role="tabpanel" id="tab-contest">
+    <div class="container-fluid pt-2" id="contest-log-tab-content">
+    </div>
+  </div>
+
   <!-- ── ABOUT ── -->
   <div class="tab-pane fade tab-scroll" role="tabpanel" id="tab-about">
     <div class="container pt-3" style="max-width:800px">
@@ -332,9 +345,46 @@
         </a><br>
         This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
       </p>
+      <hr>
+      <h5 class="text-primary">Contest Mode</h5>
+      <div class="row g-3 mb-2" style="max-width:600px">
+        <div class="col-12">
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="contest-mode-active" role="switch">
+            <label class="form-check-label fw-bold" for="contest-mode-active">Contest mode active</label>
+          </div>
+        </div>
+        <div class="col-sm-6 contest-settings-detail">
+          <label class="form-label small mb-1">Worked stations</label>
+          <select class="form-select form-select-sm" id="contest-worked-display">
+            <option value="grey">Grey out</option>
+            <option value="hide">Hide completely</option>
+          </select>
+        </div>
+        <div class="col-sm-6 contest-settings-detail">
+          <label class="form-label small mb-1">Skip stations</label>
+          <select class="form-select form-select-sm" id="contest-skip-display">
+            <option value="hide">Hide completely</option>
+            <option value="grey">Grey out</option>
+          </select>
+        </div>
+        <div class="col-sm-6 contest-settings-detail">
+          <label class="form-label small mb-1">Map markers</label>
+          <select class="form-select form-select-sm" id="contest-map-display">
+            <option value="dim">Dim</option>
+            <option value="hide">Hide</option>
+          </select>
+        </div>
+      </div>
+      <hr>
+      <h5 class="text-primary">Audio</h5>
       <p>
         <button class="btn btn-primary" id="beepTestButton" type="button">Beep Test</button>
         Test your audio here — this is the "beep" you will hear when a station calls you.
+      </p>
+      <p>
+        <button class="btn btn-success" id="planeAlertTestButton" type="button">Plane Alert Test</button>
+        This is the sound you will hear when a new aircraft enters your scatter corridor.
       </p>
     </div>
   </div>
@@ -405,6 +455,11 @@
             </li>
             <li class="list-inline-item" id="chatPopupRotateWrap" style="display:none">
               <button class="btn btn-warning btn-sm py-0 px-2" id="chatPopupRotateButton" type="button">⟳ Rotate</button>
+            </li>
+            <li class="list-inline-item" id="chatContestWrap" style="display:none">
+              <button class="btn btn-success btn-sm py-0 px-2" id="chatWorkedButton" type="button">✓ Worked</button>
+              <button class="btn btn-secondary btn-sm py-0 px-2 ms-1" id="chatSkipButton" type="button">✗ Skip</button>
+              <span class="chat-contest-badge d-none ms-1" id="chatContestBadge"></span>
             </li>
           </ul>
         </div>
@@ -657,11 +712,13 @@
 
 <!-- ── App modules (load order matters) ── -->
 <script src="assets/js/beep.js"></script>
+<script src="assets/js/planeAlert.js"></script>
 <script src="assets/js/Kst.js"></script>
 <script src="assets/js/Logging.js"></script>
 <script src="assets/js/Maidenhead.js"></script>
 <script src="assets/js/Map.js"></script>
 <script src="assets/js/ChatInbox.js"></script>
+<script src="assets/js/ContestLog.js"></script>
 <script src="assets/js/profile.js"></script>
 <script src="assets/js/QRZ.js"></script>
 <script src="assets/js/Beacons.js"></script>
