@@ -49,21 +49,26 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: OpenSkyAuthenticator
-          path: opensky_integration/authenticator/dist/OpenSkyAuthenticator.exe
+          path: |
+            opensky_integration/authenticator/dist/OpenSkyAuthenticator.exe
+            opensky_integration/authenticator/README.md
 
   attach-to-release:
     needs: build-authenticator
     runs-on: ubuntu-latest
     if: github.event_name == 'release'
     steps:
-      - name: Download exe artifact
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           name: OpenSkyAuthenticator
-      - name: Attach exe to release
+          path: artifacts
+      - name: Attach files to release
         uses: softprops/action-gh-release@v2
         with:
-          files: OpenSkyAuthenticator.exe
+          files: |
+            artifacts/dist/OpenSkyAuthenticator.exe
+            artifacts/README.md
 
   deploy:
     needs: build-authenticator
