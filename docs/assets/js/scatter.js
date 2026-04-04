@@ -9,31 +9,102 @@
   const SCATTER_MAX_KM = 900;
 
   // ── Rotator server discovery ────────────────────────
-  // Silently probes localhost ports; sets window._rotatorUrl if found.
-  (async function probeRotator() {
-    const ports = [5000, 5001, 8000, 8001, 3000];
+  // Respects stored setting: auto (default), none, custom, pstrotator.
+
+  function _rotatorFound(label) {
+    const el = document.getElementById('scatter-rotator-status');
+    if (el) { el.textContent = 'Rotator: ' + label; el.style.opacity = '1'; el.style.color = '#28a745'; }
+    if ($.fn.DataTable && $.fn.DataTable.isDataTable('#userListTable')) injectUserListButtons();
+  }
+
+  async function _probeCustom(ports) {
     for (const port of ports) {
       try {
         const r = await fetch('http://localhost:' + port + '/status', { signal: AbortSignal.timeout(800) });
         if (r.ok) {
           window._rotatorUrl = 'http://localhost:' + port;
-          const el = document.getElementById('scatter-rotator-status');
-          if (el) { el.textContent = 'Rotator: localhost:' + port; el.style.opacity = '1'; el.style.color = '#28a745'; }
-          // Table may already be drawn — inject buttons now
-          if ($.fn.DataTable.isDataTable('#userListTable')) injectUserListButtons();
-          return;
+          window._rotatorType = 'custom';
+          _rotatorFound('Custom :' + port);
+          return true;
         }
       } catch (_) {}
     }
-  })();
+    return false;
+  }
+
+  async function _probePst(ports) {
+    for (const port of ports) {
+      try {
+        // PstRotator doesn't send CORS headers, so use no-cors.
+        // An opaque response means the server is there; a throw means it's not.
+        await fetch('http://127.0.0.1:' + port + '/PstRotator.htm?get=az',
+          { mode: 'no-cors', signal: AbortSignal.timeout(800) });
+        window._rotatorUrl = 'http://127.0.0.1:' + port;
+        window._rotatorType = 'pstrotator';
+        _rotatorFound('PstRotator :' + port);
+        return true;
+      } catch (_) {}
+    }
+    return false;
+  }
+
+  window._applyRotatorSetting = async function () {
+    const type = localStorage.getItem('kst2you_rotator_type') || 'auto';
+    const port = parseInt(localStorage.getItem('kst2you_rotator_port'), 10) || 0;
+
+    window._rotatorUrl = null;
+    window._rotatorType = null;
+
+    if (type === 'none') {
+      const el = document.getElementById('scatter-rotator-status');
+      if (el) { el.textContent = 'Rotator: disabled'; el.style.opacity = '.5'; el.style.color = ''; }
+      return;
+    }
+
+    if (type === 'custom') {
+      await _probeCustom(port ? [port] : [5000, 5001, 8000, 8001, 3000]);
+    } else if (type === 'pstrotator') {
+      await _probePst(port ? [port] : [8089, 8090, 8091]);
+    } else {
+      // auto — try custom first, then PstRotator
+      if (await _probeCustom([5000, 5001, 8000, 8001, 3000])) return;
+      await _probePst([8089, 8090, 8091]);
+    }
+  };
+
+  // Run initial probe on load
+  window._applyRotatorSetting();
+
+  /** Compute bearing from own locator to target locator (degrees). */
+  function _calcBearing(targetLocator) {
+    if (!targetLocator || typeof myLoc === 'undefined' || !myLoc) return null;
+    try {
+      var a = gridSquareToLatLon(myLoc);
+      var b = gridSquareToLatLon(targetLocator);
+      var dLon = (b[1] - a[1]) * Math.PI / 180;
+      var lat1 = a[0] * Math.PI / 180;
+      var lat2 = b[0] * Math.PI / 180;
+      var y = Math.sin(dLon) * Math.cos(lat2);
+      var x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+      var brg = Math.atan2(y, x) * 180 / Math.PI;
+      return (brg + 360) % 360;
+    } catch (_) { return null; }
+  }
 
   window.rotatorPointTo = function (callsign, locator) {
     if (!window._rotatorUrl) return;
-    fetch(window._rotatorUrl + '/station', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ callsign, locator }),
-    }).catch(function () {});
+    if (window._rotatorType === 'pstrotator') {
+      var az = _calcBearing(locator);
+      if (az == null) return;
+      var url = window._rotatorUrl + '/PstRotator.htm?az=' + az.toFixed(1) + '&el=0';
+      fetch(url, { mode: 'no-cors', signal: AbortSignal.timeout(3000) }).catch(function () {});
+    } else {
+      fetch(window._rotatorUrl + '/station', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ callsign, locator }),
+      }).catch(function () {});
+    }
   };
 
   // ── Auto-fill Station A when KST login sets our locator ────
@@ -267,6 +338,10 @@
   document.getElementById('scatter-band').addEventListener('change', function () {
     document.getElementById('scatter-custom-wrap').style.display =
       this.value === 'custom' ? 'block' : 'none';
+    if (scatterMapReady && document.getElementById('scatter-loc-b').value.length >= 4) {
+      ScatterTrack.setBand(getFreqMHz());
+      scatterScan();
+    }
   });
 
   function getFreqMHz () {
@@ -338,6 +413,7 @@
   };
 
   window.scatterClear = function () {
+    _stopTracking();
     ScatterTrack.clear();
     document.getElementById('scatter-list').innerHTML =
       '<div class="s-empty"><i class="bi bi-x-circle me-1"></i>Cleared.</div>';
@@ -371,6 +447,7 @@
     if (!callsign || callsign === '0') return;
     scatterChatCallsign = callsign.toUpperCase();
     _inPathIcaos = new Set();   // reset so first scan after target change alerts fresh
+    _stopTracking();
     const feed = document.getElementById('scatter-chat-feed');
     const toEl = document.getElementById('scatter-chat-to');
     if (feed) feed.innerHTML = '';
@@ -425,6 +502,106 @@
   var _lastInPath    = [];
   var _inPathIcaos   = new Set();   // tracks ICAOs currently in path for new-entry detection
 
+  // ── Rotator tracking ──────────────────────────────────
+  // When active, every 5s pick the best in-path plane and point the rotator at it.
+  // _trackedIcao: null = auto (best/closest), string = locked to that ICAO.
+  var _trackInterval = null;
+  var _trackedIcao   = null;
+
+  function _getTrackedPlane() {
+    if (!_lastInPath.length) return null;
+    if (_trackedIcao) {
+      var locked = _lastInPath.find(function (p) { return p.icao === _trackedIcao; });
+      if (locked) return locked;
+      // Locked plane left corridor — fall back to auto
+      _trackedIcao = null;
+      _updateTrackBtn();
+    }
+    return _lastInPath[0]; // auto: closest to midpoint
+  }
+
+  function _trackTick() {
+    if (!window._rotatorUrl) return;
+    var best = _getTrackedPlane();
+    if (!best) return;
+    var az = best.azA;
+    if (az == null) return;
+    var el = best.elevA != null ? Math.max(0, best.elevA) : 0;
+    if (window._rotatorType === 'pstrotator') {
+      var url = window._rotatorUrl + '/PstRotator.htm?az=' + az.toFixed(1) + '&el=' + el.toFixed(1);
+      fetch(url, { mode: 'no-cors', signal: AbortSignal.timeout(3000) }).catch(function () {});
+    } else {
+      fetch(window._rotatorUrl + '/station', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ az: az, el: el }),
+      }).catch(function () {});
+    }
+  }
+
+  function _updateTrackBtn() {
+    var btn = document.getElementById('scatter-track-btn');
+    if (!btn) return;
+    if (_trackInterval) {
+      btn.classList.remove('btn-outline-light'); btn.classList.add('btn-success');
+      var p = _getTrackedPlane();
+      if (p) {
+        var label = (p.callsign || p.icao.toUpperCase());
+        btn.innerHTML = '&#x2295; ' + label;
+      } else {
+        btn.textContent = '\u2295 Tracking';
+      }
+    } else {
+      btn.classList.remove('btn-success'); btn.classList.add('btn-outline-light');
+      btn.textContent = '\u2295 Track';
+    }
+  }
+
+  function _startTracking(icao) {
+    _trackedIcao = icao || null;
+    if (!_trackInterval) {
+      _trackTick();  // immediate first update
+      _trackInterval = setInterval(_trackTick, 5000);
+    }
+    _updateTrackBtn();
+    _highlightTracked();
+  }
+
+  function _stopTracking() {
+    if (_trackInterval) { clearInterval(_trackInterval); _trackInterval = null; }
+    _trackedIcao = null;
+    _updateTrackBtn();
+    _highlightTracked();
+  }
+
+  function _highlightTracked() {
+    var items = document.querySelectorAll('#scatter-list .plane-item');
+    var tracked = _getTrackedPlane();
+    var trackedIcao = tracked ? tracked.icao : null;
+    items.forEach(function (el) {
+      el.classList.toggle('tracked', _trackInterval && el.dataset.icao === trackedIcao);
+    });
+  }
+
+  document.getElementById('scatter-track-btn').addEventListener('click', function () {
+    if (_trackInterval) { _stopTracking(); } else { _startTracking(null); }
+  });
+
+  // Per-plane track button (event delegation)
+  $(document).on('click', '.pi-track-btn', function (e) {
+    e.stopPropagation();
+    var icao = this.dataset.trackIcao;
+    if (!icao) return;
+    if (_trackedIcao === icao && _trackInterval) {
+      // Already tracking this one — unlock to auto
+      _trackedIcao = null;
+      _updateTrackBtn();
+      _highlightTracked();
+    } else {
+      _startTracking(icao);
+    }
+  });
+
   // playPlaneAlert() is defined in planeAlert.js (encoded WAV, same pattern as beep.js)
 
   // ── Results rendering ──────────────────────────────
@@ -473,8 +650,12 @@
       list.appendChild(h);
       inPath.forEach(function (p) {
         const el = makePlaneItem(p, false);
-        el.title = 'Double-click to send AS! alert to ' + scatterChatCallsign;
+        el.dataset.icao = p.icao;
+        el.title = 'Double-click to send AS! alert · Click \u2295 to track this plane';
         el.addEventListener('dblclick', function () { sendASMessage(p); });
+        // Highlight if tracked
+        var tracked = _getTrackedPlane();
+        if (_trackInterval && tracked && tracked.icao === p.icao) el.classList.add('tracked');
         list.appendChild(el);
       });
     }
@@ -493,6 +674,8 @@
         list.appendChild(el);
       });
     }
+    // Update tracking UI after render
+    if (_trackInterval) _updateTrackBtn();
   }
 
   function makePlaneItem (p, isApproaching) {
@@ -510,11 +693,17 @@
     const callClass = p.callsign ? (isApproaching ? 'app' : '') : 'anon';
     const gradeStars = p.grade === 'heavy' ? '★★★' : p.grade === 'medium' ? '★★' : '★';
     const gradeCls   = 'grade-' + (p.grade || 'light');
+    // Track button for in-path planes when rotator available
+    var trackBtnHtml = '';
+    if (!isApproaching && window._rotatorUrl) {
+      trackBtnHtml = '<button class="pi-track-btn" data-track-icao="' + p.icao + '" title="Track this plane">⊕</button>';
+    }
+    const azHtml = p.azA != null ? 'Az: ' + p.azA.toFixed(0) + '° ' : '';
     div.innerHTML =
       '<div class="d-flex justify-content-between align-items-baseline mb-1">' +
         '<span class="pi-call ' + callClass + '">' + (p.callsign || p.icao.toUpperCase()) + '</span>' +
         '<span class="pi-grade ' + gradeCls + '">' + gradeStars + '</span>' +
-        dopplerHtml +
+        dopplerHtml + trackBtnHtml +
       '</div>' +
       '<div class="pi-meta">' +
         (p.altFt    != null ? Math.round(p.altFt / 100) * 100 + ' ft' : '—') + ' · ' +
@@ -523,6 +712,7 @@
         Math.round(p.distFromMid) + ' km' +
       '</div>' +
       '<div class="pi-meta">' +
+        azHtml +
         'El: ' + (p.elevA != null ? p.elevA.toFixed(1) + '°' : '—') + ' / ' +
                  (p.elevB != null ? p.elevB.toFixed(1) + '°' : '—') +
       '</div>' + timeHtml;

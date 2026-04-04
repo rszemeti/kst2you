@@ -148,7 +148,9 @@ var ChatInbox = (function () {
       Object.keys(_convs).forEach(function(call) {
         if (typeof messageLog[call] === 'undefined') messageLog[call] = [];
         _convs[call].forEach(function(msg) {
-          var alreadyIn = messageLog[call].some(function(m) { return m.ts === msg.ts && m.text === msg.text; });
+          var alreadyIn = messageLog[call].some(function(m) {
+            return m.from === msg.from && m.text === msg.text;
+          });
           if (!alreadyIn) messageLog[call].push(msg);
         });
       });
@@ -173,10 +175,11 @@ var ChatInbox = (function () {
         saveMeta();
       }
       // Avoid duplicate replays
+      var msgTs = msg.timestamp || msg.ts || Date.now();
       var last = _convs[peer][_convs[peer].length - 1];
-      if (last && last.ts === msg.ts && last.text === msg.text) return;
+      if (last && last.ts === msgTs && last.from === msg.from) return;
 
-      _convs[peer].push({ from: msg.from, to: msg.to, text: msg.text, ts: msg.ts || Date.now() });
+      _convs[peer].push({ from: msg.from, to: msg.to, text: msg.text, ts: msgTs });
       // Trim to max
       if (_convs[peer].length > MAX_PER_CONV) _convs[peer].splice(0, _convs[peer].length - MAX_PER_CONV);
 

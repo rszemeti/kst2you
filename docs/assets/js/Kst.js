@@ -347,7 +347,7 @@ function doLogin() {
     userName = $('#userInput').val().toUpperCase();
     password = $('#passInput').val();
     if (typeof ChatInbox   !== 'undefined') ChatInbox.init(userName);
-    if (typeof ContestLog  !== 'undefined') ContestLog.init(userName);
+    if (typeof ContestLog  !== 'undefined') ContestLog.init(userName, password);
 
     if ($('#rememberMe').is(':checked')) {
         var cookieData = {
@@ -438,6 +438,14 @@ function decorate(callsign){
 
 //CR|3|1592759981|SP4MPB|Marek 23/13/3|0| jestes ?|SP6GWB|
 //CH|3|1592770412|G1YFG |Robin 23cm   |0| test     |0|
+function _isDuplicateMsg(log, message) {
+  var from = message.from;
+  var text = message.text;
+  for (var i = log.length - 1; i >= 0; i--) {
+    if (log[i].from === from && log[i].text === text) return true;
+  }
+  return false;
+}
 function procChatMessage(msg, isLive) {
   var message = new Message(msg);
   if (message.from.includes('SERVER')) {
@@ -514,11 +522,13 @@ function procChatMessage(msg, isLive) {
     if (typeof messageLog[message.from] == 'undefined') {
       messageLog[message.from] = [];
     }
-    if(isLive){
-        messageLog[message.from].push(message);
-        if (typeof ChatInbox !== 'undefined') ChatInbox.record(message, true);
-    }else{
-        messageLog[message.from].unshift(message);
+    if (!_isDuplicateMsg(messageLog[message.from], message)) {
+      if(isLive){
+          messageLog[message.from].push(message);
+          if (typeof ChatInbox !== 'undefined') ChatInbox.record(message, true);
+      }else{
+          messageLog[message.from].unshift(message);
+      }
     }
     if (message.from == chatPopupCallsign) {
       appendToCurrentChat(message);
@@ -528,11 +538,13 @@ function procChatMessage(msg, isLive) {
     if (typeof messageLog[message.to] == 'undefined') {
       messageLog[message.to] = [];
     }
-    if(isLive){
-        messageLog[message.to].push(message);
-        if (typeof ChatInbox !== 'undefined') ChatInbox.record(message, false);
-    }else{
-        messageLog[message.to].unshift(message);
+    if (!_isDuplicateMsg(messageLog[message.to], message)) {
+      if(isLive){
+          messageLog[message.to].push(message);
+          if (typeof ChatInbox !== 'undefined') ChatInbox.record(message, false);
+      }else{
+          messageLog[message.to].unshift(message);
+      }
     }
 
     if (message.to == chatPopupCallsign) {
@@ -726,6 +738,7 @@ function procLogin(msg) {
   if (!$('#maxDistance').val() > 0 && bandInfo) {
     $('#maxDistance').val(bandInfo.defaultDistance);
   }
+  $('#scatter-band').toggle(chatId == '3');
 
   $('#connState').text(bandInfo.name);
   var userData = msg.split("|");
@@ -805,7 +818,7 @@ function doLogin() {
     userName = $('#userInput').val().toUpperCase();
     password = $('#passInput').val();
     if (typeof ChatInbox   !== 'undefined') ChatInbox.init(userName);
-    if (typeof ContestLog  !== 'undefined') ContestLog.init(userName);
+    if (typeof ContestLog  !== 'undefined') ContestLog.init(userName, password);
 
     if ($('#rememberMe').is(':checked')) {
         var cookieData = {
@@ -987,23 +1000,51 @@ function chatPopup(callsign) {
   }
   // Contest mark buttons
   var $contestWrap = $('#chatContestWrap');
-  if (typeof ContestLog !== 'undefined') {
+  if (typeof ContestLog !== 'undefined' && ContestLog.isActive()) {
     $contestWrap.show();
     var _cstate = ContestLog.getState(callsign);
     var $badge = $('#chatContestBadge');
     $badge.text(_cstate === 'worked' ? '✓ Worked' : _cstate === 'skip' ? '✗ Skip' : '');
     $badge.attr('class', 'chat-contest-badge ms-1' + (_cstate ? ' clog-' + _cstate : ' d-none'));
+    var _brg = chatUser.locator ? Math.round(bearing(myLatLong[0], myLatLong[1],
+      gridSquareToLatLon(chatUser.locator)[0], gridSquareToLatLon(chatUser.locator)[1])) : null;
     $('#chatWorkedButton').off('click').on('click', function(e) {
       e.stopPropagation();
-      ContestLog.mark(callsign, 'worked', chatUser.locator, chatUser._distance,
-        chatUser.locator ? Math.round(bearing(myLatLong[0], myLatLong[1],
-          gridSquareToLatLon(chatUser.locator)[0], gridSquareToLatLon(chatUser.locator)[1])) : null);
+      if (ContestLog.getSetting('exchangeMode') === 'exchange') {
+        // Populate and show the exchange modal
+        $('#cex-callsign').text(callsign);
+        $('#cex-locator').val(chatUser.locator || '');
+        $('#cex-rst-sent').val('59');
+        $('#cex-serial-sent').val(ContestLog.getNextSerial());
+        $('#cex-rst-rcvd').val('59');
+        $('#cex-serial-rcvd').val('');
+        $('#cex-comments').val('');
+        var cexModal = new bootstrap.Modal(document.getElementById('contestExchangeModal'));
+        cexModal.show();
+        document.getElementById('contestExchangeModal').addEventListener('shown.bs.modal', function() {
+          document.getElementById('cex-serial-rcvd').focus();
+        }, { once: true });
+        // Wire the Log button (re-bind each time)
+        $('#cex-log-btn').off('click').on('click', function() {
+          var locOverride = ($('#cex-locator').val() || '').trim();
+          var exchange = {
+            rstSent:    $('#cex-rst-sent').val(),
+            serialSent: ContestLog.consumeSerial($('#cex-serial-sent').val()),
+            rstRcvd:    $('#cex-rst-rcvd').val(),
+            serialRcvd: $('#cex-serial-rcvd').val(),
+            comments:   ($('#cex-comments').val() || '').trim()
+          };
+          ContestLog.mark(callsign, 'worked', locOverride || chatUser.locator, chatUser._distance, _brg, exchange);
+          cexModal.hide();
+        });
+      } else {
+        // Simple mode — mark immediately
+        ContestLog.mark(callsign, 'worked', chatUser.locator, chatUser._distance, _brg);
+      }
     });
     $('#chatSkipButton').off('click').on('click', function(e) {
       e.stopPropagation();
-      ContestLog.mark(callsign, 'skip', chatUser.locator, chatUser._distance,
-        chatUser.locator ? Math.round(bearing(myLatLong[0], myLatLong[1],
-          gridSquareToLatLon(chatUser.locator)[0], gridSquareToLatLon(chatUser.locator)[1])) : null);
+      ContestLog.mark(callsign, 'skip', chatUser.locator, chatUser._distance, _brg);
     });
   } else {
     $contestWrap.hide();
@@ -1022,6 +1063,13 @@ function chatPopup(callsign) {
   $('#modalChat').modal('show');
   if (isOnline) $('#chatPopupMessageInput').focus();
   if (typeof messageLog[callsign] !== 'undefined') {
+    messageLog[callsign].sort(function(a, b) {
+      var ta = (typeof a.timestamp !== 'undefined') ? a.timestamp : a.ts;
+      var tb = (typeof b.timestamp !== 'undefined') ? b.timestamp : b.ts;
+      if (ta > 9999999999) ta = Math.floor(ta / 1000);
+      if (tb > 9999999999) tb = Math.floor(tb / 1000);
+      return ta - tb;
+    });
     messageLog[callsign].forEach(showChatHistory);
   }
 }
@@ -1214,14 +1262,24 @@ $(document).ready(function() {
   });
 
   // ── Contest mode settings UI ──────────────────────────
-  // Sync dropdowns when About tab opens (in case ContestLog already has settings loaded)
-  $('a[href="#tab-about"]').on('shown.bs.tab', function() {
+  // Sync dropdowns when Settings tab opens
+  $('a[href="#tab-settings"]').on('shown.bs.tab', function() {
+    // Rotator settings
+    var rotType = localStorage.getItem('kst2you_rotator_type') || 'auto';
+    var rotPort = localStorage.getItem('kst2you_rotator_port') || '';
+    $('#settings-rotator-type').val(rotType);
+    $('#settings-rotator-port').val(rotPort);
+    $('#settings-rotator-port-wrap').toggle(rotType === 'custom' || rotType === 'pstrotator');
+    $('#settings-rotator-hint').toggle(rotType === 'auto');
+
+    // Contest settings
     if (typeof ContestLog === 'undefined') return;
     var active = ContestLog.isActive();
     $('#contest-mode-active').prop('checked', active);
     $('#contest-worked-display').val(ContestLog.getSetting('workedDisplay'));
     $('#contest-skip-display').val(ContestLog.getSetting('skipDisplay'));
     $('#contest-map-display').val(ContestLog.getSetting('mapDisplay'));
+    $('#contest-exchange-mode').val(ContestLog.getSetting('exchangeMode') || 'simple');
     $('.contest-settings-detail').toggle(active);
   });
   $('a[href="#tab-contest"]').on('shown.bs.tab', function() {
@@ -1240,6 +1298,39 @@ $(document).ready(function() {
   $('#contest-map-display').on('change', function() {
     if (typeof ContestLog !== 'undefined') ContestLog.setSetting('mapDisplay', this.value);
   });
+  $('#contest-exchange-mode').on('change', function() {
+    if (typeof ContestLog !== 'undefined') ContestLog.setSetting('exchangeMode', this.value);
+  });
+
+  // ── Rotator settings ────────────────────────────────
+  $('#settings-rotator-type').on('change', function() {
+    var type = this.value;
+    localStorage.setItem('kst2you_rotator_type', type);
+    $('#settings-rotator-port-wrap').toggle(type === 'custom' || type === 'pstrotator');
+    $('#settings-rotator-hint').toggle(type === 'auto');
+    if (type === 'none') {
+      window._rotatorUrl = null;
+      window._rotatorType = null;
+      var el = document.getElementById('scatter-rotator-status');
+      if (el) { el.textContent = 'Rotator: disabled'; el.style.opacity = '.5'; el.style.color = ''; }
+    } else {
+      window._applyRotatorSetting();
+    }
+    _saveRotatorToCloud();
+  });
+  $('#settings-rotator-port').on('change', function() {
+    localStorage.setItem('kst2you_rotator_port', this.value);
+    window._applyRotatorSetting();
+    _saveRotatorToCloud();
+  });
+  function _saveRotatorToCloud() {
+    if (typeof ContestLog !== 'undefined' && ContestLog.getSetting) {
+      ContestLog.saveUserSetting({
+        rotatorType: localStorage.getItem('kst2you_rotator_type') || 'auto',
+        rotatorPort: localStorage.getItem('kst2you_rotator_port') || ''
+      });
+    }
+  }
 
   $("#chatPopup").on('shown.bs.modal', function() {
     $(this).find('#chatPopupMessageInput').focus();

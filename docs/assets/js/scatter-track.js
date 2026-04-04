@@ -580,7 +580,7 @@ const ScatterTrack = (() => {
       const visA    = isVisibleFrom(_stationA.lat, _stationA.lon, 0, p.lat, p.lon, p.alt, _minElevDeg);
       const visB    = isVisibleFrom(_stationB.lat, _stationB.lon, 0, p.lat, p.lon, p.alt, _minElevDeg);
       const isIn    = inCorridor(p.lat, p.lon, corridorDeg) && visA && visB;
-      const dHz     = calcDoppler(p, freqMHz);
+      const dHz     = (typeof chatId !== 'undefined' && chatId == '3') ? calcDoppler(p, freqMHz) : null;
       const dkHz    = dHz != null ? (dHz >= 0 ? '+' : '') + (dHz / 1000).toFixed(2) : null;
       const distMid = haversine(mid.lat, mid.lon, p.lat, p.lon);
       let minsToEntry = null, minsInPath = null;
@@ -594,6 +594,7 @@ const ScatterTrack = (() => {
         doppler:     dHz,
         dopplerKHz:  dkHz,
         minsToEntry, minsInPath,
+        azA:  bearing(_stationA.lat, _stationA.lon, p.lat, p.lon),
         elevA: elevationDeg(_stationA.lat, _stationA.lon, 0, p.lat, p.lon, p.alt),
         elevB: elevationDeg(_stationB.lat, _stationB.lon, 0, p.lat, p.lon, p.alt),
       };

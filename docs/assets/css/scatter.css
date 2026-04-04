@@ -63,8 +63,12 @@ html, body { height: 100%; overflow: hidden; }
 .s-section-label.in-path     { background: #cfe2ff; color: #0a58ca; }
 .s-section-label.approaching { background: #fff3cd; color: #856404; }
 
-.plane-item { padding: 8px 12px; border-bottom: 1px solid #f0f0f0; }
+.plane-item { padding: 8px 12px; border-bottom: 1px solid #f0f0f0; cursor: default; }
 .plane-item:hover { background: #f8f9fa; }
+.plane-item.tracked { background: #d1e7dd; border-left: 3px solid #198754; }
+.plane-item .pi-track-btn { float: right; font-size: 11px; cursor: pointer; padding: 0 4px; border: 1px solid #adb5bd; border-radius: 3px; background: transparent; color: #6c757d; line-height: 1.4; }
+.plane-item .pi-track-btn:hover { background: #198754; color: #fff; border-color: #198754; }
+.plane-item.tracked .pi-track-btn { background: #198754; color: #fff; border-color: #198754; }
 .pi-call      { font-weight: 700; font-size: 14px; font-family: monospace; color: #0d6efd; }
 .pi-call.anon { color: #6c757d; font-size: 12px; }
 .pi-call.app  { color: #856404; }
