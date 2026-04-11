@@ -1436,7 +1436,7 @@ $(document).ready(function() {
   $('#setLocation').click(function() {
     myLoc = newLocation.gs;
     myLatLong = [newLocation.lat, newLocation.lng];
-    sendMsg("MSG|" + chatId + "|0|/SETLOC " + myLoc + "|0|");
+    sendMsg("MSG|" + chatId + "|0|/SETLOC " + myLoc.substring(0, 6) + "|0|");
     $('#locationModal').modal('hide');
     drawMap();
   });

@@ -43,7 +43,7 @@ function _DrawMap() {
   google.maps.event.addListener(map, "dblclick", function(event) {
     var lat = event.latLng.lat();
     var lng = event.latLng.lng();
-    var gs = latLonToGridSquare(lat, lng);
+    var gs = latLonToGridSquare(lat, lng, 8);
     newLocation = {
       lat: lat,
       lng: lng,
@@ -74,7 +74,7 @@ function _DrawMap() {
   google.maps.event.addListener(map, "rightclick", function(event) {
     var lat = event.latLng.lat();
     var lng = event.latLng.lng();
-    var gs = latLonToGridSquare(lat, lng);
+    var gs = latLonToGridSquare(lat, lng, 8);
     newLocation = {
       lat: lat,
       lng: lng,
@@ -201,49 +201,107 @@ function clearSmallAnnotations() {
   smallAnnotations = [];
 }
 
+function getGridGranularityForZoom(zoomLevel) {
+  if (zoomLevel <= 4) {
+    return 2;
+  } else if (zoomLevel <= 8) {
+    return 4;
+  } else if (zoomLevel <= 12) {
+    return 6;
+  }
+  return 8;
+}
+
+function getGridLabelTarget(granularity) {
+  switch (granularity) {
+    case 2:
+      return 200;
+    case 4:
+      return 300;
+    case 6:
+      return 900;
+    case 8:
+      return 150;
+    default:
+      return 150;
+  }
+}
+
+function getGridSpacing(granularity) {
+  switch (granularity) {
+    case 2:
+      return { latSpacing: 10, lngSpacing: 20 };
+    case 4:
+      return { latSpacing: 1, lngSpacing: 2 };
+    case 6:
+      return { latSpacing: 1.0 / 24.0, lngSpacing: 1.0 / 12.0 };
+    case 8:
+      return { latSpacing: 1.0 / 240.0, lngSpacing: 1.0 / 120.0 };
+    default:
+      return null;
+  }
+}
+
+function getVisibleSquareCount(bounds, granularity) {
+  const spacing = getGridSpacing(granularity);
+  if (!spacing) {
+    return Infinity;
+  }
+
+  const ne = bounds.getNorthEast();
+  const sw = bounds.getSouthWest();
+  const startLat = Math.floor(sw.lat() / spacing.latSpacing) * spacing.latSpacing;
+  const endLat = Math.ceil(ne.lat() / spacing.latSpacing) * spacing.latSpacing;
+  const startLng = Math.floor(sw.lng() / spacing.lngSpacing) * spacing.lngSpacing;
+  const endLng = Math.ceil(ne.lng() / spacing.lngSpacing) * spacing.lngSpacing;
+  const rowCount = Math.max(0, Math.round((endLat - startLat) / spacing.latSpacing));
+  const colCount = Math.max(0, Math.round((endLng - startLng) / spacing.lngSpacing));
+  return rowCount * colCount;
+}
+
+function getDisplayGranularity(bounds, desiredGranularity) {
+  const levels = [2, 4, 6, 8];
+  let levelIndex = levels.indexOf(desiredGranularity);
+  if (levelIndex === -1) {
+    levelIndex = 0;
+  }
+
+  while (levelIndex > 0) {
+    const granularity = levels[levelIndex];
+    if (getVisibleSquareCount(bounds, granularity) <= getGridLabelTarget(granularity)) {
+      return granularity;
+    }
+    levelIndex--;
+  }
+
+  return levels[levelIndex];
+}
+
 
 function drawGridLines() {
   if(! gridActive){
       return;
   }
+  clearGridLines();
+  clearAnnotations();
+  clearSmallAnnotations();
+
   const zoomLevel = map.getZoom();
+  const bounds = map.getBounds();
+  if (!bounds) {
+    return;
+  }
   console.log("grid zoomLevel: " + zoomLevel);
 
-
-  let granularity;
-  if (zoomLevel > 8) {
-    granularity = 6; // "IO" level
-  } else if (zoomLevel > 4) {
-    granularity = 4; // "IO81" level
-    clearGridLines();
-    clearAnnotations();
-  } else {
-    granularity = 2; // "IO81AA" level
-    clearGridLines();
-    clearAnnotations();
-  }
+  const granularity = getDisplayGranularity(bounds, getGridGranularityForZoom(zoomLevel));
 
   console.log("grid zoomLevel: " + granularity);
-  let latSpacing, lngSpacing;
-
-  switch (granularity) {
-    case 2:
-      latSpacing = 10;
-      lngSpacing = 20;
-      break;
-    case 4:
-      latSpacing = 1;
-      lngSpacing = 2;
-      break;
-    case 6:
-      latSpacing = 1.0 / 24.0; // 1/24 degrees for more refined grid
-      lngSpacing = 1.0 / 12.0; // 1/12 degrees for more refined grid
-      break;
-    default:
+  const spacing = getGridSpacing(granularity);
+  if (!spacing) {
       return;
   }
-
-  const bounds = map.getBounds();
+  const latSpacing = spacing.latSpacing;
+  const lngSpacing = spacing.lngSpacing;
   const ne = bounds.getNorthEast(); // Top-right corner of the visible map
   const sw = bounds.getSouthWest(); // Bottom-left corner of the visible map
 
@@ -296,24 +354,15 @@ function drawGridLines() {
       ];
       drawLine(path2, granularity);
   }
-  const visibleSquares = getCornersFromGridLines(horizontalLines, verticalLines);
-  if (visibleSquares.length < 150) {
-    visibleSquares.forEach(square => {
-      annotateCenterOfSquare(square, granularity);
-    });
-  } else {
-    clearSmallAnnotations();
-  }
+  getCornersFromGridLines(horizontalLines, verticalLines).forEach(square => {
+    annotateCenterOfSquare(square, granularity);
+  });
 }
 
 function annotateCenterOfSquare(square, granularity) {
-  if (granularity === 6) {
-    //return;
-  }
-
   const centerLat = (square.southwest.lat + square.northeast.lat) / 2;
   const centerLng = (square.southwest.lng + square.northeast.lng) / 2;
-  const gridLocator = latLonToGridSquare(centerLat, centerLng);
+  const gridLocator = latLonToGridSquare(centerLat, centerLng, granularity);
 
   const annotationText = gridLocator.substr(0, granularity);
 
@@ -321,6 +370,8 @@ function annotateCenterOfSquare(square, granularity) {
   var txtSz = "1.5em";
   if(granularity==6){
       txtSz="1.2em";
+  } else if (granularity==8) {
+      txtSz="0.9em";
   }
   const annotation = new google.maps.Marker({
     position: {
@@ -388,8 +439,8 @@ function drawLine(path, granularity) {
     const line = new google.maps.Polyline({
       path: path,
       geodesic: false,
-      strokeColor: "#FF0000",
-      strokeOpacity: 0.5,
+      strokeColor: "#cc0000",
+      strokeOpacity: 0.62,
       strokeWeight: 2,
       map: map
     });
@@ -398,9 +449,9 @@ function drawLine(path, granularity) {
     const line = new google.maps.Polyline({
       path: path,
       geodesic: false,
-      strokeColor: "#993333",
-      strokeOpacity: 0.3,
-      strokeWeight: 0.8,
+      strokeColor: "#661414",
+      strokeOpacity: granularity === 8 ? 0.38 : 0.5,
+      strokeWeight: granularity === 8 ? 0.75 : 0.95,
       map: map
     });
     gridLines.push(line);

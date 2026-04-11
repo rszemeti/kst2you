@@ -17,11 +17,12 @@
 // https://www.iaru-r1.org/wp-content/uploads/2021/03/VHF_Handbook_V9.01.pdf p120
 //
 
-latLonToGridSquare = function(param1,param2){
+latLonToGridSquare = function(param1,param2,precision){
   var lat=-100.0;
   var lon=0.0;
-  var adjLat,adjLon,GLat,GLon,nLat,nLon,gLat,gLon,rLat,rLon;
+  var adjLat,adjLon,GLat,GLon,nLat,nLon,gLat,gLon,eLat,eLon,rLat,rLon;
   var U = 'ABCDEFGHIJKLMNOPQRSTUVWX'
+  precision = precision || 6;
   // support Chris Veness 2002-2012 LatLon library and
   // other objects with lat/lon properties
   // properties could be numbers, or strings
@@ -63,7 +64,15 @@ latLonToGridSquare = function(param1,param2){
   rLon = (adjLon - 2*Math.trunc(adjLon/2)) *60;
   gLat = U[Math.trunc(rLat/2.5)];
   gLon = U[Math.trunc(rLon/5)];
-  return GLon+GLat+nLon+nLat+gLon+gLat;
+  if (precision <= 4) {
+    return GLon+GLat+nLon+nLat;
+  }
+  if (precision <= 6) {
+    return GLon+GLat+nLon+nLat+gLon+gLat;
+  }
+  eLon = '' + Math.trunc((((adjLon * 12) % 1) + 1e-12) * 10);
+  eLat = '' + Math.trunc((((adjLat * 24) % 1) + 1e-12) * 10);
+  return GLon+GLat+nLon+nLat+gLon+gLat+eLon+eLat;
 }
 
 gridSquareToLatLon = function(grid){
