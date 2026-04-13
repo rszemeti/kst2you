@@ -436,6 +436,27 @@ function decorate(callsign){
     return "["+callsign+"]";
 }
 
+function escapeChatHtml(text) {
+  return $('<div>').text(text == null ? '' : String(text)).html();
+}
+
+function renderChatMessageHtml(text) {
+  var source = text == null ? '' : String(text);
+  var urlRegex = /(^|[\s(\[])((?:https?:\/\/|www\.|(?:[a-z0-9-]+\.)+[a-z]{2,})(?:[^\s<]*)?)/gi;
+
+  return escapeChatHtml(source).replace(urlRegex, function(match, prefix, urlText) {
+    var cleanUrl = urlText.replace(/[),.!?:;]+$/, '');
+    var trailing = urlText.slice(cleanUrl.length);
+    var href = cleanUrl;
+
+    if (!/^https?:\/\//i.test(href)) {
+      href = 'https://' + href;
+    }
+
+    return prefix + '<a href="' + href + '" target="_blank" rel="noopener noreferrer">' + cleanUrl + '</a>' + trailing;
+  });
+}
+
 //CR|3|1592759981|SP4MPB|Marek 23/13/3|0| jestes ?|SP6GWB|
 //CH|3|1592770412|G1YFG |Robin 23cm   |0| test     |0|
 function _isDuplicateMsg(log, message) {
@@ -489,7 +510,7 @@ function procChatMessage(msg, isLive) {
     "<td>" + message.date + "</td>" +
     '<td class="from" onclick="chatPopup(\'' + mf + '\')" >' + decorate(message.from) + "</td>" +
     '<td class="to" onclick="chatPopup(\'' + mt + '\')"  >' + decorate(message.to) + "</td>" +
-    "<td>" + message.text + "</td>" +
+    "<td>" + renderChatMessageHtml(message.text) + "</td>" +
     "</tr>");
 
   row.data('fromCall', message.from);
@@ -1098,7 +1119,7 @@ function showChatHistory(msg, ix, array) {
 }
 
 function appendToCurrentChat(msg) {
-  var m = $('<p class="text-muted margenesCompletas10px"><strong class="text-primary">' + msg.from + ':</strong>&nbsp;' + msg.text + '</p>');
+  var m = $('<p class="text-muted margenesCompletas10px"><strong class="text-primary">' + msg.from + ':</strong>&nbsp;' + renderChatMessageHtml(msg.text) + '</p>');
   $('#chatWindow').append(m);
   $("#chatWindow").scrollTop($("#chatWindow").prop("scrollHeight"));
 }

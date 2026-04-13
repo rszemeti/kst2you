@@ -7,6 +7,29 @@
   let scatterAutoScan = false;
   let scatterChatCallsign = null;
   const SCATTER_MAX_KM = 900;
+  let scatterTarget = null;
+
+  window.getScatterMap = function () {
+    return scatterMapReady ? scatterMap : null;
+  };
+
+  function setScatterFooterMode(target) {
+    const feed = document.getElementById('scatter-chat-feed');
+    const chatCompose = document.getElementById('scatter-chat-compose');
+    const beaconCompose = document.getElementById('scatter-beacon-compose');
+    const beaconCall = document.getElementById('scatter-beacon-call');
+    const beaconFreq = document.getElementById('scatter-beacon-freq');
+    const isBeacon = target && target.type === 'beacon';
+
+    if (feed) feed.style.display = isBeacon ? 'none' : '';
+    if (chatCompose) chatCompose.style.display = isBeacon ? 'none' : 'flex';
+    if (beaconCompose) beaconCompose.style.display = isBeacon ? 'flex' : 'none';
+
+    if (isBeacon) {
+      if (beaconCall) beaconCall.textContent = target.callsign || '—';
+      if (beaconFreq) beaconFreq.value = target.frequencyMHz ? Number(target.frequencyMHz).toFixed(3) : '';
+    }
+  }
 
   // ── Rotator server discovery ────────────────────────
   // Respects stored setting: auto (default), none, custom, pstrotator.
@@ -204,6 +227,9 @@
         scatterMap.controls[google.maps.ControlPosition.BOTTOM_LEFT].push(pathOverlay);
 
         refreshStationMarkers();
+        if (typeof window.refreshScatterBeacons === 'function') {
+          window.refreshScatterBeacons();
+        }
         if (scatterAutoScan) { scatterAutoScan = false; scatterScan(); }
       }, 300);
     }, 200);
@@ -299,9 +325,34 @@
   });
 
   // ── Public: set Station B and switch to Scatter tab ─
-  window.setScatterTarget = function (locator, callsign) {
+  window.setScatterTarget = function (locator, callsign, options) {
+    const targetInfo = options || {};
+    const targetType = targetInfo.type || 'station';
+    scatterTarget = {
+      type: targetType,
+      callsign: (callsign || '').toUpperCase(),
+      locator: locator,
+      frequencyMHz: targetInfo.frequencyMHz || '',
+      beaconKey: targetInfo.beaconKey
+    };
+
     document.getElementById('scatter-loc-b').value = locator.toUpperCase();
-    if (callsign) window.scatterChatSetTarget(callsign);
+    if (targetType === 'beacon') {
+      scatterChatCallsign = null;
+      _inPathIcaos = new Set();
+      _stopTracking();
+      const banner = document.getElementById('scatter-target-banner');
+      const callDisp = document.getElementById('scatter-target-call');
+      const feed = document.getElementById('scatter-chat-feed');
+      const toEl = document.getElementById('scatter-chat-to');
+      if (banner) { callDisp.textContent = scatterTarget.callsign; banner.style.display = 'flex'; }
+      if (feed) feed.innerHTML = '';
+      if (toEl) toEl.textContent = '—';
+      setScatterFooterMode(scatterTarget);
+      refreshStationMarkers();
+    } else if (callsign) {
+      window.scatterChatSetTarget(callsign);
+    }
     // Show/wire rotate button if rotator is available
     var rotWrap = document.getElementById('scatter-rotate-wrap');
     var rotBtn  = document.getElementById('scatter-rotate-btn');
@@ -446,6 +497,7 @@
   window.scatterChatSetTarget = function (callsign) {
     if (!callsign || callsign === '0') return;
     scatterChatCallsign = callsign.toUpperCase();
+    scatterTarget = { type: 'station', callsign: scatterChatCallsign, locator: null, frequencyMHz: '' };
     _inPathIcaos = new Set();   // reset so first scan after target change alerts fresh
     _stopTracking();
     const feed = document.getElementById('scatter-chat-feed');
@@ -457,6 +509,7 @@
     const banner   = document.getElementById('scatter-target-banner');
     const callDisp = document.getElementById('scatter-target-call');
     if (banner)   { callDisp.textContent = scatterChatCallsign; banner.style.display = 'flex'; }
+    setScatterFooterMode(scatterTarget);
 
     // Refresh marker highlights to show new target in red
     refreshStationMarkers();
@@ -497,6 +550,20 @@
   document.getElementById('scatter-chat-input').addEventListener('keydown', function (e) {
     if (e.key === 'Enter') window.scatterChatSend();
   });
+
+  window.scatterBeaconSpot = function () {
+    if (!scatterTarget || scatterTarget.type !== 'beacon') {
+      scatterLog('No beacon target selected', 'err');
+      return;
+    }
+    if (typeof window.spotPopup !== 'function' || scatterTarget.beaconKey == null) {
+      scatterLog('Beacon spot dialog is not available', 'err');
+      return;
+    }
+    window.spotPopup(scatterTarget.callsign, scatterTarget.beaconKey, {
+      defaultMode: 'AS'
+    });
+  };
 
   // ── Last known in-path list (for dblclick message) ─
   var _lastInPath    = [];

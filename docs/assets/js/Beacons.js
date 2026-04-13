@@ -11,6 +11,7 @@ const reportPattern = /^[1-5][1-9]{1,2}$|^[+-]?\s*[1-9][0-9]?\s*[dD][bB]$/;
 const modes = [
     { value: "TR", text: "Tropo" },
     { value: "AS", text: "Aircraft Scatter" },
+    { value: "MS", text: "Meteor Scatter" },
     { value: "RS", text: "Rain Scatter" },
     { value: "SS", text: "Snow Scatter" },
     { value: "ES", text: "Sporadic E" },
@@ -84,17 +85,15 @@ function toggleBeacons(key) {
 function showBeacons(key){
     var list = beacons[key];
     for(i in list){
-        addBeacon(beacons[key][i],key);
+    addBeacon(beacons[key][i], key);
     }    
 }
 
 function hideBeacons(key) {
     var list = beacons[key];
     for (var i in list) {
-        if (beacons[key][i].marker) {
-            beacons[key][i].marker.setMap(null);
-        }
-        beacons[key][i].marker = null;
+    hideBeaconMarker(beacons[key][i], 'marker');
+    hideBeaconMarker(beacons[key][i], 'scatterMarker');
     }
 }
 //{"callsign":"SR6XHZ","frequency":"10368.8300","locator":"JO70SS","status":"O"}
@@ -106,52 +105,114 @@ function deleteAllBeacons() {
     $('#bandList .bandButton').remove();
 }
 
+function hideBeaconMarker(bcn, markerProp) {
+  if (bcn[markerProp]) {
+    bcn[markerProp].setMap(null);
+    bcn[markerProp] = null;
+  }
+}
+
+function getScatterMap() {
+  return typeof window.getScatterMap === 'function' ? window.getScatterMap() : null;
+}
+
+function buildBeaconInfoContent(bcn, key) {
+  return '<div id="content">' +
+    '<strong>Beacon</strong>' +
+    '<h4 id="firstHeading" class="firstHeading">' + bcn.callsign + '</h1>' +
+    '<div id="bodyContent">' +
+      '<ul>' +
+      '<li>Freq: ' + bcn.frequency + '</li>' +
+      '<li>Locator: ' + bcn.locator + '</li>' +
+      '<li>' + parseInt(bcn.distance).toLocaleString() + 'km / ' + parseInt(bcn.bearing) + '&#176;</li>' +
+      '</ul>' +
+      '<button onclick="spotPopup(\'' + bcn.callsign + '\',' + key + ')">Spot</button>' +
+      (window._rotatorUrl ? '<button onclick="window.rotatorPointTo(\'' + bcn.callsign + '\',\'' + bcn.locator + '\')" style="margin-left:4px">⟳ Rotate</button>' : '') +
+    '</div>' +
+    '</div>';
+}
+
+function addBeaconMarker(bcn, key, targetMap, markerProp, openProfile) {
+  if (!targetMap || bcn[markerProp]) {
+    return;
+  }
+
+  var bcnLoc = bcn._mapPosition;
+  var marker = new google.maps.Marker({
+    position: bcnLoc,
+    map: targetMap,
+    title: bcn.callsign,
+    icon: {
+      path: google.maps.SymbolPath.CIRCLE,
+      scale: 10,
+      fillColor: "#0000FF",
+      fillOpacity: 0.7,
+      strokeWeight: 0
+    }
+  });
+
+  var infowindow = new google.maps.InfoWindow({
+    content: buildBeaconInfoContent(bcn, key)
+  });
+
+  marker.addListener('click', function() {
+    if (markerProp === 'scatterMarker' && typeof window.setScatterTarget === 'function') {
+      window.setScatterTarget(bcn.locator, bcn.callsign, {
+        type: 'beacon',
+        frequencyMHz: bcn.frequency,
+        beaconKey: key
+      });
+      return;
+    }
+
+    infowindow.open(targetMap, marker);
+    if (openProfile) {
+      showProfile({ lat: myLatLong[0], lng: myLatLong[1] }, bcnLoc);
+    }
+  });
+
+  bcn[markerProp] = marker;
+}
+
 function addBeacon(bcn,key){
-  loc = gridSquareToLatLon(bcn.locator);
+  var loc = gridSquareToLatLon(bcn.locator);
   var bcnLoc = {lat: loc[0], lng: loc[1]};
   bcn.distance = distVincenty(myLatLong[0],myLatLong[1],loc[0],loc[1])/1000;
   bcn.bearing = bearing(myLatLong[0],myLatLong[1],loc[0],loc[1]);
-  var marker = new google.maps.Marker({
-      position: bcnLoc,
-      map: map, 
-      title: bcn.callsign,
-      icon: {
-        path: google.maps.SymbolPath.CIRCLE,
-        scale: 10,  // Adjust for the size you want
-        fillColor: "#0000FF",
-        fillOpacity: 0.7,
-        strokeWeight: 0
-      }
-    });
-      var contentString = '<div id="content">'+
-      '<strong>Beacon</strong>'+
-      '<h4 id="firstHeading" class="firstHeading">'+bcn.callsign+'</h1>'+
-      '<div id="bodyContent">'+
-          '<ul>'+
-          '<li>Freq: '+bcn.frequency+'</li>'+
-          '<li>Locator: '+bcn.locator+'</li>'+
-          '<li>'+parseInt(bcn.distance).toLocaleString()+'km / '+parseInt(bcn.bearing)+'&#176;</li>'+
-          '</ul>'+
-          '<button onclick="spotPopup(\'' + bcn.callsign + '\','+key+')">Spot</button>' +
-          (window._rotatorUrl ? '<button onclick="window.rotatorPointTo(\'' + bcn.callsign + '\',\'' + bcn.locator + '\')" style="margin-left:4px">⟳ Rotate</button>' : '') +
-      '</div>'+
-      '</div>';
+  bcn._mapPosition = bcnLoc;
 
-   var infowindow = new google.maps.InfoWindow({
-     content: contentString
-   });
-    marker.addListener('click', function() {
-     infowindow.open(map, marker);
-     showProfile( {lat: myLatLong[0], lng: myLatLong[1]},bcnLoc);
-   });
-
-   bcn.marker = marker;
+  addBeaconMarker(bcn, key, map, 'marker', true);
+  addBeaconMarker(bcn, key, getScatterMap(), 'scatterMarker', false);
 }
 
-function spotPopup(callsign,key) {
+function refreshScatterBeacons() {
+  var scatterMap = getScatterMap();
+  for (var key in beacons) {
+    if (!beacons.hasOwnProperty(key)) continue;
+    var list = beacons[key];
+    if (beaconStates[key] === 'hide' && scatterMap) {
+      for (var callsign in list) {
+        if (list.hasOwnProperty(callsign)) {
+          addBeacon(list[callsign], key);
+        }
+      }
+    } else {
+      for (var beaconCallsign in list) {
+        if (list.hasOwnProperty(beaconCallsign)) {
+          hideBeaconMarker(list[beaconCallsign], 'scatterMarker');
+        }
+      }
+    }
+  }
+}
+
+window.refreshScatterBeacons = refreshScatterBeacons;
+
+function spotPopup(callsign, key, options) {
   if (callsign === '0') {
     return;
   }
+  var popupOptions = options || {};
   spotPopupCallsign = callsign;
   spotBcn = beacons[key][callsign];
   offset = 0.0;
@@ -162,6 +223,9 @@ function spotPopup(callsign,key) {
   let dist = distVincenty(myLatLong[0], myLatLong[1], latLng[0], latLng[1]) / 1000;
   let brg = bearing(myLatLong[0], myLatLong[1], latLng[0], latLng[1]);
   $('#bcnSpotDistBearing').text(Math.round(dist)+"km/"+Math.round(brg)+'°');
+  if (popupOptions.defaultMode) {
+    $('#bcnPropagationModes').val(popupOptions.defaultMode);
+  }
   $('#bcnSpotModal').modal('show');
   $('#bcnReportInput').focus();
 }
@@ -199,6 +263,27 @@ function spotData(callsign,freq,locator,mode,report) {
     };
     return data;
 }
+
+  function submitSpotEntry(callsign, freqMHz, locator, mode, report) {
+    var parsedFreq = parseFloat(freqMHz);
+    if (isNaN(parsedFreq) || parsedFreq <= 0) {
+      alert("Please enter a valid frequency in MHz");
+      return false;
+    }
+
+    var spotReport = (report || '').trim();
+    if (!reportPattern.test(spotReport)) {
+      alert("Reports must be of the form 599, 59 or -16dB");
+      return false;
+    }
+
+    const spot = spotData(callsign, parsedFreq * 1000.0, locator, mode, spotReport);
+    spotToCluster(spot);
+    logSpot(spot);
+    return true;
+  }
+
+  window.submitSpotEntry = submitSpotEntry;
 
 function formatFrequency(frequencyHz) {
     if (frequencyHz <= 1000000) { // 2 GHz in Hz
@@ -240,10 +325,10 @@ function initSpotList() {
         }
       },
       {
-        data: 'mode'
+        data: 'report'
       },
       {
-        data: 'report'
+        data: 'mode'
       },
       {
         data: 'spotter_callsign'
@@ -308,43 +393,23 @@ $(document).ready(function(){
     
     // spotToCluster(callsign,freq,locator,mode,report)
     $('#sendBcnSpot').on('click', function() {
-        const currentFreq = parseFloat($freqElement.text()) * 1000.0;
+        const currentFreq = parseFloat($freqElement.text());
         const mode = $('#bcnPropagationModes').val();
         const report = $('#bcnSpotReport').val().trim();
-        if(reportPattern.test(report)){
-          const spot = spotData(spotBcn.callsign, currentFreq, spotBcn.locator, mode, report); 
-          spotToCluster(spot);
-          logSpot(spot);
+        if (submitSpotEntry(spotBcn.callsign, currentFreq, spotBcn.locator, mode, report)) {
           $('#bcnSpotModal').modal('hide');
-        }else{
-          alert("Reports must be of the form 599, 59 or -16dB");
         }
     }); 
 
     // spotToCluster(callsign,freq,locator,mode,report)
     $('#sendUserSpot').on('click', function() {
-        var currentFreq;
-        try {
-          currentFreq = parseFloat($('#userSpotFrequency').val()) * 1000.0;
-          if (isNaN(currentFreq) || currentFreq <= 0) {
-            throw new Error("Invalid frequency");
-          }
-        } catch (e) {
-          alert("Please enter a valid frequency in MHz");
-          return;
-        }
+        var currentFreq = parseFloat($('#userSpotFrequency').val());
         const mode = $('#userPropagationModes').val();
         const spotcall = $('#userSpotCallsign').text();
         const spotlocator = $('#userSpotLocator').text();
         const report = $('#userSpotReport').val().trim();
-        if(reportPattern.test(report)){
-          //alert("Spotting "+spotcall+" at "+currentFreq+" at "+spotlocator+" via "+mode+" with report "+report);
-          const spot = spotData(spotcall, currentFreq, spotlocator, mode, report); 
-          spotToCluster(spot);
-          logSpot(spot);
+        if (submitSpotEntry(spotcall, currentFreq, spotlocator, mode, report)) {
           $('#userSpotModal').modal('hide');
-        }else{
-          alert("Reports must be of the form 599, 59 or -16dB");
         }
     }); 
     

@@ -277,12 +277,20 @@
     <!-- KST Chat strip -->
     <div class="scatter-chat">
       <div class="scs-feed" id="scatter-chat-feed"></div>
-      <div class="scs-compose">
+      <div class="scs-compose" id="scatter-chat-compose">
         <span class="scs-to">→ <span id="scatter-chat-to">—</span></span>
         <input type="text" class="form-control form-control-sm" id="scatter-chat-input"
                placeholder="Message…" maxlength="200" style="flex:1">
         <button class="btn btn-primary btn-sm" onclick="scatterChatSend()" title="Send">
           <i class="bi bi-send-fill"></i>
+        </button>
+      </div>
+      <div class="scs-compose" id="scatter-beacon-compose" style="display:none">
+        <span class="scs-to"><i class="bi bi-broadcast-pin me-1"></i><span id="scatter-beacon-call">—</span></span>
+        <input type="number" class="form-control form-control-sm" id="scatter-beacon-freq"
+               placeholder="MHz" min="0" step="0.001" style="width:120px" readonly>
+        <button class="btn btn-primary btn-sm" onclick="scatterBeaconSpot()" title="Open spot dialog">
+          <i class="bi bi-broadcast-pin"></i>
         </button>
       </div>
     </div>
