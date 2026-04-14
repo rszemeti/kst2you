@@ -314,7 +314,7 @@ function initSpotList() {
         }
       },
       {
-        data: 'locator'
+        data: 'spotter_callsign'
       },
       {
         data: 'distance',
@@ -331,7 +331,7 @@ function initSpotList() {
         data: 'mode'
       },
       {
-        data: 'spotter_callsign'
+        data: 'spotter_locator'
       },
       {
         data: 'timestamp',

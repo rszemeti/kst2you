@@ -10,10 +10,12 @@
 var ContestLog = (function () {
   'use strict';
 
-  var CLOUD_URL = 'https://europe-west2-kst-chat.cloudfunctions.net/contest-log';
-  var USER_SETTINGS_URL = 'https://europe-west2-kst-chat.cloudfunctions.net/user-settings';
+  var CLOUD_URL = 'https://kst-contest-log-852912082756.europe-west1.run.app';
+  var USER_SETTINGS_URL = 'https://kst-user-settings-852912082756.europe-west1.run.app';
+  var USER_SETTINGS_SYNC_KEY = 'kst2you_remote_settings_sync';
 
   var _baseKey   = null;
+  var _remoteKey = null;
   var _cloudTimer = null;   // debounce handle for cloud saves
   var _syncing   = false;   // true while a cloud save is in flight
   var _showHistory = false; // true to include deleted entries in log display
@@ -35,6 +37,47 @@ var ContestLog = (function () {
   }
   function logKey()      { return 'kst2you_contest_log_'      + _baseKey; }
   function settingsKey() { return 'kst2you_contest_settings_' + _baseKey; }
+  function _isRemoteSyncEnabled() {
+    return localStorage.getItem(USER_SETTINGS_SYNC_KEY) === 'true' && !!_remoteKey;
+  }
+  function _cloudData(data) {
+    return Object.assign({ backupKey: _remoteKey }, data || {});
+  }
+  function _applyCloudUserSettings(cloudSettings) {
+    if (!cloudSettings) {
+      return;
+    }
+
+    if (cloudSettings.rotatorType && !localStorage.getItem('kst2you_rotator_type')) {
+      localStorage.setItem('kst2you_rotator_type', cloudSettings.rotatorType);
+      if (cloudSettings.rotatorPort) localStorage.setItem('kst2you_rotator_port', cloudSettings.rotatorPort);
+      if (typeof window._applyRotatorSetting === 'function') window._applyRotatorSetting();
+    }
+    if (cloudSettings.preciseLocator && !localStorage.getItem('kst2you_precise_locator')) {
+      localStorage.setItem('kst2you_precise_locator', cloudSettings.preciseLocator);
+      if (typeof window._applyStoredPreciseLocator === 'function') window._applyStoredPreciseLocator();
+    }
+    if (typeof cloudSettings.locAutoReply === 'boolean' && localStorage.getItem('kst2you_loc_autoreply') === null) {
+      localStorage.setItem('kst2you_loc_autoreply', cloudSettings.locAutoReply ? 'true' : 'false');
+    }
+  }
+  function _startRemoteSync() {
+    if (!_isRemoteSyncEnabled()) {
+      _setCloudIndicator('none');
+      return;
+    }
+
+    _cloudLoadUserSettings(function(cloudSettings) {
+      _applyCloudUserSettings(cloudSettings);
+    });
+
+    _cloudLoad(function() {
+      updateScoreboard();
+      renderLogTab();
+      ContestLog.applyAll();
+      _debouncedCloudSave();
+    });
+  }
 
   // ── Persistence ───────────────────────────────────────
   function load() {
@@ -65,6 +108,11 @@ var ContestLog = (function () {
 
   // ── Cloud sync ────────────────────────────────────────
   function _debouncedCloudSave() {
+    if (!_isRemoteSyncEnabled()) {
+      if (_cloudTimer) clearTimeout(_cloudTimer);
+      _setCloudIndicator('none');
+      return;
+    }
     if (_cloudTimer) clearTimeout(_cloudTimer);
     _cloudTimer = setTimeout(_cloudSave, 2000);  // 2s debounce
   }
@@ -103,7 +151,7 @@ var ContestLog = (function () {
   }
 
   function _cloudSave() {
-    if (!_baseKey || _syncing) return;
+    if (!_baseKey || _syncing || !_isRemoteSyncEnabled()) { _setCloudIndicator('none'); return; }
     _syncing = true;
     _setCloudIndicator('saving');
     fetch(CLOUD_URL, {
@@ -111,12 +159,11 @@ var ContestLog = (function () {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'contestSave',
-        data: {
-          callsign: _baseKey,
+        data: _cloudData({
           name: _settings.sessionName || '',
           log: _log,
           settings: { nextSerial: _settings.nextSerial, exchangeMode: _settings.exchangeMode }
-        }
+        })
       })
     })
     .then(function(r) { return r.json(); })
@@ -150,12 +197,12 @@ var ContestLog = (function () {
   }
 
   function _cloudLoad(callback) {
-    if (!_baseKey) { if (callback) callback(); return; }
+    if (!_baseKey || !_isRemoteSyncEnabled()) { _setCloudIndicator('none'); if (callback) callback(); return; }
     _setCloudIndicator('loading');
     fetch(CLOUD_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'contestLoad', data: { callsign: _baseKey } })
+      body: JSON.stringify({ action: 'contestLoad', data: _cloudData() })
     })
     .then(function(r) { return r.json(); })
     .then(function(resp) {
@@ -186,11 +233,11 @@ var ContestLog = (function () {
   }
 
   function _cloudReset() {
-    if (!_baseKey) return;
+    if (!_baseKey || !_isRemoteSyncEnabled()) { _setCloudIndicator('none'); return; }
     fetch(CLOUD_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'contestReset', data: { callsign: _baseKey } })
+      body: JSON.stringify({ action: 'contestReset', data: _cloudData() })
     })
     .then(function(r) { return r.json(); })
     .then(function() { _setCloudIndicator('none'); })
@@ -198,20 +245,20 @@ var ContestLog = (function () {
   }
 
   function _cloudSaveUserSettings(settings) {
-    if (!_baseKey) return;
+    if (!_baseKey || !_isRemoteSyncEnabled()) return;
     fetch(USER_SETTINGS_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'userSettingsSave', data: { callsign: _baseKey, settings: settings } })
+      body: JSON.stringify({ action: 'userSettingsSave', data: _cloudData({ settings: settings }) })
     }).catch(function() { /* silent */ });
   }
 
   function _cloudLoadUserSettings(callback) {
-    if (!_baseKey) { if (callback) callback(null); return; }
+    if (!_baseKey || !_isRemoteSyncEnabled()) { if (callback) callback(null); return; }
     fetch(USER_SETTINGS_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'userSettingsGet', data: { callsign: _baseKey } })
+      body: JSON.stringify({ action: 'userSettingsGet', data: _cloudData() })
     }).then(function(r) { return r.json(); })
       .then(function(resp) {
         if (callback) callback(resp && resp.status === 'ok' ? resp.settings : null);
@@ -220,12 +267,12 @@ var ContestLog = (function () {
   }
 
   function _cloudRestoreSession(sessionId, callback) {
-    if (!_baseKey) { if (callback) callback(null); return; }
+    if (!_baseKey || !_isRemoteSyncEnabled()) { _setCloudIndicator('none'); if (callback) callback(null); return; }
     _setCloudIndicator('loading');
     fetch(CLOUD_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'contestRestore', data: { callsign: _baseKey, sessionId: sessionId } })
+      body: JSON.stringify({ action: 'contestRestore', data: _cloudData({ sessionId: sessionId }) })
     })
     .then(function(r) { return r.json(); })
     .then(function(resp) {
@@ -243,11 +290,11 @@ var ContestLog = (function () {
   }
 
   function _cloudListSessions(callback) {
-    if (!_baseKey) { if (callback) callback([]); return; }
+    if (!_baseKey || !_isRemoteSyncEnabled()) { _setCloudIndicator('none'); if (callback) callback([]); return; }
     fetch(CLOUD_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'contestList', data: { callsign: _baseKey } })
+      body: JSON.stringify({ action: 'contestList', data: _cloudData() })
     })
     .then(function(r) { return r.json(); })
     .then(function(resp) {
@@ -258,14 +305,67 @@ var ContestLog = (function () {
   }
 
   function _cloudLoadSession(sessionId, callback) {
+    if (!_isRemoteSyncEnabled()) { _setCloudIndicator('none'); callback({ status: 'error', message: 'Remote sync disabled' }); return; }
     fetch(CLOUD_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'contestLoadSession', data: { sessionId: sessionId } })
+      body: JSON.stringify({ action: 'contestLoadSession', data: _cloudData({ sessionId: sessionId }) })
     })
     .then(function(r) { return r.json(); })
     .then(function(resp) { callback(resp); })
     .catch(function() { callback({ status: 'error' }); });
+  }
+
+  function _cloudDeleteAll(callback) {
+    if (!_isRemoteSyncEnabled()) { _setCloudIndicator('none'); if (callback) callback({ status: 'error', message: 'Remote sync disabled' }); return; }
+    fetch(CLOUD_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'contestDeleteAll', data: _cloudData() })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(resp) { if (callback) callback(resp); })
+    .catch(function() { if (callback) callback({ status: 'error' }); });
+  }
+
+  function _cloudDeleteUserSettings(callback) {
+    if (!_isRemoteSyncEnabled()) { if (callback) callback({ status: 'error', message: 'Remote sync disabled' }); return; }
+    fetch(USER_SETTINGS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'userSettingsDelete', data: _cloudData() })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(resp) { if (callback) callback(resp); })
+    .catch(function() { if (callback) callback({ status: 'error' }); });
+  }
+
+  function _cloudListSessionsPromise() {
+    return new Promise(function(resolve) {
+      _cloudListSessions(function(sessions) { resolve(sessions || []); });
+    });
+  }
+
+  function _cloudLoadSessionPromise(sessionId) {
+    return new Promise(function(resolve) {
+      _cloudLoadSession(sessionId, function(resp) { resolve(resp || { status: 'error' }); });
+    });
+  }
+
+  function _cloudLoadUserSettingsPromise() {
+    return new Promise(function(resolve) {
+      _cloudLoadUserSettings(function(settings) { resolve(settings || {}); });
+    });
+  }
+
+  function _downloadTextFile(content, filename, mimeType) {
+    var blob = new Blob([content], { type: mimeType || 'application/octet-stream' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
   }
 
   function _setCloudIndicator(state) {
@@ -408,6 +508,10 @@ var ContestLog = (function () {
   function _renderSessionList() {
     var listEl = document.getElementById('clog-prev-list');
     if (!listEl) return;
+    if (!_isRemoteSyncEnabled()) {
+      listEl.innerHTML = '<span class="text-muted">Remote sync disabled</span>';
+      return;
+    }
     listEl.innerHTML = '<span class="text-muted">Loading…</span>';
     _cloudListSessions(function(sessions) {
       if (!sessions.length) {
@@ -751,29 +855,29 @@ var ContestLog = (function () {
   // ── Public API ────────────────────────────────────────
   return {
 
-    init: function(myCallsign, password) {
+    init: function(myCallsign) {
       _baseKey = baseCall(myCallsign);
+      _remoteKey = null;
       load();
       setLogTabVisible(_settings.active);
       updateScoreboard();
-      // Save password hash to user settings (fire-and-forget)
-      if (password) _cloudSaveUserSettings({ password: password });
-      // Load user settings from cloud (for rotator config etc.)
-      _cloudLoadUserSettings(function(cloudSettings) {
-        if (cloudSettings) {
-          if (cloudSettings.rotatorType && !localStorage.getItem('kst2you_rotator_type')) {
-            localStorage.setItem('kst2you_rotator_type', cloudSettings.rotatorType);
-            if (cloudSettings.rotatorPort) localStorage.setItem('kst2you_rotator_port', cloudSettings.rotatorPort);
-            if (typeof window._applyRotatorSetting === 'function') window._applyRotatorSetting();
-          }
-        }
-      });
-      // Try to restore from cloud (async, updates UI when done)
-      _cloudLoad(function() {
-        updateScoreboard();
-        renderLogTab();
-        ContestLog.applyAll();
-      });
+      _setCloudIndicator('none');
+    },
+
+    setRemoteNamespace: function(remoteNamespace) {
+      var nextRemoteKey = remoteNamespace || null;
+      var hasChanged = _remoteKey !== nextRemoteKey;
+      _remoteKey = nextRemoteKey;
+
+      if (!_remoteKey) {
+        if (_cloudTimer) clearTimeout(_cloudTimer);
+        _setCloudIndicator('none');
+        return;
+      }
+
+      if (hasChanged) {
+        _startRemoteSync();
+      }
     },
 
     /** Mark a station as worked or skip. exchange = {rstSent, serialSent, rstRcvd, serialRcvd, comments} */
@@ -906,6 +1010,53 @@ var ContestLog = (function () {
     /** Save arbitrary settings to the user_settings cloud doc (fire-and-forget). */
     saveUserSetting: function(obj) {
       _cloudSaveUserSettings(obj);
+    },
+
+    isRemoteBackupAvailable: function() {
+      return _isRemoteSyncEnabled();
+    },
+
+    downloadRemoteBackup: async function() {
+      if (!_isRemoteSyncEnabled()) {
+        throw new Error('Remote sync disabled');
+      }
+
+      var settings = await _cloudLoadUserSettingsPromise();
+      var sessions = await _cloudListSessionsPromise();
+      var sessionDetails = [];
+
+      for (var i = 0; i < sessions.length; i++) {
+        var sessionResp = await _cloudLoadSessionPromise(sessions[i].sessionId);
+        if (sessionResp.status === 'ok') {
+          sessionDetails.push(sessionResp);
+        }
+      }
+
+      var payload = {
+        exportedAt: new Date().toISOString(),
+        namespace: _remoteKey,
+        settings: settings,
+        sessions: sessionDetails
+      };
+      _downloadTextFile(JSON.stringify(payload, null, 2), 'kst2you_remote_backup_' + (_baseKey || 'export') + '.json', 'application/json');
+    },
+
+    deleteRemoteBackup: function(callback) {
+      if (!_isRemoteSyncEnabled()) {
+        if (callback) callback({ status: 'error', message: 'Remote sync disabled' });
+        return;
+      }
+
+      _cloudDeleteAll(function(contestResp) {
+        if (!contestResp || contestResp.status !== 'ok') {
+          if (callback) callback(contestResp || { status: 'error', message: 'Failed to delete contest log backup' });
+          return;
+        }
+
+        _cloudDeleteUserSettings(function(settingsResp) {
+          if (callback) callback(settingsResp || { status: 'error', message: 'Failed to delete settings backup' });
+        });
+      });
     },
 
     /** Get next serial number (zero-padded to 3 digits). */

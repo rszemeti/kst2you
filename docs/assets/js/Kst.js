@@ -16,8 +16,10 @@ var lastError;
 var rawMsg;
 
 var reader;
-var newlocation; // gridsqaure stored for set lat/long
+var newLocation; // grid square stored for set lat/long
 var myLoc;
+var preciseMyLoc;
+var kstServerLoc;
 var myLatLong;
 var sessionKey;
 var map;
@@ -32,9 +34,296 @@ var activeCluster;
 var chatId;
 var userName;
 var password;
+var remoteSettingsNamespace = null;
 
 var userList = [];
 var dataTableUsers;
+var locAutoReplyKeys = new Set();
+
+function getClientSoftwareVersion() {
+  const releaseTagMeta = document.querySelector('meta[name="kst-release-tag"]');
+  const releaseTag = releaseTagMeta?.content?.trim();
+
+  if (releaseTag && releaseTag !== '__KST_RELEASE_TAG__') {
+    return 'KST2You ' + releaseTag;
+  }
+
+  return 'KST2You dev';
+}
+
+const clientSoftwareVersion = getClientSoftwareVersion();
+const preciseLocatorStorageKey = 'kst2you_precise_locator';
+const preciseLocatorPattern = /^[A-R]{2}\d{2}[A-X]{2}\d{2}$/i;
+const locAutoReplyStorageKey = 'kst2you_loc_autoreply';
+const remoteSettingsSyncStorageKey = 'kst2you_remote_settings_sync';
+
+function renderReleaseTag() {
+  $('#releaseTagLabel').text(clientSoftwareVersion.replace(/^KST2You\s+/, ''));
+}
+
+function normalizePreciseLocator(locator) {
+  const normalized = (locator || '').trim().toUpperCase();
+  if (!normalized) {
+    return '';
+  }
+
+  return preciseLocatorPattern.test(normalized) ? normalized : '';
+}
+
+function getStoredPreciseLocator() {
+  const stored = normalizePreciseLocator(localStorage.getItem(preciseLocatorStorageKey));
+  return stored || null;
+}
+
+function locatorPrefixesMatch(preciseLocator, kstLocator) {
+  if (!preciseLocator || !kstLocator) {
+    return false;
+  }
+
+  return preciseLocator.substring(0, 6).toUpperCase() === kstLocator.substring(0, 6).toUpperCase();
+}
+
+function renderLocationSettings() {
+  const storedPreciseLocator = preciseMyLoc || getStoredPreciseLocator() || '';
+  const remoteSyncEnabled = isRemoteSettingsSyncEnabled();
+  $('#settings-kst-locator').text(kstServerLoc || (myLoc ? myLoc.substring(0, 6) : '—'));
+  $('#settings-precise-locator').val(storedPreciseLocator);
+  $('#settings-autoresponder-loc').prop('checked', isLocAutoReplyEnabled());
+  $('#settings-sync-remote-storage').prop('checked', remoteSyncEnabled);
+  $('#settings-remote-data-actions').toggleClass('d-none', !remoteSyncEnabled);
+}
+
+function isRemoteSettingsSyncEnabled() {
+  return localStorage.getItem(remoteSettingsSyncStorageKey) === 'true';
+}
+
+function buildRemoteUserSettingsPayload() {
+  return {
+    rotatorType: localStorage.getItem('kst2you_rotator_type') || 'auto',
+    rotatorPort: localStorage.getItem('kst2you_rotator_port') || '',
+    preciseLocator: getStoredPreciseLocator() || '',
+    locAutoReply: isLocAutoReplyEnabled()
+  };
+}
+
+function syncRemoteUserSettings() {
+  if (!isRemoteSettingsSyncEnabled() || typeof ContestLog === 'undefined' || !ContestLog.saveUserSetting) {
+    return;
+  }
+
+  ContestLog.saveUserSetting(buildRemoteUserSettingsPayload());
+}
+
+function deriveRemoteSettingsNamespace(callsign, passwordText) {
+  const normalizedCallsign = ((callsign || '').trim().toUpperCase()).replace(/[\/\-].*$/, '');
+  if (!normalizedCallsign || !passwordText) {
+    return Promise.resolve(null);
+  }
+
+  const seed = normalizedCallsign + ':' + passwordText;
+  if (!window.crypto || !window.crypto.subtle || typeof TextEncoder === 'undefined') {
+    let hash = 2166136261;
+    for (let i = 0; i < seed.length; i++) {
+      hash ^= seed.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
+    }
+    return Promise.resolve('fnv1a_' + (hash >>> 0).toString(16).padStart(8, '0').toUpperCase());
+  }
+
+  return window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(seed)).then(function(buffer) {
+    return Array.from(new Uint8Array(buffer)).map(function(byte) {
+      return byte.toString(16).padStart(2, '0');
+    }).join('');
+  });
+}
+
+function refreshRemoteSyncNamespace() {
+  if (!isRemoteSettingsSyncEnabled() || !userName || !password) {
+    remoteSettingsNamespace = null;
+    if (typeof ContestLog !== 'undefined' && ContestLog.setRemoteNamespace) {
+      ContestLog.setRemoteNamespace(null);
+    }
+    return Promise.resolve(null);
+  }
+
+  return deriveRemoteSettingsNamespace(userName, password).then(function(namespace) {
+    remoteSettingsNamespace = namespace;
+    if (typeof ContestLog !== 'undefined' && ContestLog.setRemoteNamespace) {
+      ContestLog.setRemoteNamespace(namespace);
+    }
+    return namespace;
+  });
+}
+
+function setRemoteSettingsSyncEnabled(enabled) {
+  localStorage.setItem(remoteSettingsSyncStorageKey, enabled ? 'true' : 'false');
+  renderLocationSettings();
+
+  refreshRemoteSyncNamespace().then(function(namespace) {
+    if (enabled && namespace) {
+      syncRemoteUserSettings();
+    }
+  });
+}
+
+function getLocatorForChatShare() {
+  if (chatId == '3' && preciseMyLoc) {
+    return preciseMyLoc;
+  }
+
+  if (myLoc) {
+    return myLoc.substring(0, 6);
+  }
+
+  return '';
+}
+
+function isLocAutoReplyEnabled() {
+  const stored = localStorage.getItem(locAutoReplyStorageKey);
+  if (stored === null) {
+    return true;
+  }
+
+  return stored === 'true';
+}
+
+function setLocAutoReplyEnabled(enabled, saveToCloud) {
+  localStorage.setItem(locAutoReplyStorageKey, enabled ? 'true' : 'false');
+  renderLocationSettings();
+
+  if (saveToCloud && isRemoteSettingsSyncEnabled() && typeof ContestLog !== 'undefined' && ContestLog.saveUserSetting) {
+    ContestLog.saveUserSetting({ locAutoReply: !!enabled });
+  }
+}
+
+function getChatPeerLocator(callsign) {
+  const station = stationList[callsign];
+  if (station && station.locator) {
+    return station.locator;
+  }
+
+  if (typeof ChatInbox !== 'undefined' && ChatInbox.getMeta) {
+    const meta = ChatInbox.getMeta(callsign);
+    if (meta && meta.locator) {
+      return meta.locator;
+    }
+  }
+
+  return '';
+}
+
+function reciprocalBearing(degrees) {
+  return (degrees + 180) % 360;
+}
+
+function bearingToCompass(degrees) {
+  const points = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  return points[Math.round((((degrees % 360) + 360) % 360) / 45) % points.length];
+}
+
+function buildLocatorReply(callsign) {
+  const locator = getLocatorForChatShare();
+  if (!callsign || !locator) {
+    return '';
+  }
+
+  const peerLocator = getChatPeerLocator(callsign);
+  if (!peerLocator || !myLatLong || typeof gridSquareToLatLon !== 'function') {
+    return 'loc: ' + locator;
+  }
+
+  try {
+    const peerLatLong = gridSquareToLatLon(peerLocator);
+    const headingToPeer = bearing(myLatLong[0], myLatLong[1], peerLatLong[0], peerLatLong[1]);
+    const beamForMe = reciprocalBearing(headingToPeer);
+    const distanceKm = distVincenty(myLatLong[0], myLatLong[1], peerLatLong[0], peerLatLong[1]) / 1000;
+
+    return 'loc: ' + locator +
+      '  beam: ' + beamForMe.toFixed(1) + ' degrees (' + bearingToCompass(beamForMe) + ') for me, ' +
+      Math.round(distanceKm) + ' km';
+  } catch (error) {
+    return 'loc: ' + locator;
+  }
+}
+
+function sendLocatorToCallsign(callsign) {
+  const locatorReply = buildLocatorReply(callsign);
+  if (!callsign || !locatorReply) {
+    return false;
+  }
+
+  sendMsg('MSG|' + chatId + '|0|/CQ ' + callsign + ' ' + locatorReply + '|0|');
+  return true;
+}
+
+function isLocatorRequest(text) {
+  return /^\s*\??\s*(loc|locator)\s*\??\s*$/i.test(text || '');
+}
+
+function maybeAutoReplyWithLocator(message, isLive) {
+  if (!isLive || !message.isDirectTo(userName) || message.from === userName) {
+    return;
+  }
+
+  if (!isLocAutoReplyEnabled() || !isLocatorRequest(message.text)) {
+    return;
+  }
+
+  const replyKey = [message.from, message.timestamp, (message.text || '').trim().toLowerCase()].join('|');
+  if (locAutoReplyKeys.has(replyKey)) {
+    return;
+  }
+
+  if (sendLocatorToCallsign(message.from)) {
+    locAutoReplyKeys.add(replyKey);
+  }
+}
+
+function setStoredPreciseLocator(locator, saveToCloud) {
+  const normalized = normalizePreciseLocator(locator);
+
+  if (normalized) {
+    localStorage.setItem(preciseLocatorStorageKey, normalized);
+  } else {
+    localStorage.removeItem(preciseLocatorStorageKey);
+  }
+
+  preciseMyLoc = normalized || null;
+  renderLocationSettings();
+
+  if (saveToCloud && isRemoteSettingsSyncEnabled() && typeof ContestLog !== 'undefined' && ContestLog.saveUserSetting) {
+    ContestLog.saveUserSetting({ preciseLocator: normalized });
+  }
+}
+
+function clearStoredPreciseLocator(saveToCloud) {
+  setStoredPreciseLocator('', saveToCloud);
+}
+
+function applyStoredPreciseLocator() {
+  const storedPreciseLocator = getStoredPreciseLocator();
+
+  if (!storedPreciseLocator) {
+    preciseMyLoc = null;
+    renderLocationSettings();
+    return false;
+  }
+
+  preciseMyLoc = storedPreciseLocator;
+
+  if (kstServerLoc && !locatorPrefixesMatch(storedPreciseLocator, kstServerLoc)) {
+    clearStoredPreciseLocator(true);
+    if (kstServerLoc) {
+      setMyLocator(kstServerLoc);
+    }
+    return false;
+  }
+
+  setMyLocator(storedPreciseLocator);
+  return true;
+}
+
+window._applyStoredPreciseLocator = applyStoredPreciseLocator;
 
 
 const locTest = RegExp('\w{6}');
@@ -171,7 +460,8 @@ class Message {
     this._from = msg[3];
     this._status = msg[5];
     this._text = msg[6];
-    this._to = msg[7];
+    this._rawTo = msg[7];
+    this._to = this._rawTo;
     if(this._to==0){
         var poss = this._text.split(' ')[0].toUpperCase();
         poss=poss.replace(/^[\[\(]|[\]\)]$/g, '');
@@ -193,6 +483,14 @@ class Message {
 
   get to() {
     return this._to.toUpperCase();
+  }
+
+  get rawTo() {
+    return (this._rawTo || '').toUpperCase();
+  }
+
+  isDirectTo(callsign) {
+    return this.rawTo !== '0' && this.rawTo === (callsign || '').toUpperCase();
   }
 
   get timestamp() {
@@ -252,7 +550,7 @@ function websocketInit(urls) {
         ws.onopen = function () {
             console.log('WebSocket connected.');
             $('#connState').text("connected");
-            sendMsg("LOGINC|" + userName + "|" + password + "|" + chatId + "|KST2You 1.1|20|20|1|" + latestMessageTime + "|" + latestMessageTime + "|");
+          sendMsg("LOGINC|" + userName + "|" + password + "|" + chatId + "|" + clientSoftwareVersion + "|20|20|1|" + latestMessageTime + "|" + latestMessageTime + "|");
             connectState = 'connected';
 
             // 🟢 Successful connect -> reset retry count
@@ -347,7 +645,6 @@ function doLogin() {
     userName = $('#userInput').val().toUpperCase();
     password = $('#passInput').val();
     if (typeof ChatInbox   !== 'undefined') ChatInbox.init(userName);
-    if (typeof ContestLog  !== 'undefined') ContestLog.init(userName, password);
 
     if ($('#rememberMe').is(':checked')) {
         var cookieData = {
@@ -494,6 +791,8 @@ function procChatMessage(msg, isLive) {
   if (message.timestamp > latestMessageTime) {
     latestMessageTime = message.timestamp;
   }
+
+  maybeAutoReplyWithLocator(message, isLive);
 
   var stn = stationList[message.from];
 
@@ -737,6 +1036,14 @@ function procLogin(msg) {
   $("#loginModal").modal('hide');
   $('#loginError').hide();
   logUsage({user: userName, chat: chatId});
+  if (typeof ContestLog !== 'undefined') {
+    ContestLog.init(userName);
+    refreshRemoteSyncNamespace().then(function(namespace) {
+      if (namespace) {
+        syncRemoteUserSettings();
+      }
+    });
+  }
   if (connectState == 'login') {
     dataTableUsers.clear();
     //$('#userList').empty();
@@ -765,7 +1072,9 @@ function procLogin(msg) {
   var userData = msg.split("|");
   setSessionKey(userData[4]);
   setUsername(userData[6], userData[7]);
-  setMyLocator(userData[8]);
+  kstServerLoc = userData[8];
+  setMyLocator(kstServerLoc);
+  applyStoredPreciseLocator();
   fetchBeacons(bandInfo.min, bandInfo.max);
 }
 
@@ -816,13 +1125,19 @@ function setName() {
   sendMsg("MSG|" + chatId + "|0|/SETNAME " + name + "|0|");
 }
 
-function setMyLocator(loc) {
+function setMyLocator(loc, latLongOverride) {
   if (loc == myLoc) {
+    if (latLongOverride) {
+      myLatLong = latLongOverride;
+      drawMap();
+    }
+    renderLocationSettings();
     return;
   }
   myLoc = loc;
-  myLatLong = gridSquareToLatLon(myLoc);
+  myLatLong = latLongOverride || gridSquareToLatLon(myLoc);
   drawMap();
+  renderLocationSettings();
 }
 
 function sendMsg(msg) {
@@ -1073,6 +1388,12 @@ function chatPopup(callsign) {
   $('#chatPopupMessageInput').prop('disabled', !isOnline)
     .attr('placeholder', isOnline ? 'Write your message' : 'Station offline — history only');
   $('#chatPopupSendButton').prop('disabled', !isOnline);
+  $('#chatPopupSendLocButton').prop('disabled', !isOnline || !getLocatorForChatShare());
+  $('#chatPopupSendLocButton').off('click').on('click', function() {
+    if (sendLocatorToCallsign(callsign)) {
+      $('#chatPopupMessageInput').focus();
+    }
+  });
   if (!isOnline) {
     $('#chatWindow').append(
       '<div style="text-align:center;padding:6px 10px;margin-bottom:6px;' +
@@ -1198,6 +1519,7 @@ function sendChat() {
 }
 
 $(document).ready(function() {
+  renderReleaseTag();
   if (typeof ChatInbox !== 'undefined') ChatInbox.buildUI();
   if ((location.protocol !== 'https:') && (location.hostname != "127.0.0.1")) {
       location.replace(`https:${location.href.substring(location.protocol.length)}`);
@@ -1285,6 +1607,8 @@ $(document).ready(function() {
   // ── Contest mode settings UI ──────────────────────────
   // Sync dropdowns when Settings tab opens
   $('a[href="#tab-settings"]').on('shown.bs.tab', function() {
+    renderLocationSettings();
+
     // Rotator settings
     var rotType = localStorage.getItem('kst2you_rotator_type') || 'auto';
     var rotPort = localStorage.getItem('kst2you_rotator_port') || '';
@@ -1344,8 +1668,41 @@ $(document).ready(function() {
     window._applyRotatorSetting();
     _saveRotatorToCloud();
   });
+  $('#settings-clear-precise-locator').on('click', function() {
+    setStoredPreciseLocator('', true);
+    if (kstServerLoc) {
+      setMyLocator(kstServerLoc);
+    }
+  });
+  $('#settings-sync-remote-storage').on('change', function() {
+    setRemoteSettingsSyncEnabled(this.checked);
+  });
+  $('#settings-download-remote-data').on('click', async function() {
+    if (typeof ContestLog === 'undefined' || !ContestLog.downloadRemoteBackup) return;
+    try {
+      await ContestLog.downloadRemoteBackup();
+    } catch (error) {
+      alert(error && error.message ? error.message : 'Unable to download remote data.');
+    }
+  });
+  $('#settings-delete-remote-data').on('click', function() {
+    if (typeof ContestLog === 'undefined' || !ContestLog.deleteRemoteBackup) return;
+    if (!confirm('Delete the current remote backup set?\nThis removes backed-up settings and contest sessions for the current credential-derived namespace only.')) {
+      return;
+    }
+    ContestLog.deleteRemoteBackup(function(resp) {
+      if (!resp || resp.status !== 'ok') {
+        alert('Failed to delete remote data: ' + (resp && resp.message ? resp.message : 'network error'));
+        return;
+      }
+      alert('Remote backup data deleted.');
+    });
+  });
+  $('#settings-autoresponder-loc').on('change', function() {
+    setLocAutoReplyEnabled(this.checked, true);
+  });
   function _saveRotatorToCloud() {
-    if (typeof ContestLog !== 'undefined' && ContestLog.getSetting) {
+    if (isRemoteSettingsSyncEnabled() && typeof ContestLog !== 'undefined' && ContestLog.getSetting) {
       ContestLog.saveUserSetting({
         rotatorType: localStorage.getItem('kst2you_rotator_type') || 'auto',
         rotatorPort: localStorage.getItem('kst2you_rotator_port') || ''
@@ -1455,11 +1812,15 @@ $(document).ready(function() {
   });
     
   $('#setLocation').click(function() {
-    myLoc = newLocation.gs;
-    myLatLong = [newLocation.lat, newLocation.lng];
-    sendMsg("MSG|" + chatId + "|0|/SETLOC " + myLoc.substring(0, 6) + "|0|");
+     if (!newLocation) {
+      return;
+     }
+
+     kstServerLoc = newLocation.gs.substring(0, 6);
+     setStoredPreciseLocator(newLocation.gs, true);
+     setMyLocator(newLocation.gs, [newLocation.lat, newLocation.lng]);
+     sendMsg("MSG|" + chatId + "|0|/SETLOC " + kstServerLoc + "|0|");
     $('#locationModal').modal('hide');
-    drawMap();
   });
     
   $('[data-toggle="tooltip"]').tooltip(); 

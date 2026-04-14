@@ -37,6 +37,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+      - name: Inject release tag
+        run: |
+          RELEASE_TAG="dev"
+
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ -n "${GITHUB_REF_NAME}" ]; then
+            RELEASE_TAG="${GITHUB_REF_NAME}"
+          fi
+
+          sed -i "s/__KST_RELEASE_TAG__/${RELEASE_TAG}/g" docs/index.html
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
