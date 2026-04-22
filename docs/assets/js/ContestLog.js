@@ -41,9 +41,13 @@ var ContestLog = (function () {
     return localStorage.getItem(USER_SETTINGS_SYNC_KEY) === 'true' && !!_remoteKey;
   }
   function _cloudData(data) {
-    return Object.assign({ backupKey: _remoteKey }, data || {});
+    return Object.assign({ backupKey: _remoteKey, callsign: _baseKey }, data || {});
   }
   function _applyCloudUserSettings(cloudSettings) {
+    if (typeof window.setAdminAccessEnabled === 'function') {
+      window.setAdminAccessEnabled(!!(cloudSettings && cloudSettings.isAdmin));
+    }
+
     if (!cloudSettings) {
       return;
     }

@@ -35,6 +35,7 @@ var chatId;
 var userName;
 var password;
 var remoteSettingsNamespace = null;
+var adminAccessEnabled = false;
 
 var userList = [];
 var dataTableUsers;
@@ -158,6 +159,10 @@ function refreshRemoteSyncNamespace() {
 function setRemoteSettingsSyncEnabled(enabled) {
   localStorage.setItem(remoteSettingsSyncStorageKey, enabled ? 'true' : 'false');
   renderLocationSettings();
+
+  if (!enabled) {
+    setAdminAccessEnabled(false);
+  }
 
   refreshRemoteSyncNamespace().then(function(namespace) {
     if (enabled && namespace) {
@@ -324,6 +329,23 @@ function applyStoredPreciseLocator() {
 }
 
 window._applyStoredPreciseLocator = applyStoredPreciseLocator;
+
+function setAdminAccessEnabled(enabled) {
+  adminAccessEnabled = !!enabled;
+  $('#adminTab').toggle(adminAccessEnabled);
+
+  if (!adminAccessEnabled) {
+    var adminTabLink = document.querySelector('#adminTab a');
+    if (adminTabLink && adminTabLink.classList.contains('active')) {
+      var aboutTabLink = document.querySelector('#aboutTab a');
+      if (aboutTabLink && window.bootstrap && window.bootstrap.Tab) {
+        window.bootstrap.Tab.getOrCreateInstance(aboutTabLink).show();
+      }
+    }
+  }
+}
+
+window.setAdminAccessEnabled = setAdminAccessEnabled;
 
 
 const locTest = RegExp('\w{6}');

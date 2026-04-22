@@ -69,6 +69,7 @@ const AirplanesLiveDatasource = {
           icao:     ac.hex,
           callsign: (ac.flight || '').trim() || null,
           country:  null,
+          category: ac.category || null,
           lat:      ac.lat,
           lon:      ac.lon,
           alt:      ac.alt_baro != null ? Math.round(ac.alt_baro * 0.3048) : null,

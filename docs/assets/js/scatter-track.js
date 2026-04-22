@@ -341,20 +341,144 @@ const ScatterTrack = (() => {
   }
 
   // ────────────────────────────────────────────────
-  // Aircraft grade — proxy for scatter RCS based on
-  // cruise speed + altitude (widebodies fly fast + high)
+  // Aircraft classification — use ADS-B emitter category when
+  // available, otherwise fall back to a speed/altitude proxy.
   // ────────────────────────────────────────────────
-  function gradeAircraft(p) {
+  function heuristicAircraftProfile(p) {
     const alt = p.alt      != null ? p.alt      : 0;
     const vel = p.velocity != null ? p.velocity : 0;
-    if (vel >= 420 && alt >= 7500) return 'heavy';   // ~FL250+, widebody territory
-    if (vel >= 280 && alt >= 4500) return 'medium';  // ~FL150+, narrowbody / regional jet
-    return 'light';                                   // turboprop / GA / unknown
+    if (vel >= 420 && alt >= 7500) {
+      return { grade: 'heavy', typeKey: 'widebody', typeLabel: 'Widebody jet', typeSource: 'heuristic' };
+    }
+    if (vel >= 280 && alt >= 4500) {
+      return { grade: 'medium', typeKey: 'jet', typeLabel: 'Jet', typeSource: 'heuristic' };
+    }
+    return { grade: 'light', typeKey: 'prop', typeLabel: 'Light aircraft', typeSource: 'heuristic' };
   }
 
-  function planeIcon(heading, inPath, isApproaching, grade) {
+  function aircraftProfile(p) {
+    const category = (p.category || '').toUpperCase();
+    if (!category) return heuristicAircraftProfile(p);
+
+    switch (category) {
+      case 'A1':
+        return { grade: 'light', typeKey: 'prop', typeLabel: 'Light aircraft', typeSource: 'adsb' };
+      case 'A2':
+        return { grade: 'light', typeKey: 'small', typeLabel: 'Small aircraft', typeSource: 'adsb' };
+      case 'A3':
+        return { grade: 'medium', typeKey: 'jet', typeLabel: 'Large aircraft', typeSource: 'adsb' };
+      case 'A4':
+        return { grade: 'heavy', typeKey: 'widebody', typeLabel: 'High-vortex aircraft', typeSource: 'adsb' };
+      case 'A5':
+        return { grade: 'heavy', typeKey: 'heavy', typeLabel: 'Heavy aircraft', typeSource: 'adsb' };
+      case 'A6':
+        return { grade: 'medium', typeKey: 'fast', typeLabel: 'High-speed aircraft', typeSource: 'adsb' };
+      case 'A7':
+        return { grade: 'light', typeKey: 'rotor', typeLabel: 'Rotorcraft', typeSource: 'adsb' };
+      default:
+        return { ...heuristicAircraftProfile(p), typeSource: 'heuristic' };
+    }
+  }
+
+  function planeShapeSvg(typeKey, size, col, opacity) {
+    switch (typeKey) {
+      case 'heavy':
+      case 'widebody':
+        return `
+        <path
+          d="M 0 ${-size * 0.98}
+             L ${size * 0.08} ${-size * 0.42}
+             L ${size * 0.78} ${-size * 0.12}
+             L ${size * 0.82} ${size * 0.02}
+             L ${size * 0.16} ${size * 0.08}
+             L ${size * 0.12} ${size * 0.54}
+             L ${size * 0.32} ${size * 0.84}
+             L ${size * 0.18} ${size * 0.9}
+             L 0 ${size * 0.58}
+             L ${-size * 0.18} ${size * 0.9}
+             L ${-size * 0.32} ${size * 0.84}
+             L ${-size * 0.12} ${size * 0.54}
+             L ${-size * 0.16} ${size * 0.08}
+             L ${-size * 0.82} ${size * 0.02}
+             L ${-size * 0.78} ${-size * 0.12}
+             L ${-size * 0.08} ${-size * 0.42}
+             Z"
+          fill="${col}" fill-opacity="${opacity}"
+          stroke="${col}" stroke-width="0.35"/>`;
+      case 'rotor':
+        return `
+        <path
+          d="M 0 ${-size * 0.3}
+             L ${size * 0.14} ${-size * 0.02}
+             L ${size * 0.14} ${size * 0.4}
+             L 0 ${size * 0.56}
+             L ${-size * 0.14} ${size * 0.4}
+             L ${-size * 0.14} ${-size * 0.02}
+             Z"
+          fill="${col}" fill-opacity="${opacity}"
+          stroke="${col}" stroke-width="0.35"/>
+        <line x1="${-size * 0.78}" y1="${-size * 0.06}" x2="${size * 0.78}" y2="${-size * 0.06}" stroke="${col}" stroke-opacity="${opacity}" stroke-width="0.8" stroke-linecap="round"/>
+        <line x1="0" y1="${-size * 0.82}" x2="0" y2="${-size * 0.38}" stroke="${col}" stroke-opacity="${opacity}" stroke-width="0.8" stroke-linecap="round"/>`;
+      case 'prop':
+      case 'small':
+        return `
+        <path
+          d="M 0 ${-size * 0.9}
+             L ${size * 0.06} ${-size * 0.34}
+             L ${size * 0.54} ${-size * 0.12}
+             L ${size * 0.54} ${size * 0.02}
+             L ${size * 0.1} ${size * 0.06}
+             L ${size * 0.08} ${size * 0.48}
+             L ${size * 0.22} ${size * 0.72}
+             L ${size * 0.12} ${size * 0.78}
+             L 0 ${size * 0.52}
+             L ${-size * 0.12} ${size * 0.78}
+             L ${-size * 0.22} ${size * 0.72}
+             L ${-size * 0.08} ${size * 0.48}
+             L ${-size * 0.1} ${size * 0.06}
+             L ${-size * 0.54} ${size * 0.02}
+             L ${-size * 0.54} ${-size * 0.12}
+             L ${-size * 0.06} ${-size * 0.34}
+             Z"
+          fill="${col}" fill-opacity="${opacity}"
+          stroke="${col}" stroke-width="0.35"/>`;
+      case 'fast':
+      case 'jet':
+      default:
+        return `
+        <path
+          d="M 0 ${-size * 0.96}
+             L ${size * 0.07} ${-size * 0.38}
+             L ${size * 0.6} ${-size * 0.08}
+             L ${size * 0.64} ${size * 0.04}
+             L ${size * 0.12} ${size * 0.08}
+             L ${size * 0.1} ${size * 0.5}
+             L ${size * 0.24} ${size * 0.76}
+             L ${size * 0.14} ${size * 0.82}
+             L 0 ${size * 0.54}
+             L ${-size * 0.14} ${size * 0.82}
+             L ${-size * 0.24} ${size * 0.76}
+             L ${-size * 0.1} ${size * 0.5}
+             L ${-size * 0.12} ${size * 0.08}
+             L ${-size * 0.64} ${size * 0.04}
+             L ${-size * 0.6} ${-size * 0.08}
+             L ${-size * 0.07} ${-size * 0.38}
+             Z"
+          fill="${col}" fill-opacity="${opacity}"
+          stroke="${col}" stroke-width="0.35"/>`;
+    }
+  }
+
+  function gradeDisplayText(p) {
+    const stars = p.grade === 'heavy' ? '★★★' : p.grade === 'medium' ? '★★' : '★';
+    const type = p.typeLabel || 'Aircraft';
+    const category = p.category ? ` ${p.category}` : '';
+    return `${stars} ${type}${category}`;
+  }
+
+  function planeIcon(heading, inPath, isApproaching, grade, typeKey) {
     // Base size by grade; heavy planes get bigger icons
-    const base = grade === 'heavy' ? 14 : grade === 'medium' ? 10 : 7;
+    const base = grade === 'heavy' ? 11 : grade === 'medium' ? 8 : 6;
     const size = inPath ? base + 2 : isApproaching ? base + 1 : base - 1;
 
     // Colour: blue shades in-path, orange/amber approaching, grey otherwise
@@ -372,18 +496,15 @@ const ScatterTrack = (() => {
 
     const h   = heading || 0;
     const svg = `<svg xmlns="http://www.w3.org/2000/svg"
-      width="${size * 3}" height="${size * 3}"
+      width="${size * 2.4}" height="${size * 2.4}"
       viewBox="${-size} ${-size} ${size * 2} ${size * 2}">
       <g transform="rotate(${h})">
-        <polygon
-          points="0,${-size * 0.75} ${size * 0.4},${size * 0.5} 0,${size * 0.2} ${-size * 0.4},${size * 0.5}"
-          fill="${col}" fill-opacity="${opacity}"
-          stroke="${col}" stroke-width="0.5"/>
+        ${planeShapeSvg(typeKey, size, col, opacity)}
       </g>
     </svg>`;
     return {
       url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
-      anchor: new google.maps.Point(size * 1.5, size * 1.5),
+      anchor: new google.maps.Point(size * 1.2, size * 1.2),
     };
   }
 
@@ -393,7 +514,7 @@ const ScatterTrack = (() => {
     const seen = new Set();
     planes.forEach(p => {
       seen.add(p.icao);
-      const icon   = planeIcon(p.heading, p.inPath, p.minsToEntry != null, p.grade);
+      const icon   = planeIcon(p.heading, p.inPath, p.minsToEntry != null, p.grade, p.typeKey);
       const zIndex = p.inPath
         ? (p.grade === 'heavy' ? 13 : p.grade === 'medium' ? 12 : 10)
         : p.minsToEntry != null
@@ -466,7 +587,7 @@ const ScatterTrack = (() => {
 
       // Update marker icon/z-index to reflect new classification
       if (m) {
-        m.setIcon(planeIcon(p.heading, isIn, minsToEntry != null, p.grade));
+        m.setIcon(planeIcon(p.heading, isIn, minsToEntry != null, p.grade, p.typeKey));
         m.setZIndex(isIn
           ? (p.grade === 'heavy' ? 13 : p.grade === 'medium' ? 12 : 10)
           : minsToEntry != null
@@ -517,12 +638,19 @@ const ScatterTrack = (() => {
     const exitStr = p.minsInPath != null
       ? `<tr><td>Time in corridor</td><td><b>~${Math.round(p.minsInPath)} min</b></td></tr>`
       : '';
+    const classStr = p.category || p.typeLabel
+      ? `<tr><td>Class</td><td>${p.typeLabel || 'Aircraft'}${p.category ? ' (' + p.category + ')' : ''}</td></tr>`
+      : '';
+    const gradeTitle = p.typeLabel
+      ? `${p.typeLabel}${p.category ? ' (' + p.category + ')' : ''}`
+      : 'Aircraft class';
     return `
       <div style="font-family:monospace;font-size:12px;min-width:180px">
         <b style="font-size:14px">${p.callsign || p.icao.toUpperCase()}</b>
-        <span style="font-size:11px;color:${p.grade==='heavy'?'#0033cc':p.grade==='medium'?'#0066ff':'#aaaaaa'}">${p.grade==='heavy'?'★★★ Heavy':p.grade==='medium'?'★★ Medium':'★ Light'}</span>
+        <span title="${gradeTitle}" style="font-size:11px;color:${p.grade==='heavy'?'#0033cc':p.grade==='medium'?'#0066ff':'#aaaaaa'}">${gradeDisplayText(p)}</span>
         <table style="margin-top:6px;border-collapse:collapse;width:100%">
           <tr><td>ICAO</td><td>${p.icao.toUpperCase()}</td></tr>
+          ${classStr}
           <tr><td>Alt</td><td>${p.altFt != null ? p.altFt.toLocaleString() + ' ft' : '—'}</td></tr>
           <tr><td>Speed</td><td>${p.velocity != null ? p.velocity + ' kt' : '—'}</td></tr>
           <tr><td>Heading</td><td>${p.heading != null ? p.heading + '°' : '—'}</td></tr>
@@ -583,13 +711,17 @@ const ScatterTrack = (() => {
       const dHz     = (typeof chatId !== 'undefined' && chatId == '3') ? calcDoppler(p, freqMHz) : null;
       const dkHz    = dHz != null ? (dHz >= 0 ? '+' : '') + (dHz / 1000).toFixed(2) : null;
       const distMid = haversine(mid.lat, mid.lon, p.lat, p.lon);
+      const profile = aircraftProfile(p);
       let minsToEntry = null, minsInPath = null;
       if (isIn) { minsInPath  = predictExit(p, corridorDeg); }
       else       { minsToEntry = predictEntry(p, lookahead, corridorDeg); }
       return {
         ...p,
         inPath: isIn, visA, visB,
-        grade:       gradeAircraft(p),
+        grade:       profile.grade,
+        typeKey:     profile.typeKey,
+        typeLabel:   profile.typeLabel,
+        typeSource:  profile.typeSource,
         distFromMid: distMid,
         doppler:     dHz,
         dopplerKHz:  dkHz,
@@ -762,8 +894,12 @@ const ScatterTrack = (() => {
           const isIn = inCorridor(p.lat, p.lon, _corridorDeg) && visA && visB;
           const minsToEntry = isIn ? null : predictEntry(p, _lookahead, _corridorDeg);
           const minsInPath  = isIn ? predictExit(p, _corridorDeg) : null;
+          const profile = aircraftProfile(p);
           return { ...p, inPath: isIn, visA, visB,
-            grade: gradeAircraft(p),
+            grade: profile.grade,
+            typeKey: profile.typeKey,
+            typeLabel: profile.typeLabel,
+            typeSource: profile.typeSource,
             distFromMid: haversine(mid.lat, mid.lon, p.lat, p.lon),
             minsToEntry, minsInPath };
         });

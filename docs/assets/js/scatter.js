@@ -8,6 +8,7 @@
   let scatterChatCallsign = null;
   const SCATTER_MAX_KM = 900;
   let scatterTarget = null;
+  const SCATTER_AUTO_PLANE_ALERT_KEY = 'kst2you_scatter_auto_plane_alert';
 
   window.getScatterMap = function () {
     return scatterMapReady ? scatterMap : null;
@@ -19,16 +20,27 @@
     const beaconCompose = document.getElementById('scatter-beacon-compose');
     const beaconCall = document.getElementById('scatter-beacon-call');
     const beaconFreq = document.getElementById('scatter-beacon-freq');
+    const planeAlertWrap = document.getElementById('scatter-auto-plane-alert')?.closest('.form-check');
     const isBeacon = target && target.type === 'beacon';
 
     if (feed) feed.style.display = isBeacon ? 'none' : '';
     if (chatCompose) chatCompose.style.display = isBeacon ? 'none' : 'flex';
     if (beaconCompose) beaconCompose.style.display = isBeacon ? 'flex' : 'none';
+    if (planeAlertWrap) planeAlertWrap.style.display = isBeacon ? 'none' : 'flex';
 
     if (isBeacon) {
       if (beaconCall) beaconCall.textContent = target.callsign || '—';
       if (beaconFreq) beaconFreq.value = target.frequencyMHz ? Number(target.frequencyMHz).toFixed(3) : '';
     }
+  }
+
+  function scatterAutoPlaneAlertEnabled() {
+    return localStorage.getItem(SCATTER_AUTO_PLANE_ALERT_KEY) === 'true';
+  }
+
+  function applyScatterAutoPlaneAlertSetting() {
+    const toggle = document.getElementById('scatter-auto-plane-alert');
+    if (toggle) toggle.checked = scatterAutoPlaneAlertEnabled();
   }
 
   // ── Rotator server discovery ────────────────────────
@@ -394,6 +406,11 @@
       scatterScan();
     }
   });
+  document.getElementById('scatter-auto-plane-alert').addEventListener('change', function () {
+    localStorage.setItem(SCATTER_AUTO_PLANE_ALERT_KEY, this.checked ? 'true' : 'false');
+  });
+
+  applyScatterAutoPlaneAlertSetting();
 
   function getFreqMHz () {
     const v = document.getElementById('scatter-band').value;
@@ -695,14 +712,14 @@
     _lastInPath = inPath;
 
     // Beep for each plane that has newly entered the corridor (real scan only)
-    if (!isPredicted) {
+    if (!isPredicted && scatterAutoPlaneAlertEnabled()) {
       var newCount = 0;
       inPath.forEach(function (p) { if (!_inPathIcaos.has(p.icao)) newCount++; });
       for (var i = 0; i < newCount; i++) {
         setTimeout(playPlaneAlert, i * 250);   // stagger if multiple arrive at once
       }
-      _inPathIcaos = new Set(inPath.map(function (p) { return p.icao; }));
     }
+    if (!isPredicted) _inPathIcaos = new Set(inPath.map(function (p) { return p.icao; }));
     const list = document.getElementById('scatter-list');
     list.innerHTML = '';
     if (!inPath.length && !approaching.length) {
@@ -760,6 +777,9 @@
     const callClass = p.callsign ? (isApproaching ? 'app' : '') : 'anon';
     const gradeStars = p.grade === 'heavy' ? '★★★' : p.grade === 'medium' ? '★★' : '★';
     const gradeCls   = 'grade-' + (p.grade || 'light');
+    const gradeTitle = p.typeLabel
+      ? (p.typeLabel + (p.category ? ' (' + p.category + ')' : ''))
+      : 'Aircraft class';
     // Track button for in-path planes when rotator available
     var trackBtnHtml = '';
     if (!isApproaching && window._rotatorUrl) {
@@ -769,7 +789,7 @@
     div.innerHTML =
       '<div class="d-flex justify-content-between align-items-baseline mb-1">' +
         '<span class="pi-call ' + callClass + '">' + (p.callsign || p.icao.toUpperCase()) + '</span>' +
-        '<span class="pi-grade ' + gradeCls + '">' + gradeStars + '</span>' +
+        '<span class="pi-grade ' + gradeCls + '" title="' + gradeTitle + '">' + gradeStars + '</span>' +
         dopplerHtml + trackBtnHtml +
       '</div>' +
       '<div class="pi-meta">' +

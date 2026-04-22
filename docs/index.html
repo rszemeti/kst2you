@@ -84,6 +84,11 @@
       <i class="bi bi-gear me-1"></i>Settings
     </a>
   </li>
+  <li class="nav-item" id="adminTab" role="presentation" style="display:none">
+    <a class="nav-link py-1" role="tab" data-bs-toggle="tab" href="#tab-admin">
+      <i class="bi bi-shield-lock me-1"></i>Admin
+    </a>
+  </li>
   <li class="nav-item" id="aboutTab" role="presentation">
     <a class="nav-link py-1" role="tab" data-bs-toggle="tab" href="#tab-about">
       <i class="bi bi-info-circle me-1"></i>About
@@ -282,6 +287,10 @@
         <span class="scs-to">→ <span id="scatter-chat-to">—</span></span>
         <input type="text" class="form-control form-control-sm" id="scatter-chat-input"
                placeholder="Message…" maxlength="200" style="flex:1">
+        <div class="form-check form-switch m-0 d-flex align-items-center" title="Play a sound when a new aircraft enters the path for this scatter target">
+          <input class="form-check-input" type="checkbox" role="switch" id="scatter-auto-plane-alert">
+          <label class="form-check-label ms-2 small text-nowrap" for="scatter-auto-plane-alert">Auto plane alert</label>
+        </div>
         <button class="btn btn-primary btn-sm" onclick="scatterChatSend()" title="Send">
           <i class="bi bi-send-fill"></i>
         </button>
@@ -361,7 +370,7 @@
           <label class="form-check-label" for="settings-sync-remote-storage">Sync with remote storage</label>
         </div>
         <p class="text-muted small mb-0">Off by default. When enabled after a successful KST login, rotator settings, precise locator, locator autoresponder preference, and contest-mode log/session data are backed up remotely for this callsign. If the KST password later changes, a new remote backup set will be created.</p>
-        <p class="text-muted small mb-2">Remote backups that have not been accessed for 12 months are deleted automatically on next access.</p>
+        <p class="text-muted small mb-2">Remote backups are kept for up to 12 months after their last access, then removed the next time that backup set is used.</p>
         <div class="d-none align-items-center gap-2 flex-wrap" id="settings-remote-data-actions">
           <button class="btn btn-outline-secondary btn-sm" type="button" id="settings-download-remote-data">Download my data</button>
           <button class="btn btn-outline-danger btn-sm" type="button" id="settings-delete-remote-data">Delete my data</button>
@@ -454,6 +463,38 @@
     </div>
   </div>
 
+  <!-- ── ADMIN ── -->
+  <div class="tab-pane fade tab-scroll" role="tabpanel" id="tab-admin">
+    <div class="container pt-3" style="max-width:1000px">
+      <div class="d-flex justify-content-between align-items-center mb-2 gap-2 flex-wrap">
+        <div>
+          <h5 class="text-primary mb-1">Admin</h5>
+          <p class="text-muted small mb-0">Per-user login activity plus a 30-day trend of total and unique logins. Visible only when your remote user settings include the admin flag.</p>
+        </div>
+        <button class="btn btn-outline-secondary btn-sm" id="admin-refresh-button" type="button">Refresh</button>
+      </div>
+      <div class="alert alert-secondary py-2 small mb-2" id="admin-status">Waiting for admin data.</div>
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+          <div class="small text-muted mb-2">Last 30 days of login activity</div>
+          <div id="adminLoginChart" style="width:100%;height:280px"></div>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm table-striped table-bordered w-100" id="adminUserStatsTable">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Login Count</th>
+              <th>Last Login</th>
+            </tr>
+          </thead>
+          <tbody id="adminUserStatsBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <!-- ── ABOUT ── -->
   <div class="tab-pane fade tab-scroll" role="tabpanel" id="tab-about">
     <div class="container pt-3" style="max-width:800px">
@@ -462,7 +503,7 @@
       <p>KST2YOU is a project by Robin Szemeti, G1YFG. It aims to provide a web-based interface to the KST service, accessible on any modern browser, regardless of the device. If you have a feature request or comments, please contact me via my email as published on QRZ.com.</p>
       <h6 class="text-primary">Beacon data from UK Microwave Group / Beaconspot.uk</h6>
       <p>Beacon data is current data kindly supplied by Beaconspot, a website run by the UK Microwave group. If you enjoy microwave radio or would like to contribute to the upkeep of our servers, beacon network or just receive our monthly newsletter, please consider a subscription (just £6 a year at the time of writing) — every little helps! <a class="fw-bold" href="https://www.beaconspot.uk/index2.php" target="_blank">BeaconSpot</a> and <a class="fw-bold" href="https://www.microwavers.org/index.htm?membership.htm" target="_blank">Microwavers.org</a> appreciate your support.</p>
-      <p>Privacy: by default, your settings and contest-mode log stay in your browser only. If you select "remember me", your login is stored locally in your browser. If you enable "Sync with remote storage" in Settings, selected preferences such as rotator settings, precise locator, locator autoresponder preference, and contest-mode log/session data are backed up remotely after a successful KST login so they can be reused across devices. Those backups are tied to your current KST credentials, so if the KST password later changes, a new remote backup set will be created. Remote backups that are not accessed for 12 months are deleted automatically on next access. You can also download or delete the current remote backup set from Settings. I do keep a log of callsigns that have used the service and any DXC cluster spots purely for statistics. I do not log your messages either sent or received. Since I started collecting numbers in late October 2023, there have been <span id="userCount"></span> logins to the service and <span id="spotCount"></span> spots reported.</p>
+      <p>Privacy: by default, your settings and contest-mode log stay in your browser only. If you select "remember me", your login is stored locally in your browser. If you enable "Sync with remote storage" in Settings, selected preferences such as rotator settings, precise locator, locator autoresponder preference, and contest-mode log/session data are backed up remotely after a successful KST login so they can be reused across devices. Those backups are tied to your current KST credentials, so if the KST password later changes, a new remote backup set will be created. Remote backups are kept for up to 12 months after their last access, then removed the next time that backup set is used. You can also download or delete the current remote backup set from Settings. I do keep a log of callsigns that have used the service and any DXC cluster spots purely for statistics. I do not log your messages either sent or received. Since I started collecting numbers in late October 2023, there have been <span id="userCount"></span> logins to the service and <span id="spotCount"></span> spots reported.</p>
       <p>A basic write-up on the various functions and features may be found on my blog <a href="https://g1yfg.blogspot.com/2021/12/kst2you-alternative-interface-to-kst.html">https://g1yfg.blogspot.com</a></p>
       <p id="licencePanel">
         <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">
