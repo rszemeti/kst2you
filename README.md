@@ -11,7 +11,7 @@ A modern web interface for the [ON4KST](https://www.on4kst.info/) VHF/UHF chat s
 - **Chat** — Live KST chat with distance filtering and personal message highlighting
 - **Users** — Sortable user list showing callsign, locator, distance, and bearing from your QTH
 - **Map** — Real-time map of active stations
-- **Aircraft Scatter** — Live aircraft overlay using [ADS-B One](https://www.adsbone.org/) data, showing potential scatter paths between you and other stations
+- **Aircraft Scatter** — Live aircraft overlay using [airplanes.live](https://airplanes.live/) data, showing potential scatter paths between you and other stations
 - **Beacons** — Spotted beacon log with band and locator information
 - **Contest Log** — Session QSO logging
 
@@ -66,7 +66,7 @@ Once your proxy is running, get in touch and it can be added to the pool.
 
 ## Aircraft Data
 
-Aircraft scatter data is provided by [ADS-B One](https://www.adsbone.org/) — a community-run, feeder-supported ADS-B aggregator. Many thanks to the ADS-B One team and their network of volunteer feeders.
+Aircraft scatter data is provided by [airplanes.live](https://airplanes.live/) via [api.airplanes.live](https://api.airplanes.live/v2/) for live ADS-B aircraft state data.
 
 ## Contributing
 

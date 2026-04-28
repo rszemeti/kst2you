@@ -1,7 +1,7 @@
 /**
  * AirplanesLiveDatasource
  * -----------------------
- * Fetches aircraft state data from airplanes.live (api.adsb.one).
+ * Fetches aircraft state data from airplanes.live (api.airplanes.live).
  * No authentication required. Rate limit: 1 request/second.
  *
  * Covers the scatter path with 1–3 circles depending on path length,
@@ -56,7 +56,7 @@ const AirplanesLiveDatasource = {
 
     const fetchCircle = async (center, delaySecs) => {
       if (delaySecs > 0) await new Promise(r => setTimeout(r, delaySecs * 1000));
-      const url = `https://api.adsb.one/v2/point/${center.lat.toFixed(4)}/${center.lon.toFixed(4)}/${radiusNm}`;
+      const url = `https://api.airplanes.live/v2/point/${center.lat.toFixed(4)}/${center.lon.toFixed(4)}/${radiusNm}`;
       const r = await fetch(url);
       if (!r.ok) throw new Error(`airplanes.live error ${r.status}`);
       const data = await r.json();
