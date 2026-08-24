@@ -69,5 +69,41 @@ p {
 #chatWindow {
   overflow-y: auto;
   max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.chat-message-row {
+  display: flex;
+  width: 100%;
+}
+
+.chat-message-sender {
+  justify-content: flex-end;
+}
+
+.chat-message-receiver {
+  justify-content: flex-start;
+}
+
+.chat-bubble {
+  max-width: 80%;
+  margin: 0;
+  padding: 0.45rem 0.7rem;
+  border-radius: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.chat-message-sender .chat-bubble {
+  color: #123b58;
+  background-color: #d9efff;
+  border-bottom-right-radius: 0.2rem;
+}
+
+.chat-message-receiver .chat-bubble {
+  color: #343a40;
+  background-color: #f0f1f3;
+  border-bottom-left-radius: 0.2rem;
 }
 

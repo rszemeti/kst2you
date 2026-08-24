@@ -231,12 +231,23 @@ var ChatInbox = (function () {
       var fakeData = [
         { peer: 'G4BAO',  meta: { locator: 'IO91', name: 'Pete' }, msgs: [
             { from: 'G4BAO',  to: 'EI8KN', text: 'Hi, are you on 2m?', ts: now - 12*60000 },
-            { from: 'EI8KN',  to: 'G4BAO', text: 'Yes, listening on JT65', ts: now - 11*60000 },
-            { from: 'G4BAO',  to: 'EI8KN', text: 'Great, calling you now', ts: now - 10*60000 },
+            { from: 'EI8KN',  to: 'G4BAO', text: 'Yes, listening on JT65 and watching the north-west path. The band has been quiet here, but there is a little lift building.', ts: now - 11*60000 },
+            { from: 'G4BAO',  to: 'EI8KN', text: 'Great, calling you now. I will send a steady tone first so we can compare reports without rushing the exchange.', ts: now - 10*60000 },
+            { from: 'EI8KN',  to: 'G4BAO', text: 'I can see the trace now, just above the noise. Give me another sequence and I will check whether the aircraft path is helping.', ts: now - 9*60000 },
+            { from: 'G4BAO',  to: 'EI8KN', text: 'That sounds promising. The signal is fading slowly rather than dropping out, which usually makes this route much easier to complete.', ts: now - 8*60000 },
+            { from: 'EI8KN',  to: 'G4BAO', text: 'Copy. I have moved the antenna a few degrees and reduced the audio level. Your report is now readable for the full sequence.', ts: now - 7*60000 },
+            { from: 'G4BAO',  to: 'EI8KN', text: 'Excellent, that is a good improvement. I will log the contact after this final exchange and leave the frequency clear for the next station.', ts: now - 6*60000 },
+            { from: 'EI8KN',  to: 'G4BAO', text: 'Received your report both ways. Thanks for the test, Pete. The path held up better than expected today, so I will keep monitoring it.', ts: now - 5*60000 },
+            { from: 'G4BAO',  to: 'EI8KN', text: '73 and thanks for the careful test. Let us try again later if the forecast improves; I suspect there is another good opening coming.', ts: now - 4*60000 },
           ], unread: 1 },
         { peer: 'G4SFY',  meta: { locator: 'IO93', name: 'Dave' }, msgs: [
             { from: 'G4SFY',  to: 'EI8KN', text: 'Scatter path looks good from here!', ts: now - 45*60000 },
-            { from: 'EI8KN',  to: 'G4SFY', text: 'Agreed, plane just entered corridor', ts: now - 44*60000 },
+            { from: 'EI8KN', to: 'G4SFY', text: 'Agreed, the plane just entered the corridor and the bearing is almost ideal. I will watch the next few updates before transmitting.', ts: now - 44*60000 },
+            { from: 'G4SFY', to: 'EI8KN', text: 'The track has turned slightly east, but it is still inside the useful part of the corridor. I am ready when you are.', ts: now - 43*60000 },
+            { from: 'EI8KN', to: 'G4SFY', text: 'Sending now. Please let me know if the burst is clean enough to copy; there is quite a lot of local noise on my side.', ts: now - 42*60000 },
+            { from: 'G4SFY', to: 'EI8KN', text: 'Copied the first part clearly. The aircraft is moving quickly, so I would use the next pass rather than force this one.', ts: now - 41*60000 },
+            { from: 'EI8KN', to: 'G4SFY', text: 'Understood. I will hold the frequency and wait for the next suitable position. The map is showing a much better line already.', ts: now - 40*60000 },
+            { from: 'G4SFY', to: 'EI8KN', text: 'Next pass looks excellent. This is a useful example of why keeping the full history visible is handy when comparing several attempts.', ts: now - 39*60000 },
           ], unread: 0 },
         { peer: 'OZ1BEF', meta: { locator: 'JO65', name: 'Lars' }, msgs: [
             { from: 'OZ1BEF', to: 'EI8KN', text: 'Hej 73', ts: now - 2*3600000 },

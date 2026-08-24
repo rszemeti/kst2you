@@ -1213,7 +1213,11 @@ function doLogoff() {
   });
   $('#loginError').hide();
   password = '';
+  connectState = 'logOff';
   if (typeof ws != 'undefined') {
+    if (ws.readyState === WebSocket.OPEN) {
+      sendMsg("MSG|" + chatId + "|0|/QUIT|0|");
+    }
     ws.close();
   }
   deleteAllMapMarkers();
@@ -1225,7 +1229,6 @@ function doLogoff() {
   $('#chatLog').empty();
   $('#debugWindow').empty();
   $("#awayButton").prop('checked', false);
-  connectState = 'logOff';
 }
 
 function initUserList() {
@@ -1424,6 +1427,10 @@ function chatPopup(callsign) {
       '⚠ OFFLINE — message history only</div>'
     );
   }
+  $('#modalChat').off('shown.bs.modal.chatHistory').on('shown.bs.modal.chatHistory', function() {
+    var chatWindow = document.getElementById('chatWindow');
+    if (chatWindow) chatWindow.scrollTop = chatWindow.scrollHeight;
+  });
   $('#modalChat').modal('show');
   if (isOnline) $('#chatPopupMessageInput').focus();
   if (typeof messageLog[callsign] !== 'undefined') {
@@ -1462,8 +1469,14 @@ function showChatHistory(msg, ix, array) {
 }
 
 function appendToCurrentChat(msg) {
-  var m = $('<p class="text-muted margenesCompletas10px"><strong class="text-primary">' + msg.from + ':</strong>&nbsp;' + renderChatMessageHtml(msg.text) + '</p>');
-  $('#chatWindow').append(m);
+  var isSender = msg.from === userName;
+  var row = $('<div>').addClass('chat-message-row ' + (isSender ? 'chat-message-sender' : 'chat-message-receiver'));
+  var bubble = $('<p>').addClass('chat-bubble');
+  $('<strong>').text(msg.from + ':').appendTo(bubble);
+  bubble.append(document.createTextNode(' '));
+  bubble.append(renderChatMessageHtml(msg.text));
+  row.append(bubble);
+  $('#chatWindow').append(row);
   $("#chatWindow").scrollTop($("#chatWindow").prop("scrollHeight"));
 }
 
@@ -1543,7 +1556,9 @@ function sendChat() {
 $(document).ready(function() {
   renderReleaseTag();
   if (typeof ChatInbox !== 'undefined') ChatInbox.buildUI();
-  if ((location.protocol !== 'https:') && (location.hostname != "127.0.0.1")) {
+    if ((location.protocol !== 'https:') &&
+      (location.hostname !== "127.0.0.1") &&
+      (location.hostname !== "localhost")) {
       location.replace(`https:${location.href.substring(location.protocol.length)}`);
   }
   if (typeof initMap === "function") {
