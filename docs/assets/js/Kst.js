@@ -1472,8 +1472,6 @@ function appendToCurrentChat(msg) {
   var isSender = msg.from === userName;
   var row = $('<div>').addClass('chat-message-row ' + (isSender ? 'chat-message-sender' : 'chat-message-receiver'));
   var bubble = $('<p>').addClass('chat-bubble');
-  $('<strong>').text(msg.from + ':').appendTo(bubble);
-  bubble.append(document.createTextNode(' '));
   bubble.append(renderChatMessageHtml(msg.text));
   row.append(bubble);
   $('#chatWindow').append(row);
