@@ -419,6 +419,11 @@
       : parseFloat(v);
   }
 
+  function getAircraftProxyUrl() {
+    const productionApiUrl = 'https://adsb.kst2you.redpoint.org.uk/api/aircraft';
+    return productionApiUrl;
+  }
+
   // ── Scan / Clear ───────────────────────────────────
   window.scatterScan = function () {
     if (!scatterMapReady) {
@@ -440,6 +445,7 @@
       corridorDeg:   parseInt(document.getElementById('scatter-corridor').value),
       lookaheadMins: parseInt(document.getElementById('scatter-lookahead').value),
       refreshSecs:   10,
+      aircraftProxyUrl: getAircraftProxyUrl(),
       onUpdate: function (_ref) {
         const inPath     = _ref.inPath, approaching = _ref.approaching,
               all        = _ref.all,   pathInfo    = _ref.pathInfo,
@@ -470,8 +476,10 @@
         if (pathInfo) {
           const oslClient   = document.getElementById('osl-client');
           const oslRequests = document.getElementById('osl-requests');
+          const feedEndpoint = document.getElementById('scatter-feed-endpoint');
           if (oslClient)   oslClient.textContent   = pathInfo.clientId || 'anonymous';
           if (oslRequests) oslRequests.textContent = pathInfo.requestCount || 0;
+          if (feedEndpoint) feedEndpoint.textContent = pathInfo.datasource || '—';
         }
         renderScatterResults(inPath, approaching, predicted);
         updateScatterPathBar(pathInfo);
@@ -487,6 +495,7 @@
       '<div class="s-empty"><i class="bi bi-x-circle me-1"></i>Cleared.</div>';
     document.getElementById('scatter-path-bar').style.display = 'none';
     document.getElementById('scatter-count').textContent = '0';
+    document.getElementById('scatter-feed-endpoint').textContent = '—';
     scatterSetStatus('Cleared', 'info');
     scatterLog('Cleared', 'info');
   };

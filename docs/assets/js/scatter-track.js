@@ -751,7 +751,7 @@ const ScatterTrack = (() => {
       approachingCount: approaching.length,
       totalFetched:     planes.length,
       requestCount:     _requestCount,
-      datasource:       _datasource ? _datasource.name : null,
+      datasource:       _datasource ? (_datasource.lastProviderName || _datasource.name) : null,
       clientId:         _opts.clientId || null,
     };
 

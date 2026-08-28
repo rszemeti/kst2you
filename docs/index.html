@@ -309,6 +309,7 @@
     <div class="scatter-status">
       <span id="scatter-status" class="s-info">Ready</span>
       <span>Last scan: <span id="scatter-last-scan">—</span></span>
+      <span>Feed: <span id="scatter-feed-endpoint">—</span></span>
       <span class="ms-auto" id="scatter-rotator-status" style="font-size:10px;opacity:.5">Rotator: not found</span>
       <button class="btn btn-link p-0 ms-3" style="font-size:10px;color:#adb5bd;text-decoration:none"
               data-bs-toggle="modal" data-bs-target="#openskyLogModal">OpenSky log</button>
@@ -852,7 +853,7 @@
 <script src="assets/js/Beacons.js"></script>
 
 <!-- ScatterTrack module -->
-<script src="assets/js/data_sources/airplanes_live.js"></script>
+<script src="assets/js/data_sources/airplanes_live.js?v=20260830"></script>
 <script src="assets/js/data_sources/opensky.js"></script>
 <script src="assets/js/scatter-track.js"></script>
 
@@ -860,7 +861,7 @@
 <!-- ══════════════════════════════════════════════════════
      SCATTER INTEGRATION
 ══════════════════════════════════════════════════════ -->
-<script src="assets/js/scatter.js"></script>
+<script src="assets/js/scatter.js?v=20260831"></script>
 
 <!-- Show login modal on page load.
      BS4: .modal(options) auto-showed (show:true default).
