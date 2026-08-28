@@ -664,6 +664,7 @@ function reconnect() {
 
 function doLogin() {
     chatId = $('#chatId').val();
+  if (typeof updateRainAvailability === 'function') updateRainAvailability();
     userName = $('#userInput').val().toUpperCase();
     password = $('#passInput').val();
     if (typeof ChatInbox   !== 'undefined') ChatInbox.init(userName);
@@ -1845,6 +1846,14 @@ $(document).ready(function() {
         setCirclesOn();
      }
   });
+
+    $("#rainButton").click(function(){
+      if(rainActive){
+        setRainOff();
+      }else{
+        setRainOn();
+      }
+    });
     
   $('#setLocation').click(function() {
      if (!newLocation) {

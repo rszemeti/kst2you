@@ -5,6 +5,16 @@ var smallAnnotations = [];
 var gridActive=false;
 var circlesActive=true;
 var mapJsLoaded = false;
+var rainActive = false;
+var rainOverlay = null;
+var rainRefreshTimer = null;
+var RAINVIEWER_METADATA_URL = 'https://api.rainviewer.com/public/weather-maps.json';
+
+function updateRainAvailability() {
+  var microwaveActive = typeof chatId !== 'undefined' && String(chatId) === '3';
+  $("#rainButton").toggle(microwaveActive);
+  if (!microwaveActive && rainActive) setRainOff();
+}
 
 function initMap(){
     mapJsLoaded = true;
@@ -26,6 +36,7 @@ function drawMap() {
 
 function _DrawMap() {
   $('#map').empty();
+  updateRainAvailability();
 
   var qth = {
     lat: myLatLong[0],
@@ -471,4 +482,54 @@ function addCircle(qth, radius) {
     clickable: false,
   });
   circles.push(c);
+}
+
+function setRainOn() {
+  rainActive = true;
+  $("#rainButton").addClass('active').text('Rain on');
+  refreshRainOverlay();
+  if (!rainRefreshTimer) {
+    rainRefreshTimer = setInterval(refreshRainOverlay, 10 * 60 * 1000);
+  }
+}
+
+function setRainOff() {
+  rainActive = false;
+  $("#rainButton").removeClass('active').text('Rain');
+  if (rainRefreshTimer) {
+    clearInterval(rainRefreshTimer);
+    rainRefreshTimer = null;
+  }
+  if (rainOverlay) {
+    map.overlayMapTypes.removeAt(0);
+    rainOverlay = null;
+  }
+}
+
+async function refreshRainOverlay() {
+  if (!rainActive || !map) return;
+  try {
+    var response = await fetch(RAINVIEWER_METADATA_URL, { cache: 'no-store' });
+    if (!response.ok) throw new Error('RainViewer metadata request failed');
+    var metadata = await response.json();
+    var frames = metadata.radar && metadata.radar.past;
+    if (!Array.isArray(frames) || !frames.length) throw new Error('No RainViewer radar frames available');
+    var frame = frames[frames.length - 1];
+    var tileHost = metadata.host || 'https://tilecache.rainviewer.com';
+    var tileUrl = tileHost + frame.path + '/256/{z}/{x}/{y}/2/1_1.png';
+    var nextOverlay = new google.maps.ImageMapType({
+      name: 'RainViewer precipitation',
+      tileSize: new google.maps.Size(256, 256),
+      opacity: 0.55,
+      maxZoom: 12,
+      getTileUrl: function (coord, zoom) {
+        return tileUrl.replace('{z}', zoom).replace('{x}', coord.x).replace('{y}', coord.y);
+      }
+    });
+    if (rainOverlay) map.overlayMapTypes.removeAt(0);
+    map.overlayMapTypes.insertAt(0, nextOverlay);
+    rainOverlay = nextOverlay;
+  } catch (error) {
+    console.warn('RainViewer overlay unavailable', error);
+  }
 }
