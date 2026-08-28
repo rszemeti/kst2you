@@ -67,8 +67,12 @@ Once your proxy is running, get in touch and it can be added to the pool.
 ## Aircraft Data
 
 Aircraft scatter data is provided by the KST2You aircraft service. It consumes
-a raw ADS-B/MLAT feed, maintains live aircraft state, and returns only the
-bounded route corridor needed for each scatter check.
+a raw ADS-B/MLAT feed generously supplied by Mike Tubby's amateur-operated
+[1090MHz.uk](https://1090mhz.uk/) aggregator, maintains live aircraft state,
+and returns only the bounded route corridor needed for each scatter check.
+
+The optional precipitation overlay uses [RainViewer](https://www.rainviewer.com/)
+radar data.
 
 ## Contributing
 
