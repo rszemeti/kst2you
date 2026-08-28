@@ -1,0 +1,73 @@
+services:
+  readsb:
+    build: ./readsb
+    restart: unless-stopped
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    command:
+      - --net
+      - --net-only
+      - --net-connector=${BEAST_HOST:?Set BEAST_HOST},${BEAST_PORT:?Set BEAST_PORT},beast_in
+      - --write-json=/run/readsb
+      - --write-json-every=1
+    volumes:
+      - readsb-data:/run/readsb
+
+  api:
+    build: ./api
+    restart: unless-stopped
+    depends_on:
+      - readsb
+    environment:
+      AIRCRAFT_JSON_PATH: /data/aircraft.json
+      CORS_ORIGINS: ${CORS_ORIGINS:?Set CORS_ORIGINS}
+    volumes:
+      - readsb-data:/data:ro
+    ports:
+      - "127.0.0.1:${LOCAL_API_PORT:-8080}:8080"
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN_NAME: ${DOMAIN_NAME:?Set DOMAIN_NAME}
+    command: ["/bin/sh", "/usr/local/bin/reload-on-certificate-change"]
+    volumes:
+      - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./nginx/reload-on-certificate-change:/usr/local/bin/reload-on-certificate-change:ro
+      - letsencrypt:/etc/letsencrypt:ro
+      - certbot-webroot:/var/www/certbot:ro
+      - nginx-reload:/var/run/nginx-reload
+
+  certbot:
+    image: certbot/certbot:v3.1.0
+    profiles:
+      - certbot
+    restart: unless-stopped
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+      - certbot-webroot:/var/www/certbot
+      - nginx-reload:/var/run/nginx-reload
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        trap 'exit 0' TERM INT
+        while :; do
+          certbot renew --webroot --webroot-path /var/www/certbot --quiet \
+            --deploy-hook 'touch /var/run/nginx-reload/reload'
+          sleep 12h & wait $${!}
+        done
+
+volumes:
+  readsb-data:
+  letsencrypt:
+  certbot-webroot:
+  nginx-reload:

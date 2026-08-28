@@ -1,0 +1,17 @@
+#!/bin/sh
+set -eu
+
+nginx -g 'daemon off;' &
+nginx_pid=$!
+
+trap 'kill -TERM "$nginx_pid"; wait "$nginx_pid"; exit 0' TERM INT
+
+while kill -0 "$nginx_pid" 2>/dev/null; do
+    if [ -f /var/run/nginx-reload/reload ]; then
+        nginx -s reload
+        rm -f /var/run/nginx-reload/reload
+    fi
+    sleep 30 & wait $!
+done
+
+wait "$nginx_pid"

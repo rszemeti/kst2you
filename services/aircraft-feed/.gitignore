@@ -1,0 +1,8 @@
+# Runtime configuration and ACME/Let's Encrypt material must never be committed.
+.env
+certbot/
+letsencrypt/
+acme-challenge/
+*.pem
+*.key
+*.crt

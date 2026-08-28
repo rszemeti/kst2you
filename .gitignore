@@ -1,1 +1,2 @@
 scripts/*.json
+services/aircraft-feed/.env
