@@ -521,7 +521,7 @@ async function refreshRainOverlay() {
       name: 'RainViewer precipitation',
       tileSize: new google.maps.Size(256, 256),
       opacity: 0.55,
-      maxZoom: 12,
+      maxZoom: 20,
       getTileUrl: function (coord, zoom) {
         return tileUrl.replace('{z}', zoom).replace('{x}', coord.x).replace('{y}', coord.y);
       }

@@ -544,6 +544,7 @@ const websocketRetryDelay = 1000; // delay between retries in ms
 
 function websocketInit(urls) {
     function connect() {
+    if (connectState === 'logOff' || connectState === 'loginFailed') return;
         if (ws !== null) {
             try {
                 ws.onclose = null;
@@ -580,7 +581,7 @@ function websocketInit(urls) {
         };
 
         ws.onclose = function () {
-            if (connectState === 'logOff') {
+          if (connectState === 'logOff' || connectState === 'loginFailed') {
                 $('#connState').text('connection closed');
                 $("#loginModal").modal();
             } else {
@@ -593,11 +594,14 @@ function websocketInit(urls) {
             lastError = evt;
             procWsError(evt);
             console.error('WebSocket error:', evt);
+          if (connectState !== 'logOff' && connectState !== 'loginFailed') {
             attemptNextServer();
+          }
         };
     }
 
     function attemptNextServer() {
+        if (connectState === 'logOff' || connectState === 'loginFailed') return;
         if (retryCount < maxRetriesPerServer) {
             retryCount++;
             console.warn(`Retry ${retryCount}/${maxRetriesPerServer} on ${websocketServerUrls[urlId]}`);
@@ -1045,6 +1049,14 @@ window.contestRefreshMapMarkers = function() {
 };
 
 function procLoginError(msg) {
+  connectState = 'loginFailed';
+  retryCount = 0;
+  if (ws) {
+    ws.onclose = null;
+    ws.onerror = null;
+    try { ws.close(); } catch (e) { console.warn('Error closing rejected login socket:', e); }
+    ws = null;
+  }
   $('#loginError').show();
   $("#loginModal").modal('show');
   // $('#userList').empty();
