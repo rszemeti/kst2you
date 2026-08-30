@@ -421,7 +421,7 @@ class Station {
 
   setAway() {
     this._isAway = true;
-    if (typeof this.marker != 'undefined') {
+    if (this.marker) {
       this.marker.setIcon('https://maps.google.com/mapfiles/ms/icons/red-dot.png');
       this.marker.setTitle(this.decoratedCallsign);
     }
@@ -429,7 +429,7 @@ class Station {
 
   setBack() {
     this._isAway = false;
-    if (typeof this.marker != 'undefined') {
+    if (this.marker) {
       this.marker.setIcon('https://maps.google.com/mapfiles/ms/icons/green-dot.png');
       this.marker.setTitle(this.decoratedCallsign);
     }
@@ -723,18 +723,29 @@ function procMsgs(msgs) {
   }
 }
 
+function protocolLogTimestamp() {
+  return new Date().toLocaleTimeString('en-GB', {
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    fractionalSecondDigits: 3,
+  });
+}
+
 function procMsg(msg) {
-  console.log("< " + msg);
-  $('#debugWindow').append("< " + msg + "\n<br/>")
+  var logEntry = protocolLogTimestamp() + " < " + msg;
+  console.log(logEntry);
+  $('#debugWindow').append(logEntry + "\n<br/>")
   if (msg.startsWith("Java login")) {
 
   } else if (msg.startsWith("LOGSTAT|100")) {
     procLogin(msg);
   } else if (msg.startsWith("LOGSTAT|1")) {
     procLoginError(msg);
-  } else if (msg.startsWith("UA0")) {
+  } else if (msg.startsWith("UA0") || msg.startsWith("UM3") || msg.startsWith("UA5")) {
     procUser(msg);
-  } else if (msg.startsWith("US6")) {
+  } else if (msg.startsWith("US4") || msg.startsWith("US6")) {
     procUserStatus(msg);
   } else if (msg.startsWith("UE")) {
     filterChatByDistance();
@@ -915,7 +926,7 @@ function removeUser(msg) {
   var data = msg.split("|");
   var stn = stationList[data[2]];
   if (typeof stn !== 'undefined') {
-    stn.marker.setMap(null);
+    if (stn.marker) stn.marker.setMap(null);
     stn.setAway();
     statusUpdateChatLog(stn.callsign);
     var rowToRemove = dataTableUsers.row(function(idx, rowData, node) {
@@ -923,10 +934,10 @@ function removeUser(msg) {
     });
     if (rowToRemove.any()) {
       rowToRemove.remove().draw();
-      //delete stationList[data[2]];
     } else {
       console.log("User not found in the DataTable: " + data[2]);
     }
+    delete stationList[data[2]];
   }
 }
 
@@ -950,7 +961,7 @@ function procUserStatus(msg) {
 // UA0|3|S51ZO|Joze 1,3-24GHZ|JN86DR|0|
 function procUser(msg) {
   var stn = new Station(msg, myLatLong);
-  if (stn.call == 'undefined') {
+  if (!stn.callsign) {
     return;
   }
 
@@ -1176,8 +1187,9 @@ function setMyLocator(loc, latLongOverride) {
 }
 
 function sendMsg(msg) {
-  console.log("> " + msg);
-  $('#debugWindow').append("> " + msg + "\n<br/>");
+  var logEntry = protocolLogTimestamp() + " > " + msg;
+  console.log(logEntry);
+  $('#debugWindow').append(logEntry + "\n<br/>");
   var myblob = new Blob([msg + "\r\n"], {
     type: 'text/plain'
   });
