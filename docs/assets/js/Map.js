@@ -9,6 +9,7 @@ var rainActive = false;
 var rainOverlay = null;
 var rainRefreshTimer = null;
 var RAINVIEWER_METADATA_URL = 'https://api.rainviewer.com/public/weather-maps.json';
+var RAINVIEWER_MAX_ZOOM = 7;
 
 function updateRainAvailability() {
   var microwaveActive = typeof chatId !== 'undefined' && String(chatId) === '3';
@@ -517,15 +518,38 @@ async function refreshRainOverlay() {
     var frame = frames[frames.length - 1];
     var tileHost = metadata.host || 'https://tilecache.rainviewer.com';
     var tileUrl = tileHost + frame.path + '/256/{z}/{x}/{y}/2/1_1.png';
-    var nextOverlay = new google.maps.ImageMapType({
+    var nextOverlay = {
       name: 'RainViewer precipitation',
       tileSize: new google.maps.Size(256, 256),
-      opacity: 0.55,
-      maxZoom: 20,
-      getTileUrl: function (coord, zoom) {
-        return tileUrl.replace('{z}', zoom).replace('{x}', coord.x).replace('{y}', coord.y);
+      minZoom: 0,
+      maxZoom: 12,
+      getTile: function (coord, zoom, ownerDocument) {
+        var sourceZoom = Math.min(zoom, RAINVIEWER_MAX_ZOOM);
+        var sourceScale = Math.pow(2, zoom - sourceZoom);
+        var sourceTileCount = Math.pow(2, sourceZoom);
+        var sourceX = Math.floor(coord.x / sourceScale);
+        var sourceY = Math.floor(coord.y / sourceScale);
+        var tile = ownerDocument.createElement('div');
+
+        tile.style.width = '256px';
+        tile.style.height = '256px';
+        if (sourceY < 0 || sourceY >= sourceTileCount) return tile;
+
+        sourceX = ((sourceX % sourceTileCount) + sourceTileCount) % sourceTileCount;
+        var sourceUrl = tileUrl
+          .replace('{z}', sourceZoom)
+          .replace('{x}', sourceX)
+          .replace('{y}', sourceY);
+        var sourceOffsetX = -(coord.x % sourceScale) * 256;
+        var sourceOffsetY = -(coord.y % sourceScale) * 256;
+        tile.style.opacity = '0.55';
+        tile.style.backgroundImage = 'url("' + sourceUrl + '")';
+        tile.style.backgroundRepeat = 'no-repeat';
+        tile.style.backgroundSize = (256 * sourceScale) + 'px';
+        tile.style.backgroundPosition = sourceOffsetX + 'px ' + sourceOffsetY + 'px';
+        return tile;
       }
-    });
+    };
     if (rainOverlay) map.overlayMapTypes.removeAt(0);
     map.overlayMapTypes.insertAt(0, nextOverlay);
     rainOverlay = nextOverlay;
