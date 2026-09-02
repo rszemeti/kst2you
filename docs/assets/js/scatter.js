@@ -361,6 +361,7 @@
       if (feed) feed.innerHTML = '';
       if (toEl) toEl.textContent = '—';
       setScatterFooterMode(scatterTarget);
+      applyBeaconFrequencyLock(scatterTarget.frequencyMHz);
       refreshStationMarkers();
     } else if (callsign) {
       window.scatterChatSetTarget(callsign);
@@ -417,6 +418,28 @@
     return v === 'custom'
       ? parseFloat(document.getElementById('scatter-custom-freq').value) || 144
       : parseFloat(v);
+  }
+
+  // Locks the Band selector to a beacon's own frequency, since the scatter
+  // corridor/Doppler calc must use the beacon's real operating frequency.
+  function applyBeaconFrequencyLock (freqMHz) {
+    const bandSelect  = document.getElementById('scatter-band');
+    const customWrap  = document.getElementById('scatter-custom-wrap');
+    const customFreq  = document.getElementById('scatter-custom-freq');
+    const lockNote    = document.getElementById('scatter-band-lock-note');
+    if (freqMHz) {
+      bandSelect.value = 'custom';
+      customWrap.style.display = 'block';
+      customFreq.value = Number(freqMHz).toFixed(3);
+      bandSelect.disabled = true;
+      customFreq.disabled = true;
+      lockNote.textContent = 'Frequency locked to beacon (' + Number(freqMHz).toFixed(3) + ' MHz)';
+      lockNote.style.display = 'block';
+    } else {
+      bandSelect.disabled = false;
+      customFreq.disabled = false;
+      lockNote.style.display = 'none';
+    }
   }
 
   function getAircraftProxyUrl() {
@@ -526,6 +549,7 @@
     scatterTarget = { type: 'station', callsign: scatterChatCallsign, locator: null, frequencyMHz: '' };
     _inPathIcaos = new Set();   // reset so first scan after target change alerts fresh
     _stopTracking();
+    applyBeaconFrequencyLock(null);
     const feed = document.getElementById('scatter-chat-feed');
     const toEl = document.getElementById('scatter-chat-to');
     if (feed) feed.innerHTML = '';
