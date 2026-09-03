@@ -147,24 +147,13 @@ const ScatterTrack = (() => {
   // ────────────────────────────────────────────────
 
   function maidenheadToLatLon(loc) {
-    loc = loc.toUpperCase().trim();
-    if (loc.length < 4) return null;
-    const A = loc.charCodeAt(0) - 65;
-    const B = loc.charCodeAt(1) - 65;
-    const C = parseInt(loc[2]);
-    const D = parseInt(loc[3]);
-    let lon = A * 20 - 180 + C * 2;
-    let lat = B * 10 - 90  + D;
-    if (loc.length >= 6) {
-      const E = loc.charCodeAt(4) - 65;
-      const F = loc.charCodeAt(5) - 65;
-      lon += (E * 2 / 24) + (1 / 24);
-      lat += (F / 24)      + (1 / 48);
-    } else {
-      lon += 1;
-      lat += 0.5;
+    if (typeof gridSquareToLatLon !== 'function') return null;
+    try {
+      const latLon = gridSquareToLatLon(loc);
+      return { lat: latLon[0], lon: latLon[1] };
+    } catch (_) {
+      return null;
     }
-    return { lat, lon };
   }
 
   // ────────────────────────────────────────────────
