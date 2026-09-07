@@ -6,11 +6,33 @@ var DXLogBridge = (function () {
   var retryTimer = null;
   var recent = {};
   var duplicateWindow = 30000;
+  var connectedOnce = false;
+
+  function setStatus(state, text) {
+    var badge = document.getElementById('dxlog-status');
+    if (!badge || (!connectedOnce && state !== 'connected')) return;
+    badge.textContent = text;
+    badge.className = 'dxlog-status-badge ' + state;
+    badge.style.display = '';
+    badge.title = state === 'error' ? 'Click to reconnect to DXLog bridge' : 'DXLog bridge connected';
+    badge.style.cursor = state === 'error' ? 'pointer' : 'default';
+    badge.onclick = state === 'error' ? function () {
+      if (retryTimer) {
+        clearTimeout(retryTimer);
+        retryTimer = null;
+      }
+      connect();
+    } : null;
+  }
 
   function connect() {
     if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) return;
     socket = new WebSocket(localStorage.getItem('kst2you_dxlog_bridge_url') || 'ws://127.0.0.1:8765');
-    socket.onopen = function () { console.info('DXLog bridge connected'); };
+    socket.onopen = function () {
+      connectedOnce = true;
+      setStatus('connected', 'DXLog Connected');
+      console.info('DXLog bridge connected');
+    };
     socket.onmessage = function (message) {
       var qso;
       try { qso = JSON.parse(message.data); } catch (error) { return; }
@@ -31,9 +53,13 @@ var DXLogBridge = (function () {
     };
     socket.onclose = function () {
       socket = null;
+      setStatus('error', 'DXLog Error');
       if (!retryTimer) retryTimer = setTimeout(function () { retryTimer = null; connect(); }, 5000);
     };
-    socket.onerror = function () { socket.close(); };
+    socket.onerror = function () {
+      setStatus('error', 'DXLog Error');
+      socket.close();
+    };
   }
 
   return { connect: connect };

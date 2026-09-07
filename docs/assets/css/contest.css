@@ -14,6 +14,20 @@
   white-space: nowrap;
 }
 
+/* ── Local DXLog bridge status — hidden until a bridge is detected ── */
+.dxlog-status-badge {
+  font-size: 11px;
+  font-family: monospace;
+  font-weight: 700;
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.45);
+  border-radius: 10px;
+  padding: 2px 10px;
+  white-space: nowrap;
+}
+.dxlog-status-badge.connected { background: #198754; }
+.dxlog-status-badge.error { background: #dc3545; }
+
 /* ── Greyed-out worked/skip rows in user list ── */
 tr.clog-greyed td {
   opacity: 0.35;
