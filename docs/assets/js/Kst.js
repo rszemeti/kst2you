@@ -734,17 +734,6 @@ function protocolLogTimestamp() {
 }
 
 function procMsg(msg) {
-  if (msg.startsWith('CK')) {
-    try {
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send('\r\n');
-      }
-    } catch (e) {
-      console.warn('Error acknowledging KST keepalive frame:', e);
-    }
-    return;
-  }
-
   var logEntry = protocolLogTimestamp() + " < " + msg;
   console.log(logEntry);
   $('#debugWindow').append(logEntry + "\n<br/>")
