@@ -77,6 +77,50 @@ gcloud services enable \
 * Name it: `kst2you`
 * Choose your region and storage class
 
+## DXLog Bridge
+
+The desktop bridge listens for DXLog/N1MM UDP broadcasts on port `12060` and
+publishes QSO events to KST2You over a local WebSocket on port `8765`.
+
+### Configure DXLog
+
+In DXLog:
+
+1. Open **Options** and enable **Enable network**.
+2. Open **Options > Configure network** and set the UDP broadcast destination
+  to the computer running the bridge, normally `127.0.0.1:12060` when DXLog
+  and the bridge are on the same PC.
+3. Open **Options > Networking > Broadcast**.
+4. Enable **QSOs**.
+5. Enable **Use N1MM QSO format**.
+
+The relevant menu selections are shown in [DxLogConfig.png](../doc/DxLogConfig.png).
+
+To synchronize an existing DXLog log, enable **Broadcast entire log** in the
+same Broadcast menu and run the broadcast. The bridge will process the
+resulting QSO and contact-replacement packets, allowing KST2You to refresh
+worked stations, locators, reports, and serial numbers. This is a one-shot
+broadcast; no setting needs to be changed afterward.
+
+```powershell
+python -m pip install websockets
+python scripts/dxlog_bridge_gui.py
+```
+
+The GUI shows received QSOs, locator, RST, serials, band, and mode. Raw XML
+logging is optional in the GUI. The command-line bridge remains available:
+
+```powershell
+python scripts/dxlog_udp_websocket.py --verbose
+```
+
+The eventual Windows executable can be built with PyInstaller:
+
+```powershell
+python -m pip install pyinstaller
+pyinstaller --onefile --windowed scripts/dxlog_bridge_gui.py
+```
+
 ---
 
 ### 5. Deploy Cloud Function
