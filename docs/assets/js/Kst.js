@@ -737,6 +737,10 @@ function procMsg(msg) {
   var logEntry = protocolLogTimestamp() + " < " + msg;
   console.log(logEntry);
   $('#debugWindow').append(logEntry + "\n<br/>")
+  if (msg === 'CK|') {
+    sendMsg('');
+    return;
+  }
   if (msg.startsWith("Java login")) {
 
   } else if (msg.startsWith("LOGSTAT|100")) {
