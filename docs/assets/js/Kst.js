@@ -6,9 +6,17 @@ var connCount = 0;
 
 // Our own proxy (band activity, precise locators). Tried first; the plain
 // public proxies are the fallback if it is down.
-const kst2youProxyUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-  ? "ws://localhost:8766"
-  : "wss://adsb.kst2you.redpoint.org.uk/kstplus/";
+// localStorage 'kst2you_proxy_url' overrides it, e.g. to test the deployed
+// proxy from a local page.
+const kst2youProxyUrl = (function () {
+  try {
+    const override = localStorage.getItem('kst2you_proxy_url');
+    if (override) return override;
+  } catch (e) {}
+  return (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? "ws://localhost:8766"
+    : "wss://adsb.kst2you.redpoint.org.uk/kstplus/";
+})();
 
 const websocketServerUrls = (function () {
   const publicProxies = [
