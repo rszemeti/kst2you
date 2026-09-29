@@ -369,8 +369,13 @@
           <div class="form-control form-control-sm bg-light" id="settings-kst-locator">—</div>
         </div>
         <div class="col-sm-6">
-          <label class="form-label small mb-1">Stored precise locator</label>
-          <input class="form-control form-control-sm" type="text" id="settings-precise-locator" readonly placeholder="Double-click map to set">
+          <label class="form-label small mb-1" for="settings-precise-locator">My locator</label>
+          <div class="input-group input-group-sm has-validation">
+            <input class="form-control" type="text" id="settings-precise-locator" maxlength="8" autocomplete="off" spellcheck="false" style="text-transform:uppercase" placeholder="IO82UJ or IO82UJ45">
+            <button class="btn btn-primary" type="button" id="settings-send-locator">Send</button>
+            <div class="invalid-feedback" id="settings-locator-feedback"></div>
+          </div>
+          <div class="form-text">Type a 6 or 8 character locator, or double-click the map.</div>
         </div>
       </div>
       <div class="d-flex align-items-center gap-2 mb-2">
@@ -690,7 +695,7 @@
         <div class="row mb-1"><div class="col-4">Latitude</div><div class="col" id="currentLat"></div></div>
         <div class="row mb-1"><div class="col-4">Longitude</div><div class="col" id="currentLng"></div></div>
         <div class="row mb-1"><div class="col-4">Dist / Bearing</div><div class="col" id="arbitaryDistBearing"></div></div>
-        <div class="row" id="gridSquareRow"><div class="col-4">Grid Square</div><div class="col" id="currentGrid"></div></div>
+        <div class="row align-items-center" id="gridSquareRow"><div class="col-4"><label for="currentGrid">Grid Square</label></div><div class="col"><input class="form-control form-control-sm" type="text" id="currentGrid" maxlength="8" autocomplete="off" spellcheck="false" style="text-transform:uppercase;max-width:10em" title="Type a 6 or 8 character locator"></div></div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-light" type="button" data-bs-dismiss="modal">Cancel</button>

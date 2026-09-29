@@ -61,17 +61,9 @@ function _DrawMap() {
       lng: lng,
       gs: gs
     };
-    showProfile({
-      lat: myLatLong[0],
-      lng: myLatLong[1]
-    }, newLocation);
-    // populate yor box/field with lat, lng
-    $('#currentLat').text(degToDegMin(lat) + ((lat > 0) ? " N" : " S"));
-    $('#currentLng').text(degToDegMin(Math.abs(lng)) + ((lng > 0 ? "  E" : " W")));
-    $('#currentGrid').text(gs);
-    let dist = distVincenty(myLatLong[0], myLatLong[1], lat, lng) / 1000;
-    let brg = bearing(myLatLong[0], myLatLong[1], lat, lng);
-    $('#arbitaryDistBearing').text(Math.round(dist)+"km/"+Math.round(brg)+'°');
+    showLocationDetails(newLocation);
+    $('#currentGrid').val(gs).removeClass('is-invalid');
+    $('#setLocation').prop('disabled', false);
     $('#locationModal').modal('show');
     // Prevent the default right-click context menu from appearing
     if (event.preventDefault) {
@@ -136,6 +128,19 @@ function _DrawMap() {
   if (typeof dataTableUsers !== 'undefined') {
     dataTableUsers.clear().rows.add(Object.values(stationList)).draw();
   }
+}
+
+// Fills the location box (and path profile) for a picked or typed location.
+function showLocationDetails(loc) {
+  showProfile({
+    lat: myLatLong[0],
+    lng: myLatLong[1]
+  }, loc);
+  $('#currentLat').text(degToDegMin(Math.abs(loc.lat)) + ((loc.lat > 0) ? " N" : " S"));
+  $('#currentLng').text(degToDegMin(Math.abs(loc.lng)) + ((loc.lng > 0 ? "  E" : " W")));
+  let dist = distVincenty(myLatLong[0], myLatLong[1], loc.lat, loc.lng) / 1000;
+  let brg = bearing(myLatLong[0], myLatLong[1], loc.lat, loc.lng);
+  $('#arbitaryDistBearing').text(Math.round(dist)+"km/"+Math.round(brg)+'°');
 }
 
 function drawCircles(){

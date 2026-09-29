@@ -119,7 +119,7 @@ function renderLocationSettings() {
   const storedPreciseLocator = preciseMyLoc || getStoredPreciseLocator() || '';
   const remoteSyncEnabled = isRemoteSettingsSyncEnabled();
   $('#settings-kst-locator').text(kstServerLoc || (myLoc ? myLoc.substring(0, 6) : '—'));
-  $('#settings-precise-locator').val(storedPreciseLocator);
+  $('#settings-precise-locator').val(storedPreciseLocator || myLoc || '').removeClass('is-invalid');
   $('#settings-autoresponder-loc').prop('checked', isLocAutoReplyEnabled());
   $('#settings-sync-remote-storage').prop('checked', remoteSyncEnabled);
   $('#settings-remote-data-actions').toggleClass('d-none', !remoteSyncEnabled);
@@ -1423,6 +1423,18 @@ function setName() {
   sendMsg("MSG|" + chatId + "|0|/SETNAME " + name + "|0|");
 }
 
+const typedLocatorPattern = /^[A-R]{2}\d{2}[A-X]{2}(\d{2})?$/;
+
+// Sets our QTH from a map pick or a typed locator (6 or 8 chars). ON4KST only
+// takes 6 characters; the 8-character form is kept locally and by our proxy.
+function applyMyLocation(gs, latLong) {
+  kstServerLoc = gs.substring(0, 6);
+  setStoredPreciseLocator(gs.length >= 8 ? gs : '', true);
+  setMyLocator(gs, latLong);
+  var locForServer = usingKst2YouProxy() ? gs : kstServerLoc;
+  sendMsg("MSG|" + chatId + "|0|/SETLOC " + locForServer + "|0|");
+}
+
 function setMyLocator(loc, latLongOverride) {
   if (loc == myLoc) {
     if (latLongOverride) {
@@ -2151,12 +2163,52 @@ $(document).ready(function() {
       return;
      }
 
-     kstServerLoc = newLocation.gs.substring(0, 6);
-     setStoredPreciseLocator(newLocation.gs, true);
-     setMyLocator(newLocation.gs, [newLocation.lat, newLocation.lng]);
-     var locForServer = usingKst2YouProxy() ? newLocation.gs : kstServerLoc;
-     sendMsg("MSG|" + chatId + "|0|/SETLOC " + locForServer + "|0|");
+     applyMyLocation(newLocation.gs, [newLocation.lat, newLocation.lng]);
     $('#locationModal').modal('hide');
+  });
+
+  function sendTypedLocator() {
+    var input = $('#settings-precise-locator');
+    var gs = input.val().trim().toUpperCase();
+    var error = null;
+    if (!typedLocatorPattern.test(gs)) {
+      error = 'Enter a 6 or 8 character locator, e.g. IO82UJ or IO82UJ45.';
+    } else if (!ws || ws.readyState !== WebSocket.OPEN) {
+      error = 'Log in first; the locator is sent to ON4KST.';
+    }
+    if (error) {
+      $('#settings-locator-feedback').text(error);
+      input.addClass('is-invalid');
+      return;
+    }
+    applyMyLocation(gs, gridSquareToLatLon(gs));
+  }
+  $('#settings-send-locator').on('click', sendTypedLocator);
+  $('#settings-precise-locator').on('keydown', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      sendTypedLocator();
+    }
+  }).on('input', function() {
+    $(this).removeClass('is-invalid');
+  });
+
+  // Typing a locator in the location box replaces the double-clicked point
+  // with the centre of that square.
+  $('#currentGrid').on('input', function() {
+    var gs = $(this).val().trim().toUpperCase();
+    var valid = typedLocatorPattern.test(gs);
+    $(this).toggleClass('is-invalid', !valid);
+    $('#setLocation').prop('disabled', !valid);
+    if (!valid) return;
+    var latLong = gridSquareToLatLon(gs);
+    newLocation = { lat: latLong[0], lng: latLong[1], gs: gs };
+    showLocationDetails(newLocation);
+  }).on('keydown', function(e) {
+    if (e.key === 'Enter' && !$('#setLocation').prop('disabled')) {
+      e.preventDefault();
+      $('#setLocation').click();
+    }
   });
     
   $('[data-toggle="tooltip"]').tooltip(); 
