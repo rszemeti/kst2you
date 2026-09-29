@@ -36,12 +36,27 @@ services:
     ports:
       - "127.0.0.1:${LOCAL_API_PORT:-8080}:8080"
 
+  kst-proxy:
+    build:
+      # The proxy source lives in the repo's scripts/ directory.
+      context: ../../scripts
+      dockerfile: ../services/aircraft-feed/kst-proxy/Dockerfile
+    restart: unless-stopped
+    logging: *default-logging
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - kst-proxy-data:/data
+
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped
     logging: *default-logging
     depends_on:
       - api
+      - kst-proxy
     ports:
       - "80:80"
       - "443:443"
@@ -77,6 +92,7 @@ services:
         done
 
 volumes:
+  kst-proxy-data:
   readsb-data:
   letsencrypt:
   certbot-webroot:

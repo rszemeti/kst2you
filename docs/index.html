@@ -137,6 +137,14 @@
   <!-- ── USERS ── -->
   <div class="tab-pane fade tab-scroll" role="tabpanel" id="tab-users">
     <div class="container-fluid pt-2">
+      <div class="row mb-2 align-items-center g-2" id="userListBandActivityFilterRow" style="display:none">
+        <div class="col-auto">
+          <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" id="onlyMatchingBandActivity">
+            <label class="form-check-label small" for="onlyMatchingBandActivity">Only show matching band activity</label>
+          </div>
+        </div>
+      </div>
       <div class="table-responsive">
         <table id="userListTable" class="table table-sm table-striped table-bordered w-100">
           <thead>
@@ -566,6 +574,23 @@
           <label class="form-check-label" for="rememberMe">Remember me</label>
         </div>
         <button class="btn btn-primary" id="registerButton" type="button">Log In</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Microwave Band Activity -->
+<div class="modal fade" id="bandActivityModal" tabindex="-1">
+  <div class="modal-dialog modal-sm modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title text-primary mb-0">Microwave Bands</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body py-2" id="bandActivityToggles"></div>
+      <div class="modal-footer py-1">
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary btn-sm" id="saveBandActivityButton" type="button">Save</button>
       </div>
     </div>
   </div>

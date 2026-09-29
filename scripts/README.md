@@ -121,6 +121,22 @@ python -m pip install pyinstaller
 pyinstaller --onefile --windowed scripts/dxlog_bridge_gui.py
 ```
 
+## KST WebSocket Proxy Prototype
+
+`kst_ws_proxy.py` is a first-pass replacement candidate for websockify. It
+keeps the default path transparent: every browser WebSocket connection gets a
+separate TCP connection to the upstream KST server, and KST bytes are relayed
+unchanged in both directions.
+
+```powershell
+python -m pip install websockets
+python scripts/kst_ws_proxy.py --listen-port 8766
+```
+
+For local testing, point KST2You at `ws://localhost:8766`. The prototype is
+intentionally simple; custom KST2You features should be added beside the
+transparent relay path so normal KST traffic remains compatible.
+
 ---
 
 ### 5. Deploy Cloud Function

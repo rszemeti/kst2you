@@ -1,14 +1,36 @@
 var settings = [];
 var debug;
-var ws;
+var ws = null;
 var connectState;
 var connCount = 0;
 
-const websocketServerUrls = 
-      [
-          "wss://bff.live-bidder.com/kst/",
-          "wss://live2.live-bidder.com/kst/"
-      ];
+// Our own proxy (band activity, precise locators). Tried first; the plain
+// public proxies are the fallback if it is down.
+const kst2youProxyUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  ? "ws://localhost:8766"
+  : "wss://adsb.kst2you.redpoint.org.uk/kstplus/";
+
+const websocketServerUrls = (function () {
+  const publicProxies = [
+      "wss://bff.live-bidder.com/kst/",
+      "wss://live2.live-bidder.com/kst/"
+  ];
+  return kst2youProxyUrl ? [kst2youProxyUrl].concat(publicProxies) : publicProxies;
+})();
+
+function usingKst2YouProxy() {
+  return !!(kst2youProxyUrl && ws && ws.url && ws.url.indexOf(kst2youProxyUrl) === 0);
+}
+
+const microwaveBandActivityBands = [
+  { id: '1296', label: '23cm' },
+  { id: '2320', label: '13cm' },
+  { id: '3400', label: '9cm' },
+  { id: '5760', label: '6cm' },
+  { id: '10368', label: '3cm' },
+  { id: '24048', label: '24GHz' },
+  { id: '47000', label: '47GHz+' }
+];
 
 var lastMsg;
 var latestMessageTime = 0;
@@ -40,6 +62,7 @@ var adminAccessEnabled = false;
 var userList = [];
 var dataTableUsers;
 var locAutoReplyKeys = new Set();
+var microwavePeerBandActivity = {};
 
 function getClientSoftwareVersion() {
   const releaseTagMeta = document.querySelector('meta[name="kst-release-tag"]');
@@ -388,16 +411,38 @@ class Station {
     this._ok = true;
     this._isAway = ((0x01 & this._state) == 0x01);
 
+    this._ok = this.computePosition(myLatLong);
+  }
+
+  computePosition(myLatLong) {
     try {
       this.latLong = gridSquareToLatLon(this.locator);
       this._distance = distVincenty(myLatLong[0], myLatLong[1], this.latLong[0], this.latLong[1]) / 1000;
       this._bearing = bearing(myLatLong[0], myLatLong[1], this.latLong[0], this.latLong[1]);
+      return true;
     } catch (e) {
-      this._ok = false;
       console.log("Distance error: " + this.locator + ' for ' + this.callsign);
       this.latLong = [0, 0];
       this._distance = '???';
+      return false;
     }
+  }
+
+  // LOC|time|callsign|locator| - station has moved; returns false if the new locator is unusable
+  setLocator(locator, myLatLong) {
+    var oldLocator = this._locator;
+    var oldLatLong = this.latLong;
+    var oldDistance = this._distance;
+    var oldBearing = this._bearing;
+    this._locator = locator;
+    if (!this.computePosition(myLatLong)) {
+      this._locator = oldLocator;
+      this.latLong = oldLatLong;
+      this._distance = oldDistance;
+      this._bearing = oldBearing;
+      return false;
+    }
+    return true;
   }
 
   get decoratedCallsign() {
@@ -538,14 +583,17 @@ class Message {
 
 let urlId = 0;
 let retryCount = 0;
+let reconnectTimer = null;
 const maxRetriesPerServer = 5;   // number of retries per server
+const maxRetriesKst2YouProxy = 1; // fall back to the public proxies quickly
 const websocketRetryDelay = 1000; // delay between retries in ms
+const websocketConnectTimeout = 5000; // give up on a server that doesn't answer
 
 
 function websocketInit(urls) {
     function connect() {
     if (connectState === 'logOff' || connectState === 'loginFailed') return;
-        if (ws !== null) {
+        if (ws && typeof ws.close === 'function') {
             try {
                 ws.onclose = null;
                 ws.onerror = null;
@@ -556,28 +604,46 @@ function websocketInit(urls) {
         }
 
         const url = urls[urlId];
-        console.log('Connecting to: ' + url);
+        const connectStartedAt = Date.now();
+        console.log(protocolLogTimestamp() + ' Connecting to: ' + url);
 
         ws = new WebSocket(url);
         ws.binaryType = "arraybuffer";
+
+        // An unreachable host can leave the socket CONNECTING for a minute or
+        // more; closing it fires onclose, which moves on to the next attempt.
+        const socket = ws;
+        const connectTimer = setTimeout(function () {
+            if (socket === ws && socket.readyState === WebSocket.CONNECTING) {
+                console.warn('Connect timeout after ' + websocketConnectTimeout + 'ms: ' + url);
+                socket.close();
+            }
+        }, websocketConnectTimeout);
 
         ws.onmessage = function (msg) {
             if (msg.data instanceof ArrayBuffer) {
                 const text = new TextDecoder("utf-8").decode(msg.data);
                 procMsgs(text);
+          } else if (typeof msg.data === 'string') {
+            procMsgs(msg.data);
             } else {
                 alert(msg.data);
             }
         };
 
         ws.onopen = function () {
-            console.log('WebSocket connected.');
+            clearTimeout(connectTimer);
+            console.log(protocolLogTimestamp() + ' WebSocket connected after ' + (Date.now() - connectStartedAt) + 'ms.');
             $('#connState').text("connected");
           sendMsg("LOGINC|" + userName + "|" + password + "|" + chatId + "|" + clientSoftwareVersion + "|20|20|1|" + latestMessageTime + "|" + latestMessageTime + "|");
             connectState = 'connected';
 
             // 🟢 Successful connect -> reset retry count
             retryCount = 0;
+
+            if (typeof DXLogBridge !== 'undefined') {
+              DXLogBridge.start();
+            }
         };
 
         ws.onclose = function () {
@@ -594,24 +660,29 @@ function websocketInit(urls) {
             lastError = evt;
             procWsError(evt);
             console.error('WebSocket error:', evt);
-          if (connectState !== 'logOff' && connectState !== 'loginFailed') {
-            attemptNextServer();
-          }
         };
     }
 
     function attemptNextServer() {
         if (connectState === 'logOff' || connectState === 'loginFailed') return;
-        if (retryCount < maxRetriesPerServer) {
+        if (reconnectTimer) return;
+        const maxRetries = urls[urlId] === kst2youProxyUrl ? maxRetriesKst2YouProxy : maxRetriesPerServer;
+        if (retryCount < maxRetries) {
             retryCount++;
-            console.warn(`Retry ${retryCount}/${maxRetriesPerServer} on ${websocketServerUrls[urlId]}`);
-            setTimeout(connect, websocketRetryDelay); // Retry after a delay
+            console.warn(`Retry ${retryCount}/${maxRetries} on ${urls[urlId]}`);
+          reconnectTimer = setTimeout(function () {
+            reconnectTimer = null;
+            connect();
+          }, websocketRetryDelay); // Retry after a delay
         } else {
             retryCount = 0;
             urlId++;
             if (urlId < urls.length) {
                 console.warn(`Switching to next URL: ${urls[urlId]}`);
-                setTimeout(connect, 500); // short delay to try next server
+            reconnectTimer = setTimeout(function () {
+              reconnectTimer = null;
+              connect();
+            }, 500); // short delay to try next server
             } else {
                 console.error("Unable to connect to any servers.");
 
@@ -734,6 +805,9 @@ function protocolLogTimestamp() {
 }
 
 function procMsg(msg) {
+  if (handleKst2YouProxyMessage(msg)) {
+    return;
+  }
   var logEntry = protocolLogTimestamp() + " < " + msg;
   console.log(logEntry);
   $('#debugWindow').append(logEntry + "\n<br/>")
@@ -757,11 +831,145 @@ function procMsg(msg) {
     procUser(msg);
   } else if (msg.startsWith("UR6")) {
     removeUser(msg);
+  } else if (msg.startsWith("LOC|")) {
+    procLocation(msg);
   } else if (msg.startsWith("CR")) {
     procChatMessage(msg, false);
   } else if (msg.startsWith("CH")) {
     procChatMessage(msg, true);
   }
+}
+
+function handleKst2YouProxyMessage(msg) {
+  if (!msg || msg.charAt(0) !== '{') return false;
+  var payload;
+  try {
+    payload = JSON.parse(msg);
+  } catch (e) {
+    return false;
+  }
+  if (!payload || !payload.kst2you) return false;
+
+  if (payload.kst2you === 'bandActivity') {
+    updatePeerBandActivity(userName, payload.bands || {});
+    showBandActivityModal(payload.bands || {});
+    return true;
+  }
+
+  if (payload.kst2you === 'bandActivityPeer') {
+    updatePeerBandActivity(payload.callsign, payload.bands || {});
+    return true;
+  }
+
+  return false;
+}
+
+function normalizeBandActivityMap(bands) {
+  var normalized = {};
+  microwaveBandActivityBands.forEach(function(band) {
+    normalized[band.id] = !!(bands && bands[band.id]);
+  });
+  return normalized;
+}
+
+function getBandActivitySummaryText(callsign) {
+  if (chatId != '3') return '';
+  var key = (callsign || '').toUpperCase();
+  var bands = microwavePeerBandActivity[key];
+  if (!bands) return '';
+
+  var labels = microwaveBandActivityBands
+    .filter(function(band) { return !!bands[band.id]; })
+    .map(function(band) { return band.label; });
+
+  return labels.length ? labels.join('/') : '';
+}
+
+function buildPeerBandActivityBadgeHtml(callsign) {
+  var summary = getBandActivitySummaryText(callsign);
+  if (!summary) return '';
+  return '<span class="badge text-bg-info ms-1" title="Microwave band activity">' + escapeChatHtml(summary) + '</span>';
+}
+
+function renderLocatorCell(locator, callsign) {
+  var safeLocator = escapeChatHtml(locator || '');
+  var badge = buildPeerBandActivityBadgeHtml(callsign);
+  return safeLocator + (badge ? ' ' + badge : '');
+}
+
+function refreshOpenChatPopupLocator(callsign) {
+  if (!chatPopupCallsign || !callsign || chatPopupCallsign !== callsign) return;
+  var baseLocator = '';
+  if (stationList[callsign] && stationList[callsign].locator) {
+    baseLocator = stationList[callsign].locator;
+  } else if (typeof ChatInbox !== 'undefined' && ChatInbox.getMeta) {
+    var meta = ChatInbox.getMeta(callsign);
+    baseLocator = meta && meta.locator ? meta.locator : '';
+  }
+  $('#chatPopupLocator').html(renderLocatorCell(baseLocator, callsign)).css('color', '');
+}
+
+function updatePeerBandActivity(callsign, bands) {
+  var key = (callsign || '').toUpperCase();
+  if (!key) return;
+  microwavePeerBandActivity[key] = normalizeBandActivityMap(bands || {});
+
+  if (dataTableUsers) {
+    dataTableUsers.rows().invalidate('data').draw(false);
+  }
+
+  refreshOpenChatPopupLocator(key);
+}
+
+function myActiveBandActivity() {
+  return microwavePeerBandActivity[(userName || '').toUpperCase()] || null;
+}
+
+// Users without a recorded badge always show; badged users must overlap my own active bands.
+function bandActivityMatchesMine(callsign) {
+  if (chatId != '3' || !$('#onlyMatchingBandActivity').is(':checked')) return true;
+
+  var key = (callsign || '').toUpperCase();
+  if (key === (userName || '').toUpperCase()) return true;
+
+  var peerBands = microwavePeerBandActivity[key];
+  if (!peerBands) return true;
+
+  var myBands = myActiveBandActivity();
+  if (!myBands) return false;
+
+  return microwaveBandActivityBands.some(function(band) {
+    return peerBands[band.id] && myBands[band.id];
+  });
+}
+
+$.fn.dataTable.ext.search.push(function(settings, searchData, index, rowData) {
+  if (!dataTableUsers || settings.nTable !== dataTableUsers.table().node()) return true;
+  return bandActivityMatchesMine(rowData.callsign);
+});
+
+function showBandActivityModal(bands) {
+  if (chatId != '3') return;
+  var html = microwaveBandActivityBands.map(function(band) {
+    var checked = bands[band.id] ? ' checked' : '';
+    return '<div class="form-check form-switch mb-2">' +
+      '<input class="form-check-input band-activity-toggle" type="checkbox" role="switch" id="bandActivity-' + band.id + '" data-band="' + band.id + '"' + checked + '>' +
+      '<label class="form-check-label" for="bandActivity-' + band.id + '">' + band.label + ' · ' + band.id + ' MHz</label>' +
+      '</div>';
+  }).join('');
+  $('#bandActivityToggles').html(html);
+  $('#bandActivityModal').modal('show');
+}
+
+function saveBandActivity() {
+  if (!ws || ws.readyState !== WebSocket.OPEN || !usingKst2YouProxy()) return;
+  var bands = {};
+  $('.band-activity-toggle').each(function() {
+    bands[$(this).data('band')] = this.checked;
+  });
+  updatePeerBandActivity(userName, bands);
+  ws.send(JSON.stringify({ kst2you: 'bandActivityUpdate', bands: bands }) + '\r\n');
+  $('#bandActivityModal').modal('hide');
 }
 
 function decorate(callsign){
@@ -992,6 +1200,37 @@ function procUser(msg) {
   addMapMarker(stn);
 }
 
+// LOC|1790710468|G5RAR/P-2|IO84OL|
+function procLocation(msg) {
+  var data = msg.split("|");
+  var callsign = data[2];
+  var locator = (data[3] || '').trim().toUpperCase();
+  if (!callsign || !locator) return;
+  // Our own location is already applied locally when we send /SETLOC
+  if (callsign === userName) return;
+
+  var stn = stationList[callsign];
+  if (typeof stn == 'undefined' || stn.locator === locator) return;
+  if (!stn.setLocator(locator, myLatLong)) return;
+
+  if (currentInfoWindow === stn.infowindow) {
+    currentInfoWindow.close();
+    currentInfoWindow = null;
+  }
+  if (stn.marker) {
+    stn.marker.setMap(null);
+  }
+  addMapMarker(stn);
+
+  $('#chatLog > tr').each(function(i, tr) {
+    if ($(tr).data('fromCall') == callsign) {
+      $(tr).data('distance', stn.distance);
+    }
+  });
+  dataTableUsers.rows().invalidate().draw(false);
+  filterChatByDistance();
+}
+
 function addMapMarker(stn) {
   var stnLoc = {
     lat: stn.lat,
@@ -1117,6 +1356,7 @@ function procLogin(msg) {
     $('#maxDistance').val(bandInfo.defaultDistance);
   }
   $('#scatter-band').toggle(chatId == '3');
+  $('#userListBandActivityFilterRow').toggle(chatId == '3');
 
   $('#connState').text(bandInfo.name);
   var userData = msg.split("|");
@@ -1252,6 +1492,7 @@ function doLogoff() {
   deleteAllMapMarkers();
   deleteAllBeacons();
   stationList = {};
+  microwavePeerBandActivity = {};
   latestMessageTime = 0;
   //$('#userList').empty();
   dataTableUsers.clear().draw();
@@ -1276,7 +1517,13 @@ function initUserList() {
         data: 'name'
       },
       {
-        data: 'locator'
+        data: 'locator',
+        render: function(data, type, row) {
+          if (type === 'sort' || type === 'type') {
+            return data || '';
+          }
+          return renderLocatorCell(data, row.callsign);
+        }
       },
       {
         data: 'distance',
@@ -1362,7 +1609,7 @@ function chatPopup(callsign) {
   $('#chatPopupMessageInput').empty();
   $('#chatPopupUser').text(chatUser.decoratedCallsign + (chatUser.name ? ' ' + chatUser.name : ''));
   var isOnline = !!stationList[callsign];
-  $('#chatPopupLocator').text(chatUser.locator || '').css('color', '');
+  $('#chatPopupLocator').html(renderLocatorCell(chatUser.locator || '', callsign)).css('color', '');
   $('#chatPopupBearing').text(chatUser.distb  || '').css('color', '');
   $('#chatLocationUL').off('click').click(function(){
      showOnMap(chatUser);
@@ -1660,6 +1907,14 @@ $(document).ready(function() {
     setName();
   });
 
+  $('#onlyMatchingBandActivity').on('change', function() {
+    if (dataTableUsers) dataTableUsers.draw();
+  });
+
+  $('#saveBandActivityButton').click(function() {
+    saveBandActivity();
+  });
+
   $('#beepTestButton').click(function() {
     playBeep();
   });
@@ -1891,7 +2146,8 @@ $(document).ready(function() {
      kstServerLoc = newLocation.gs.substring(0, 6);
      setStoredPreciseLocator(newLocation.gs, true);
      setMyLocator(newLocation.gs, [newLocation.lat, newLocation.lng]);
-     sendMsg("MSG|" + chatId + "|0|/SETLOC " + kstServerLoc + "|0|");
+     var locForServer = usingKst2YouProxy() ? newLocation.gs : kstServerLoc;
+     sendMsg("MSG|" + chatId + "|0|/SETLOC " + locForServer + "|0|");
     $('#locationModal').modal('hide');
   });
     

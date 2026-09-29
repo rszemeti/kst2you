@@ -70,6 +70,27 @@ directly. Certificates are stored in the Docker named
 excludes any local certificate or ACME directories if the volume arrangement
 is ever changed.
 
+## KST Chat Proxy
+
+The `kst-proxy` service runs [`scripts/kst_ws_proxy.py`](../../scripts/kst_ws_proxy.py),
+the KST2You WebSocket-to-TCP proxy for the ON4KST chat. Nginx exposes it at
+`wss://$DOMAIN_NAME/kstplus/`; the container publishes no host port. KST2You
+tries it first and falls back to the plain public proxies if it is unreachable.
+
+Band activity and precise locators persist in the `kst-proxy-data` volume.
+After changing the proxy script, redeploy just that service:
+
+```sh
+docker compose up -d --build kst-proxy
+```
+
+Nginx resolves the container per request, so it needs no restart. Check the
+proxy with `docker compose logs -f kst-proxy`, or from a browser console:
+
+```js
+w = new WebSocket('wss://adsb.kst2you.redpoint.org.uk/kstplus/'); w.onopen = () => { console.log('open'); w.close() }
+```
+
 ## API
 
 `GET /api/aircraft` is a public, rate-limited endpoint intended only for the

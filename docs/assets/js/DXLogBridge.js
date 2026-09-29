@@ -54,6 +54,10 @@ var DXLogBridge = (function () {
     socket.onclose = function () {
       socket = null;
       setStatus('error', 'DXLog Error');
+      // Most users have no bridge: retrying a dead localhost port makes Firefox
+      // throttle and queue other local WebSockets (the KST proxy), so only
+      // auto-reconnect once the bridge has actually been seen.
+      if (!connectedOnce) return;
       if (!retryTimer) retryTimer = setTimeout(function () { retryTimer = null; connect(); }, 5000);
     };
     socket.onerror = function () {
@@ -62,7 +66,14 @@ var DXLogBridge = (function () {
     };
   }
 
-  return { connect: connect };
-})();
+  // Called once the KST WebSocket is open: a pending attempt at a dead local
+  // port makes Firefox hold back other local WebSockets (~30s KST logins).
+  var started = false;
+  function start() {
+    if (started) return;
+    started = true;
+    connect();
+  }
 
-window.addEventListener('load', DXLogBridge.connect);
+  return { connect: connect, start: start };
+})();
