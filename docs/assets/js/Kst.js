@@ -282,11 +282,22 @@ function buildLocatorReply(callsign) {
   }
 }
 
+const locatorSendDebounceMs = 10000;
+const lastLocatorSentAt = {};
+
 function sendLocatorToCallsign(callsign) {
   const locatorReply = buildLocatorReply(callsign);
   if (!callsign || !locatorReply) {
     return false;
   }
+
+  // Double clicks / key bounce on "Send Loc" must not repeat the message.
+  const now = Date.now();
+  if (now - (lastLocatorSentAt[callsign] || 0) < locatorSendDebounceMs) {
+    console.log('Ignoring repeated locator send to ' + callsign);
+    return true;
+  }
+  lastLocatorSentAt[callsign] = now;
 
   sendMsg('MSG|' + chatId + '|0|/CQ ' + callsign + ' ' + locatorReply + '|0|');
   return true;
