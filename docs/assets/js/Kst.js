@@ -1427,9 +1427,24 @@ const typedLocatorPattern = /^[A-R]{2}\d{2}[A-X]{2}(\d{2})?$/;
 
 // Sets our QTH from a map pick or a typed locator (6 or 8 chars). ON4KST only
 // takes 6 characters; the 8-character form is kept locally and by our proxy.
+var lastLocationSent = { gs: null, at: 0 };
+
 function applyMyLocation(gs, latLong) {
+  // Key repeat/bounce or double clicks must not flood ON4KST with /SETLOC.
+  var now = Date.now();
+  var sinceLast = now - lastLocationSent.at;
+  if (sinceLast < 2000 || (gs === lastLocationSent.gs && sinceLast < 10000)) {
+    console.log('Ignoring repeated location set: ' + gs);
+    return;
+  }
+  lastLocationSent = { gs: gs, at: now };
+
   kstServerLoc = gs.substring(0, 6);
   setStoredPreciseLocator(gs.length >= 8 ? gs : '', true);
+  // Own user-list row/marker; setMyLocator's redraw picks this up.
+  if (stationList[userName]) {
+    stationList[userName]._locator = gs;
+  }
   setMyLocator(gs, latLong);
   var locForServer = usingKst2YouProxy() ? gs : kstServerLoc;
   sendMsg("MSG|" + chatId + "|0|/SETLOC " + locForServer + "|0|");
@@ -2185,7 +2200,7 @@ $(document).ready(function() {
   }
   $('#settings-send-locator').on('click', sendTypedLocator);
   $('#settings-precise-locator').on('keydown', function(e) {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.repeat) {
       e.preventDefault();
       sendTypedLocator();
     }
@@ -2205,7 +2220,7 @@ $(document).ready(function() {
     newLocation = { lat: latLong[0], lng: latLong[1], gs: gs };
     showLocationDetails(newLocation);
   }).on('keydown', function(e) {
-    if (e.key === 'Enter' && !$('#setLocation').prop('disabled')) {
+    if (e.key === 'Enter' && !e.repeat && !$('#setLocation').prop('disabled')) {
       e.preventDefault();
       $('#setLocation').click();
     }
