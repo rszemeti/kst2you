@@ -67,6 +67,16 @@ var ChatInbox = (function () {
     return ts < 1e12 ? ts * 1000 : ts;
   }
 
+  // Same sender and text within 5 seconds — used only when merging history, whose copy of a
+  // message may differ slightly in time from the live one
+  function sameMessage(a, b) {
+    var aTs = (typeof a.timestamp !== 'undefined') ? a.timestamp : a.ts;
+    var bTs = (typeof b.timestamp !== 'undefined') ? b.timestamp : b.ts;
+    return a.from === b.from &&
+      (a.text || '').trim() === (b.text || '').trim() &&
+      Math.abs(tsMs(aTs) - tsMs(bTs)) <= 5000;
+  }
+
   function lastTs(call) {
     return _convs[call].reduce(function(max, m) { return Math.max(max, tsMs(m.ts)); }, 0);
   }
@@ -157,10 +167,7 @@ var ChatInbox = (function () {
       Object.keys(_convs).forEach(function(call) {
         if (typeof messageLog[call] === 'undefined') messageLog[call] = [];
         _convs[call].forEach(function(msg) {
-          var alreadyIn = messageLog[call].some(function(m) {
-            var mTs = (typeof m.timestamp !== 'undefined') ? m.timestamp : m.ts;
-            return m.from === msg.from && m.text === msg.text && tsMs(mTs) === tsMs(msg.ts);
-          });
+          var alreadyIn = messageLog[call].some(function(m) { return sameMessage(m, msg); });
           if (!alreadyIn) messageLog[call].push(msg);
         });
       });
@@ -171,8 +178,9 @@ var ChatInbox = (function () {
     /**
      * Record a directed message. Call from Kst.js message handler.
      * isIncoming: true if message.to === userName
+     * isLive: true for live (CH) messages, which are never treated as duplicates
      */
-    record: function(msg, isIncoming) {
+    record: function(msg, isIncoming, isLive) {
       if (!_baseKey) return;
       var peer = isIncoming ? msg.from : msg.to;
       if (!peer || peer === '0') return;
@@ -184,12 +192,20 @@ var ChatInbox = (function () {
         _meta[peer] = { locator: window.stationList[peer].locator, name: window.stationList[peer].name };
         saveMeta();
       }
-      // Avoid duplicate replays
+      // History replayed on every login/reconnect may repeat messages we already hold
+      var conv  = _convs[peer];
       var msgTs = msg.timestamp || msg.ts || Date.now();
-      var last = _convs[peer][_convs[peer].length - 1];
-      if (last && last.ts === msgTs && last.from === msg.from) return;
+      if (!isLive) {
+        var seen = conv.some(function(m) {
+          return sameMessage(m, { from: msg.from, text: msg.text, ts: msgTs });
+        });
+        if (seen) return;
+      }
 
-      _convs[peer].push({ from: msg.from, to: msg.to, text: msg.text, ts: msgTs });
+      // Insert in time order (replayed messages arrive newest first)
+      var i = conv.length;
+      while (i > 0 && tsMs(conv[i - 1].ts) > tsMs(msgTs)) i--;
+      conv.splice(i, 0, { from: msg.from, to: msg.to, text: msg.text, ts: msgTs });
       // Trim to max
       if (_convs[peer].length > MAX_PER_CONV) _convs[peer].splice(0, _convs[peer].length - MAX_PER_CONV);
 

@@ -579,8 +579,12 @@ class Message {
     return this.rawTo !== '0' && this.rawTo === (callsign || '').toUpperCase();
   }
 
+  // Unix seconds. The protocol doc gives CH frames a YYYYMMDDhhmmss date instead — convert those.
   get timestamp() {
-    return parseInt(this._timestamp);
+    var t = String(this._timestamp || '').trim();
+    var m = t.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/);
+    if (m) return Math.floor(Date.UTC(+m[1], m[2] - 1, +m[3], +m[4], +m[5], +m[6]) / 1000);
+    return parseInt(t);
   }
 
   get text() {
@@ -589,7 +593,7 @@ class Message {
 
   get date() {
     if (typeof this._date == 'undefined') {
-      var date = new Date(this._timestamp * 1000);
+      var date = new Date(this.timestamp * 1000);
       var hours = date.getHours().toString().padStart(2, '0');
       var minutes = date.getMinutes().toString().padStart(2, '0');
       var seconds = date.getSeconds().toString().padStart(2, '0');
@@ -1033,13 +1037,17 @@ function _msgTimeSecs(m) {
   return t > 9999999999 ? Math.floor(t / 1000) : t;
 }
 
-// Same sender, text and time — repeated text at a different time is a new message
+// Only history (CR) replayed after a login/reconnect is checked — live messages are always new.
+// The replayed copy may not carry exactly the same timestamp as the live one, so allow some slack.
+var DUPLICATE_MSG_WINDOW_SECS = 5;
+
 function _isDuplicateMsg(log, message) {
   var from = message.from;
-  var text = message.text;
+  var text = (message.text || '').trim();
   var t = _msgTimeSecs(message);
   for (var i = log.length - 1; i >= 0; i--) {
-    if (log[i].from === from && log[i].text === text && _msgTimeSecs(log[i]) === t) return true;
+    if (log[i].from === from && (log[i].text || '').trim() === text &&
+        Math.abs(_msgTimeSecs(log[i]) - t) <= DUPLICATE_MSG_WINDOW_SECS) return true;
   }
   return false;
 }
@@ -1118,14 +1126,15 @@ function procChatMessage(msg, isLive) {
     if (typeof messageLog[message.from] == 'undefined') {
       messageLog[message.from] = [];
     }
-    if (!_isDuplicateMsg(messageLog[message.from], message)) {
+    if (isLive || !_isDuplicateMsg(messageLog[message.from], message)) {
       if(isLive){
           playBeep();
           messageLog[message.from].push(message);
-          if (typeof ChatInbox !== 'undefined') ChatInbox.record(message, true);
       }else{
           messageLog[message.from].unshift(message);
       }
+      // Replays too, so messages sent while offline reach the inbox
+      if (typeof ChatInbox !== 'undefined') ChatInbox.record(message, true, isLive);
       if (message.from == chatPopupCallsign) {
         appendToCurrentChat(message);
       }
@@ -1135,13 +1144,13 @@ function procChatMessage(msg, isLive) {
     if (typeof messageLog[message.to] == 'undefined') {
       messageLog[message.to] = [];
     }
-    if (!_isDuplicateMsg(messageLog[message.to], message)) {
+    if (isLive || !_isDuplicateMsg(messageLog[message.to], message)) {
       if(isLive){
           messageLog[message.to].push(message);
-          if (typeof ChatInbox !== 'undefined') ChatInbox.record(message, false);
       }else{
           messageLog[message.to].unshift(message);
       }
+      if (typeof ChatInbox !== 'undefined') ChatInbox.record(message, false, isLive);
       if (message.to == chatPopupCallsign) {
         appendToCurrentChat(message);
       }
