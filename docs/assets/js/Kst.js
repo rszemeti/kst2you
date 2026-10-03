@@ -936,6 +936,7 @@ function updatePeerBandActivity(callsign, bands) {
   if (dataTableUsers) {
     dataTableUsers.rows().invalidate('data').draw(false);
   }
+  window.contestRefreshMapMarkers();
 
   refreshOpenChatPopupLocator(key);
 }
@@ -1025,11 +1026,20 @@ function renderChatMessageHtml(text) {
 
 //CR|3|1592759981|SP4MPB|Marek 23/13/3|0| jestes ?|SP6GWB|
 //CH|3|1592770412|G1YFG |Robin 23cm   |0| test     |0|
+// Seconds; messageLog holds both KST messages (timestamp, s) and ChatInbox entries (ts, s or ms)
+function _msgTimeSecs(m) {
+  var t = (typeof m.timestamp !== 'undefined') ? m.timestamp : m.ts;
+  t = Number(t) || 0;
+  return t > 9999999999 ? Math.floor(t / 1000) : t;
+}
+
+// Same sender, text and time — repeated text at a different time is a new message
 function _isDuplicateMsg(log, message) {
   var from = message.from;
   var text = message.text;
+  var t = _msgTimeSecs(message);
   for (var i = log.length - 1; i >= 0; i--) {
-    if (log[i].from === from && log[i].text === text) return true;
+    if (log[i].from === from && log[i].text === text && _msgTimeSecs(log[i]) === t) return true;
   }
   return false;
 }
@@ -1105,22 +1115,20 @@ function procChatMessage(msg, isLive) {
   if (message.to == userName) {
     row.addClass('table-danger');
     row.show();
-    if (isLive) {
-      playBeep();
-    }
     if (typeof messageLog[message.from] == 'undefined') {
       messageLog[message.from] = [];
     }
     if (!_isDuplicateMsg(messageLog[message.from], message)) {
       if(isLive){
+          playBeep();
           messageLog[message.from].push(message);
           if (typeof ChatInbox !== 'undefined') ChatInbox.record(message, true);
       }else{
           messageLog[message.from].unshift(message);
       }
-    }
-    if (message.from == chatPopupCallsign) {
-      appendToCurrentChat(message);
+      if (message.from == chatPopupCallsign) {
+        appendToCurrentChat(message);
+      }
     }
   } else if (message.from == userName) {
     // messages from me
@@ -1134,10 +1142,9 @@ function procChatMessage(msg, isLive) {
       }else{
           messageLog[message.to].unshift(message);
       }
-    }
-
-    if (message.to == chatPopupCallsign) {
-      appendToCurrentChat(message);
+      if (message.to == chatPopupCallsign) {
+        appendToCurrentChat(message);
+      }
     }
   }
 }
@@ -1295,16 +1302,14 @@ function addMapMarker(stn) {
   });
   stn.infowindow = infowindow;
   stn.marker = marker;
-  // Apply contest state to new marker
-  if (typeof ContestLog !== 'undefined') {
-    _applyContestMarker(stn.callsign, marker);
-  }
+  // Apply contest state and band filter to new marker
+  _applyContestMarker(stn.callsign, marker);
 }
 
 function _applyContestMarker(callsign, marker) {
   if (!marker) return;
   var opacity = (typeof ContestLog !== 'undefined') ? ContestLog.getMapOpacity(callsign) : 1;
-  if (opacity === 0) {
+  if (opacity === 0 || !bandActivityMatchesMine(callsign)) {
     marker.setMap(null);
   } else {
     if (!marker.getMap()) marker.setMap(map);
@@ -1955,6 +1960,7 @@ $(document).ready(function() {
 
   $('#onlyMatchingBandActivity').on('change', function() {
     if (dataTableUsers) dataTableUsers.draw();
+    window.contestRefreshMapMarkers();
   });
 
   $('#saveBandActivityButton').click(function() {

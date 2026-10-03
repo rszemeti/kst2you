@@ -17,18 +17,18 @@
 
 .ci-badge {
   position: absolute;
-  top: -6px; right: -6px;
+  top: -7px; right: -7px;
   background: #dc3545;
   color: #fff;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   font-family: monospace;
-  min-width: 16px;
-  height: 16px;
-  border-radius: 8px;
+  min-width: 19px;
+  height: 19px;
+  border-radius: 10px;
   text-align: center;
-  line-height: 16px;
-  padding: 0 3px;
+  line-height: 19px;
+  padding: 0 4px;
 }
 
 /* ── Slide-out panel ── */

@@ -45,12 +45,13 @@ var ChatInbox = (function () {
   }
 
   // ── Badge ──────────────────────────────────────────────
-  function totalUnread() {
-    return Object.values(_unread).reduce(function(s, n) { return s + n; }, 0);
+  // Number of stations with unread messages (per-conversation counts are shown in the panel)
+  function unreadConversations() {
+    return Object.values(_unread).filter(function(n) { return n > 0; }).length;
   }
 
   function updateBadge() {
-    var n    = totalUnread();
+    var n    = unreadConversations();
     var badge = document.getElementById('ci-badge');
     var btn   = document.getElementById('ci-btn');
     if (!badge || !btn) return;
@@ -60,8 +61,18 @@ var ChatInbox = (function () {
   }
 
   // ── Panel rendering ────────────────────────────────────
+  // KST timestamps are Unix seconds; locally generated ones are ms — normalise to ms
+  function tsMs(ts) {
+    ts = Number(ts) || 0;
+    return ts < 1e12 ? ts * 1000 : ts;
+  }
+
+  function lastTs(call) {
+    return _convs[call].reduce(function(max, m) { return Math.max(max, tsMs(m.ts)); }, 0);
+  }
+
   function formatTime(ts) {
-    var d = new Date(ts);
+    var d = new Date(tsMs(ts));
     var now = new Date();
     if (d.toDateString() === now.toDateString()) {
       return d.toUTCString().slice(17, 22) + 'z';
@@ -75,9 +86,7 @@ var ChatInbox = (function () {
 
     // Sort conversations by most recent message
     var sorted = Object.keys(_convs).sort(function(a, b) {
-      var aLast = _convs[a][_convs[a].length - 1];
-      var bLast = _convs[b][_convs[b].length - 1];
-      return (bLast ? bLast.ts : 0) - (aLast ? aLast.ts : 0);
+      return lastTs(b) - lastTs(a);
     });
 
     if (sorted.length === 0) {
@@ -149,7 +158,8 @@ var ChatInbox = (function () {
         if (typeof messageLog[call] === 'undefined') messageLog[call] = [];
         _convs[call].forEach(function(msg) {
           var alreadyIn = messageLog[call].some(function(m) {
-            return m.from === msg.from && m.text === msg.text;
+            var mTs = (typeof m.timestamp !== 'undefined') ? m.timestamp : m.ts;
+            return m.from === msg.from && m.text === msg.text && tsMs(mTs) === tsMs(msg.ts);
           });
           if (!alreadyIn) messageLog[call].push(msg);
         });
