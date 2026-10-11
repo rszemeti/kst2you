@@ -1409,7 +1409,13 @@ function procLogin(msg) {
   var userData = msg.split("|");
   setSessionKey(userData[4]);
   setUsername(userData[6], userData[7]);
-  kstServerLoc = userData[8];
+  // Through the KST2You proxy the login reply carries our stored 8 character
+  // locator; ON4KST itself only ever holds the first 6.
+  var loginLoc = (userData[8] || '').toUpperCase();
+  kstServerLoc = loginLoc.substring(0, 6);
+  if (normalizePreciseLocator(loginLoc) && !getStoredPreciseLocator()) {
+    setStoredPreciseLocator(loginLoc, false);
+  }
   setMyLocator(kstServerLoc);
   applyStoredPreciseLocator();
   fetchBeacons(bandInfo.min, bandInfo.max);
