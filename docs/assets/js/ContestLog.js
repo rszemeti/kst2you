@@ -309,7 +309,7 @@ var ContestLog = (function () {
   }
 
   function _cloudLoadSession(sessionId, callback) {
-    if (!_isRemoteSyncEnabled()) { _setCloudIndicator('none'); callback({ status: 'error', message: 'Remote sync disabled' }); return; }
+    if (!_isRemoteSyncEnabled()) { _setCloudIndicator('none'); callback({ status: 'error', message: I18n.t('remote.syncDisabled') }); return; }
     fetch(CLOUD_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -321,7 +321,7 @@ var ContestLog = (function () {
   }
 
   function _cloudDeleteAll(callback) {
-    if (!_isRemoteSyncEnabled()) { _setCloudIndicator('none'); if (callback) callback({ status: 'error', message: 'Remote sync disabled' }); return; }
+    if (!_isRemoteSyncEnabled()) { _setCloudIndicator('none'); if (callback) callback({ status: 'error', message: I18n.t('remote.syncDisabled') }); return; }
     fetch(CLOUD_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -333,7 +333,7 @@ var ContestLog = (function () {
   }
 
   function _cloudDeleteUserSettings(callback) {
-    if (!_isRemoteSyncEnabled()) { if (callback) callback({ status: 'error', message: 'Remote sync disabled' }); return; }
+    if (!_isRemoteSyncEnabled()) { if (callback) callback({ status: 'error', message: I18n.t('remote.syncDisabled') }); return; }
     fetch(USER_SETTINGS_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -375,7 +375,7 @@ var ContestLog = (function () {
   function _setCloudIndicator(state) {
     var el = document.getElementById('contest-cloud-status');
     if (!el) return;
-    var labels = { saving: '☁ Saving…', saved: '☁ Synced', merged: '☁ Merged', loading: '☁ Loading…', error: '☁ Sync error', none: '' };
+    var labels = { saving: I18n.t('cloud.saving'), saved: I18n.t('cloud.saved'), merged: I18n.t('cloud.merged'), loading: I18n.t('cloud.loading'), error: I18n.t('cloud.error'), none: '' };
     var classes = { saving: 'text-info', saved: 'text-success', merged: 'text-warning', loading: 'text-info', error: 'text-danger', none: '' };
     el.textContent = labels[state] || '';
     el.className = 'small ms-2 ' + (classes[state] || '');
@@ -388,7 +388,7 @@ var ContestLog = (function () {
     if (!_settings.active) { el.style.display = 'none'; return; }
     var w = _active(_log.worked).length;
     var s = _active(_log.skip).length;
-    el.textContent = 'Worked: ' + w + ' · Skip: ' + s;
+    el.textContent = I18n.t('contest.score', { worked: w, skip: s });
     el.style.display = '';
   }
 
@@ -400,7 +400,7 @@ var ContestLog = (function () {
     function makeRows(arr, type) {
       var hasExchange = type === 'worked';
       var cols = hasExchange ? 11 : 6;
-      if (!arr.length) return '<tr><td colspan="' + cols + '" class="text-center text-muted py-3">None yet</td></tr>';
+      if (!arr.length) return '<tr><td colspan="' + cols + '" class="text-center text-muted py-3">' + I18n.h('contest.noneYet') + '</td></tr>';
       return arr.map(function(e) {
         var d = new Date(e.ts);
         var timeStr = utcStr(d);
@@ -421,7 +421,7 @@ var ContestLog = (function () {
         row += '<td>' + timeStr + '</td>' +
           '<td>' + (isDel
             ? '<span class="text-muted small">' + utcTime(e.deletedAt) + '</span>'
-            : '<button class="btn btn-xs btn-outline-secondary clog-unmark" data-call="' + escHtml(e.callsign) + '">Unmark</button>') +
+            : '<button class="btn btn-xs btn-outline-secondary clog-unmark" data-call="' + escHtml(e.callsign) + '">' + I18n.h('contest.unmark') + '</button>') +
           '</td>' +
         '</tr>';
         return row;
@@ -433,23 +433,23 @@ var ContestLog = (function () {
 
     tab.innerHTML =
       '<div class="d-flex justify-content-between align-items-center mb-2">' +
-        '<h6 class="mb-0">Session Log' +
+        '<h6 class="mb-0">' + I18n.h('tabs.sessionLog') +
           (_settings.sessionName ? ' — <small class="text-muted">' + escHtml(_settings.sessionName) + '</small>' : '') +
         '</h6>' +
         '<div class="d-flex align-items-center">' +
-          '<label class="form-check-label small me-3"><input type="checkbox" class="form-check-input me-1" id="clog-show-history"' + (_showHistory ? ' checked' : '') + '>History</label>' +
+          '<label class="form-check-label small me-3"><input type="checkbox" class="form-check-input me-1" id="clog-show-history"' + (_showHistory ? ' checked' : '') + '>' + I18n.h('contest.history') + '</label>' +
           '<button class="btn btn-sm btn-outline-secondary me-1" id="clog-export">CSV</button>' +
           '<button class="btn btn-sm btn-outline-secondary me-2" id="clog-export-edi">EDI</button>' +
-          '<button class="btn btn-sm btn-outline-danger" id="clog-reset">Reset</button>' +
+          '<button class="btn btn-sm btn-outline-danger" id="clog-reset">' + I18n.h('contest.reset') + '</button>' +
         '</div>' +
       '</div>' +
-      '<h6 class="clog-section-hdr worked">Worked <span class="badge bg-success">' + _active(_log.worked).length + '</span></h6>' +
+      '<h6 class="clog-section-hdr worked">' + I18n.h('contest.worked') + ' <span class="badge bg-success">' + _active(_log.worked).length + '</span></h6>' +
       '<table class="table table-sm table-hover clog-table"><thead><tr>' +
-        '<th>Call</th><th>Locator</th><th>Dist</th><th>Brg</th><th>RST Sent</th><th>Ser Sent</th><th>RST Rcvd</th><th>Ser Rcvd</th><th>Comments</th><th>Time</th><th></th>' +
+        _th(['col.call', 'col.locator', 'contest.col.dist', 'contest.col.brg', 'contest.exchange.rstSent', 'contest.col.serSent', 'contest.exchange.rstRcvd', 'contest.col.serRcvd', 'contest.exchange.comments', 'col.time', '']) +
       '</tr></thead><tbody>' + makeRows(workedList, 'worked') + '</tbody></table>' +
-      '<h6 class="clog-section-hdr skip mt-3">Skip <span class="badge bg-secondary">' + _active(_log.skip).length + '</span></h6>' +
+      '<h6 class="clog-section-hdr skip mt-3">' + I18n.h('contest.skip') + ' <span class="badge bg-secondary">' + _active(_log.skip).length + '</span></h6>' +
       '<table class="table table-sm table-hover clog-table"><thead><tr>' +
-        '<th>Call</th><th>Locator</th><th>Dist</th><th>Brg</th><th>Time</th><th></th>' +
+        _th(['col.call', 'col.locator', 'contest.col.dist', 'contest.col.brg', 'col.time', '']) +
       '</tr></thead><tbody>' + makeRows(skipList, 'skip') + '</tbody></table>';
 
     // Unmark buttons
@@ -459,7 +459,7 @@ var ContestLog = (function () {
         // Check if this is a worked entry with exchange data
         var entry = _active(_log.worked).find(function(e) { return e.callsign === cs && (e.rstSent || e.serialSent); });
         if (entry) {
-          if (!confirm('Unmark ' + cs + '? This will remove the logged exchange data.')) return;
+          if (!confirm(I18n.t('contest.confirmUnmark', { call: cs }))) return;
         }
         ContestLog.unmark(cs);
       });
@@ -481,9 +481,9 @@ var ContestLog = (function () {
     // Reset
     var resetBtn = document.getElementById('clog-reset');
     if (resetBtn) resetBtn.addEventListener('click', function() {
-      var newName = prompt('Start a new session?\nEnter a name for the new session (e.g. "May 13cm log"):');
+      var newName = prompt(I18n.t('contest.promptNewSession'));
       if (newName === null) return; // cancelled
-      newName = newName.trim() || 'Untitled session';
+      newName = newName.trim() || I18n.t('contest.untitledSession');
       ContestLog.clear(newName);
     });
 
@@ -492,10 +492,10 @@ var ContestLog = (function () {
       '<hr class="my-3">' +
       '<div>' +
         '<a class="text-decoration-none" data-bs-toggle="collapse" href="#clog-prev-sessions" role="button" aria-expanded="false">' +
-          '▸ Previous Sessions' +
+          I18n.h('contest.previousSessions') +
         '</a>' +
         '<div class="collapse mt-2" id="clog-prev-sessions">' +
-          '<div id="clog-prev-list" class="text-muted small">Loading…</div>' +
+          '<div id="clog-prev-list" class="text-muted small">' + I18n.h('common.loadingEllipsis') + '</div>' +
         '</div>' +
       '</div>';
     tab.insertAdjacentHTML('beforeend', prevHtml);
@@ -513,33 +513,33 @@ var ContestLog = (function () {
     var listEl = document.getElementById('clog-prev-list');
     if (!listEl) return;
     if (!_isRemoteSyncEnabled()) {
-      listEl.innerHTML = '<span class="text-muted">Remote sync disabled</span>';
+      listEl.innerHTML = '<span class="text-muted">' + I18n.h('remote.syncDisabled') + '</span>';
       return;
     }
-    listEl.innerHTML = '<span class="text-muted">Loading…</span>';
+    listEl.innerHTML = '<span class="text-muted">' + I18n.h('common.loadingEllipsis') + '</span>';
     _cloudListSessions(function(sessions) {
       if (!sessions.length) {
-        listEl.innerHTML = '<span class="text-muted">No saved sessions</span>';
+        listEl.innerHTML = '<span class="text-muted">' + I18n.h('contest.noSessions') + '</span>';
         return;
       }
       var html = '<table class="table table-sm table-hover mb-0"><thead><tr>' +
-        '<th>Name</th><th>Created</th><th>Worked</th><th>Skip</th><th>Status</th><th></th>' +
+        _th(['col.name', 'contest.col.created', 'contest.worked', 'contest.skip', 'contest.col.status', '']) +
         '</tr></thead><tbody>';
       sessions.forEach(function(s) {
         var created = s.createdAt ? new Date(s.createdAt) : null;
         var dateStr = created ? utcStr(created) : '—';
         var status = s.active
-          ? '<span class="badge bg-success">Active</span>'
-          : '<span class="badge bg-secondary">Archived</span>';
+          ? '<span class="badge bg-success">' + I18n.h('contest.active') + '</span>'
+          : '<span class="badge bg-secondary">' + I18n.h('contest.archived') + '</span>';
         html += '<tr>' +
-          '<td>' + escHtml(s.name || 'Untitled') + '</td>' +
+          '<td>' + escHtml(s.name || I18n.t('contest.untitled')) + '</td>' +
           '<td>' + escHtml(dateStr) + '</td>' +
           '<td>' + s.workedCount + '</td>' +
           '<td>' + s.skipCount + '</td>' +
           '<td>' + status + '</td>' +
           '<td>' +
-            '<button class="btn btn-xs btn-outline-primary clog-view-session" data-sid="' + escHtml(s.sessionId) + '">View</button>' +
-            (!s.active ? ' <button class="btn btn-xs btn-outline-success clog-restore-session" data-sid="' + escHtml(s.sessionId) + '">Restore</button>' : '') +
+            '<button class="btn btn-xs btn-outline-primary clog-view-session" data-sid="' + escHtml(s.sessionId) + '">' + I18n.h('contest.view') + '</button>' +
+            (!s.active ? ' <button class="btn btn-xs btn-outline-success clog-restore-session" data-sid="' + escHtml(s.sessionId) + '">' + I18n.h('contest.restore') + '</button>' : '') +
             (!s.active ? ' <button class="btn btn-xs btn-outline-secondary clog-export-session" data-sid="' + escHtml(s.sessionId) + '">CSV</button>' : '') +
             (!s.active ? ' <button class="btn btn-xs btn-outline-secondary clog-edi-session" data-sid="' + escHtml(s.sessionId) + '">EDI</button>' : '') +
           '</td>' +
@@ -569,10 +569,10 @@ var ContestLog = (function () {
       // Wire restore buttons
       listEl.querySelectorAll('.clog-restore-session').forEach(function(btn) {
         btn.addEventListener('click', function() {
-          if (!confirm('Restore this session as the active session?\nThe current session will be archived.')) return;
+          if (!confirm(I18n.t('contest.confirmRestore'))) return;
           _cloudRestoreSession(btn.dataset.sid, function(resp) {
             if (!resp || resp.status !== 'ok') {
-              alert('Failed to restore session: ' + (resp ? resp.message : 'network error'));
+              alert(I18n.t('contest.restoreFailed', { reason: resp ? resp.message : I18n.t('common.networkError') }));
               return;
             }
             // Load restored session data into local state
@@ -596,18 +596,17 @@ var ContestLog = (function () {
 
   function _viewSession(sessionId) {
     _cloudLoadSession(sessionId, function(resp) {
-      if (resp.status !== 'ok') { alert('Failed to load session'); return; }
+      if (resp.status !== 'ok') { alert(I18n.t('contest.loadFailed')); return; }
       var log = resp.log || { worked: [], skip: [] };
       var created = resp.createdAt ? utcStr(new Date(resp.createdAt)) : '—';
-      var sessionLabel = resp.name ? escHtml(resp.name) : (resp.active ? 'Active Session' : 'Archived — ' + created);
+      var sessionLabel = resp.name ? escHtml(resp.name) : escHtml(resp.active ? I18n.t('contest.activeSession') : I18n.t('contest.archivedOn', { date: created }));
       var html = '<div class="alert alert-info py-1 px-2 small mb-2">' +
         '<strong>' + sessionLabel + '</strong>' +
         (resp.name ? ' <span class="text-muted">(' + created + ')</span>' : '') +
-        ' — ' + +
-        (log.worked || []).length + ' worked, ' + (log.skip || []).length + ' skip' +
-        ' <button class="btn btn-xs btn-outline-secondary ms-2" id="clog-view-close">Close</button></div>';
+        ' — ' + I18n.h('contest.sessionCounts', { worked: (log.worked || []).length, skip: (log.skip || []).length }) +
+        ' <button class="btn btn-xs btn-outline-secondary ms-2" id="clog-view-close">' + I18n.h('common.close') + '</button></div>';
       html += '<table class="table table-sm table-hover"><thead><tr>' +
-        '<th>Call</th><th>Locator</th><th>Dist</th><th>Brg</th><th>RST Sent</th><th>Ser Sent</th><th>RST Rcvd</th><th>Ser Rcvd</th><th>Comments</th><th>Time</th>' +
+        _th(['col.call', 'col.locator', 'contest.col.dist', 'contest.col.brg', 'contest.exchange.rstSent', 'contest.col.serSent', 'contest.exchange.rstRcvd', 'contest.col.serRcvd', 'contest.exchange.comments', 'col.time']) +
         '</tr></thead><tbody>';
       (log.worked || []).forEach(function(e) {
         var d = new Date(e.ts);
@@ -647,7 +646,7 @@ var ContestLog = (function () {
 
   function _exportSession(sessionId) {
     _cloudLoadSession(sessionId, function(resp) {
-      if (resp.status !== 'ok') { alert('Failed to load session'); return; }
+      if (resp.status !== 'ok') { alert(I18n.t('contest.loadFailed')); return; }
       var log = resp.log || { worked: [], skip: [] };
       var rows = [['Type','Callsign','Locator','Distance km','Bearing','RST Sent','Serial Sent','RST Rcvd','Serial Rcvd','Time']];
       (log.worked||[]).forEach(function(e) {
@@ -668,10 +667,10 @@ var ContestLog = (function () {
 
   function _exportSessionEDI(sessionId) {
     _cloudLoadSession(sessionId, function(resp) {
-      if (resp.status !== 'ok') { alert('Failed to load session'); return; }
+      if (resp.status !== 'ok') { alert(I18n.t('contest.loadFailed')); return; }
       var log = resp.log || { worked: [], skip: [] };
       var worked = (log.worked || []).filter(function(e) { return !e.deleted; });
-      if (!worked.length) { alert('No worked QSOs to export.'); return; }
+      if (!worked.length) { alert(I18n.t('contest.nothingToExport')); return; }
       var myLocator = (typeof myLoc !== 'undefined' ? myLoc : '') || '';
       var edi = _buildEDI(worked, _baseKey, myLocator, resp.name || '', '');
       if (edi) _downloadEDI(edi, 'session_' + sessionId + '.edi');
@@ -800,7 +799,7 @@ var ContestLog = (function () {
 
   function exportEDI() {
     var worked = _active(_log.worked);
-    if (!worked.length) { alert('No worked QSOs to export.'); return; }
+    if (!worked.length) { alert(I18n.t('contest.nothingToExport')); return; }
     var myLocator = (typeof myLoc !== 'undefined' ? myLoc : '') || '';
     var edi = _buildEDI(worked, _baseKey, myLocator, _settings.sessionName, '');
     if (edi) _downloadEDI(edi, (_baseKey || 'log') + '.edi');
@@ -808,6 +807,11 @@ var ContestLog = (function () {
 
   function escHtml(s) {
     return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  /** Build <th> cells from i18n keys; an empty key gives an empty cell. */
+  function _th(keys) {
+    return keys.map(function(k) { return '<th>' + (k ? I18n.h(k) : '') + '</th>'; }).join(''); // i18n-dynamic
   }
 
   /** Format a Date or timestamp as a UTC string. */
@@ -987,11 +991,11 @@ var ContestLog = (function () {
       _settings.active = !!val;
       // Prompt for a session name when entering contest mode with no name set
       if (_settings.active && !_settings.sessionName) {
-        var name = prompt('Enter a name for this contest session (e.g. "May 13cm log"):');
+        var name = prompt(I18n.t('contest.promptSessionName'));
         if (name !== null) {
-          _settings.sessionName = name.trim() || 'Untitled session';
+          _settings.sessionName = name.trim() || I18n.t('contest.untitledSession');
         } else {
-          _settings.sessionName = 'Untitled session';
+          _settings.sessionName = I18n.t('contest.untitledSession');
         }
       }
       saveSettings();
@@ -1022,7 +1026,7 @@ var ContestLog = (function () {
 
     downloadRemoteBackup: async function() {
       if (!_isRemoteSyncEnabled()) {
-        throw new Error('Remote sync disabled');
+        throw new Error(I18n.t('remote.syncDisabled'));
       }
 
       var settings = await _cloudLoadUserSettingsPromise();
@@ -1047,18 +1051,18 @@ var ContestLog = (function () {
 
     deleteRemoteBackup: function(callback) {
       if (!_isRemoteSyncEnabled()) {
-        if (callback) callback({ status: 'error', message: 'Remote sync disabled' });
+        if (callback) callback({ status: 'error', message: I18n.t('remote.syncDisabled') });
         return;
       }
 
       _cloudDeleteAll(function(contestResp) {
         if (!contestResp || contestResp.status !== 'ok') {
-          if (callback) callback(contestResp || { status: 'error', message: 'Failed to delete contest log backup' });
+          if (callback) callback(contestResp || { status: 'error', message: I18n.t('remote.deleteContestFailed') });
           return;
         }
 
         _cloudDeleteUserSettings(function(settingsResp) {
-          if (callback) callback(settingsResp || { status: 'error', message: 'Failed to delete settings backup' });
+          if (callback) callback(settingsResp || { status: 'error', message: I18n.t('remote.deleteSettingsFailed') });
         });
       });
     },
@@ -1096,7 +1100,7 @@ var ContestLog = (function () {
       var badge = document.getElementById('chatContestBadge');
       var state = ContestLog.getState(callsign);
       if (badge) {
-        badge.textContent = state === 'worked' ? '✓ Worked' : state === 'skip' ? '✗ Skip' : '';
+        badge.textContent = state === 'worked' ? I18n.t('chatPopup.worked') : state === 'skip' ? I18n.t('chatPopup.skip') : '';
         badge.className = 'chat-contest-badge' + (state ? ' clog-' + state : ' d-none');
       }
     }

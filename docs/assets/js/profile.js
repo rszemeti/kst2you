@@ -39,7 +39,7 @@ function onShowProfileClick() {
 function setupProfileButton() {
   const button = document.createElement('button');
   button.id = 'showProfileButton';
-  button.innerText = 'Show Path Profile';
+  button.innerText = I18n.t('profile.show');
   button.style.display = 'none';
   button.onclick = onShowProfileClick;
   button.style.marginTop = '10px';
@@ -74,7 +74,7 @@ function displayPathElevation(path, elevator, map) {
   .then(results => plotElevation(results, path))
   .catch(e => {
     const chartDiv = document.getElementById("pathProfile");
-    chartDiv.innerHTML = "Cannot show elevation: request failed because " + e;
+    chartDiv.textContent = I18n.t('profile.failed', { error: e });
   });
 }
 
@@ -84,8 +84,8 @@ function plotElevation({ results }, path) {
   const chart = new google.visualization.ColumnChart(chartDiv);
   const data = new google.visualization.DataTable();
 
-  data.addColumn("string", "Sample");
-  data.addColumn("number", "Elevation");
+  data.addColumn("string", I18n.t('profile.sample'));
+  data.addColumn("number", I18n.t('profile.elevation'));
 
   for (let i = 0; i < results.length; i++) {
     data.addRow(["", results[i].elevation]);
@@ -102,7 +102,7 @@ function plotElevation({ results }, path) {
     width: '100%',
     height: 150,
     legend: "none",
-    titleY: "Elevation (m)",
+    titleY: I18n.t('profile.elevationAxis'),
   };
 
   chart.draw(data, options);

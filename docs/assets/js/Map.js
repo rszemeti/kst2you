@@ -492,7 +492,7 @@ function addCircle(qth, radius) {
 
 function setRainOn() {
   rainActive = true;
-  $("#rainButton").addClass('active').text('Rain on');
+  $("#rainButton").addClass('active').text(I18n.t('map.rainOn'));
   refreshRainOverlay();
   if (!rainRefreshTimer) {
     rainRefreshTimer = setInterval(refreshRainOverlay, 10 * 60 * 1000);
@@ -501,7 +501,7 @@ function setRainOn() {
 
 function setRainOff() {
   rainActive = false;
-  $("#rainButton").removeClass('active').text('Rain');
+  $("#rainButton").removeClass('active').text(I18n.t('map.rain'));
   if (rainRefreshTimer) {
     clearInterval(rainRefreshTimer);
     rainRefreshTimer = null;

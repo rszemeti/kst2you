@@ -20,7 +20,7 @@ function _renderAdminStats(users) {
 
   body.empty();
   if (!users || !users.length) {
-    body.append('<tr><td colspan="3" class="text-muted">No admin stats available.</td></tr>');
+    body.append('<tr><td colspan="3" class="text-muted">' + I18n.h('admin.noStats') + '</td></tr>');
     return;
   }
 
@@ -43,7 +43,7 @@ function _renderAdminChart(rows) {
   if (!chartDiv) return;
 
   if (!window.google || !google.visualization || !google.visualization.LineChart) {
-    chartDiv.innerHTML = '<div class="text-muted small py-5 text-center">Login chart is loading…</div>';
+    chartDiv.innerHTML = '<div class="text-muted small py-5 text-center">' + I18n.h('admin.chartLoading') + '</div>';
     if (window.google && google.setOnLoadCallback) {
       google.setOnLoadCallback(function() {
         _renderAdminChart(adminChartRows);
@@ -53,14 +53,14 @@ function _renderAdminChart(rows) {
   }
 
   if (!adminChartRows.length) {
-    chartDiv.innerHTML = '<div class="text-muted small py-5 text-center">No login activity available for the selected period.</div>';
+    chartDiv.innerHTML = '<div class="text-muted small py-5 text-center">' + I18n.h('admin.noActivity') + '</div>';
     return;
   }
 
   const data = new google.visualization.DataTable();
-  data.addColumn('string', 'Date');
-  data.addColumn('number', 'Logins');
-  data.addColumn('number', 'Unique logins');
+  data.addColumn('string', I18n.t('admin.chart.date'));
+  data.addColumn('number', I18n.t('admin.chart.logins'));
+  data.addColumn('number', I18n.t('admin.chart.uniqueLogins'));
 
   adminChartRows.forEach(function(row) {
     const label = row.date ? row.date.slice(5) : '';
@@ -91,11 +91,11 @@ function _renderAdminChart(rows) {
 
 function getDetailedStats() {
   if (!userName || !password) {
-    _setAdminStatus('Login credentials are not available for admin stats.', 'alert-warning');
+    _setAdminStatus(I18n.t('admin.noCredentials'), 'alert-warning');
     return;
   }
 
-  _setAdminStatus('Loading admin stats…', 'alert-secondary');
+  _setAdminStatus(I18n.t('admin.loading'), 'alert-secondary');
   $.ajax({
     type: 'POST',
     url: ADMIN_URL,
@@ -112,7 +112,7 @@ function getDetailedStats() {
     }),
     success: function(response) {
       if (response.status !== 'OK') {
-        _setAdminStatus(response.message || 'Failed to load admin stats.', 'alert-danger');
+        _setAdminStatus(response.message || I18n.t('admin.loadFailed'), 'alert-danger');
         _renderAdminStats([]);
         _renderAdminChart([]);
         return;
@@ -120,10 +120,10 @@ function getDetailedStats() {
 
       _renderAdminStats(response.data || []);
       _renderAdminChart(response.dailyLogins || []);
-      _setAdminStatus('Admin stats loaded.', 'alert-success');
+      _setAdminStatus(I18n.t('admin.loaded'), 'alert-success');
     },
     error: function(xhr, status, error) {
-      _setAdminStatus('Failed to load admin stats.', 'alert-danger');
+      _setAdminStatus(I18n.t('admin.loadFailed'), 'alert-danger');
       _renderAdminChart([]);
       console.error('Error:', error, 'Status:', status, 'Response:', xhr.responseText);
     }

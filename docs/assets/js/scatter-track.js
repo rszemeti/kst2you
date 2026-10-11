@@ -337,12 +337,12 @@ const ScatterTrack = (() => {
     const alt = p.alt      != null ? p.alt      : 0;
     const vel = p.velocity != null ? p.velocity : 0;
     if (vel >= 420 && alt >= 7500) {
-      return { grade: 'heavy', typeKey: 'widebody', typeLabel: 'Widebody jet', typeSource: 'heuristic' };
+      return { grade: 'heavy', typeKey: 'widebody', typeLabel: I18n.t('aircraft.widebodyJet'), typeSource: 'heuristic' };
     }
     if (vel >= 280 && alt >= 4500) {
-      return { grade: 'medium', typeKey: 'jet', typeLabel: 'Jet', typeSource: 'heuristic' };
+      return { grade: 'medium', typeKey: 'jet', typeLabel: I18n.t('aircraft.jet'), typeSource: 'heuristic' };
     }
-    return { grade: 'light', typeKey: 'prop', typeLabel: 'Light aircraft', typeSource: 'heuristic' };
+    return { grade: 'light', typeKey: 'prop', typeLabel: I18n.t('aircraft.light'), typeSource: 'heuristic' };
   }
 
   function aircraftProfile(p) {
@@ -351,19 +351,19 @@ const ScatterTrack = (() => {
 
     switch (category) {
       case 'A1':
-        return { grade: 'light', typeKey: 'prop', typeLabel: 'Light aircraft', typeSource: 'adsb' };
+        return { grade: 'light', typeKey: 'prop', typeLabel: I18n.t('aircraft.light'), typeSource: 'adsb' };
       case 'A2':
-        return { grade: 'light', typeKey: 'small', typeLabel: 'Small aircraft', typeSource: 'adsb' };
+        return { grade: 'light', typeKey: 'small', typeLabel: I18n.t('aircraft.small'), typeSource: 'adsb' };
       case 'A3':
-        return { grade: 'medium', typeKey: 'jet', typeLabel: 'Large aircraft', typeSource: 'adsb' };
+        return { grade: 'medium', typeKey: 'jet', typeLabel: I18n.t('aircraft.large'), typeSource: 'adsb' };
       case 'A4':
-        return { grade: 'heavy', typeKey: 'widebody', typeLabel: 'High-vortex aircraft', typeSource: 'adsb' };
+        return { grade: 'heavy', typeKey: 'widebody', typeLabel: I18n.t('aircraft.highVortex'), typeSource: 'adsb' };
       case 'A5':
-        return { grade: 'heavy', typeKey: 'heavy', typeLabel: 'Heavy aircraft', typeSource: 'adsb' };
+        return { grade: 'heavy', typeKey: 'heavy', typeLabel: I18n.t('aircraft.heavy'), typeSource: 'adsb' };
       case 'A6':
-        return { grade: 'medium', typeKey: 'fast', typeLabel: 'High-speed aircraft', typeSource: 'adsb' };
+        return { grade: 'medium', typeKey: 'fast', typeLabel: I18n.t('aircraft.highSpeed'), typeSource: 'adsb' };
       case 'A7':
-        return { grade: 'light', typeKey: 'rotor', typeLabel: 'Rotorcraft', typeSource: 'adsb' };
+        return { grade: 'light', typeKey: 'rotor', typeLabel: I18n.t('aircraft.rotorcraft'), typeSource: 'adsb' };
       default:
         return { ...heuristicAircraftProfile(p), typeSource: 'heuristic' };
     }
@@ -460,7 +460,7 @@ const ScatterTrack = (() => {
 
   function gradeDisplayText(p) {
     const stars = p.grade === 'heavy' ? '★★★' : p.grade === 'medium' ? '★★' : '★';
-    const type = p.typeLabel || 'Aircraft';
+    const type = p.typeLabel || I18n.t('aircraft.generic');
     const category = p.category ? ` ${p.category}` : '';
     return `${stars} ${type}${category}`;
   }
@@ -619,34 +619,34 @@ const ScatterTrack = (() => {
 
   function buildInfoWindow(p) {
     const dStr = p.dopplerKHz != null
-      ? `<tr><td>Doppler</td><td><b>${p.dopplerKHz} kHz</b></td></tr>`
+      ? `<tr><td>${I18n.h('aircraft.info.doppler')}</td><td><b>${p.dopplerKHz} kHz</b></td></tr>`
       : '';
     const entryStr = p.minsToEntry != null
-      ? `<tr><td>Entry in</td><td><b>~${Math.round(p.minsToEntry)} min</b></td></tr>`
+      ? `<tr><td>${I18n.h('aircraft.info.entryIn')}</td><td><b>${I18n.h('aircraft.info.minutes', { mins: Math.round(p.minsToEntry) })}</b></td></tr>`
       : '';
     const exitStr = p.minsInPath != null
-      ? `<tr><td>Time in corridor</td><td><b>~${Math.round(p.minsInPath)} min</b></td></tr>`
+      ? `<tr><td>${I18n.h('aircraft.info.timeInCorridor')}</td><td><b>${I18n.h('aircraft.info.minutes', { mins: Math.round(p.minsInPath) })}</b></td></tr>`
       : '';
     const classStr = p.category || p.typeLabel
-      ? `<tr><td>Class</td><td>${p.typeLabel || 'Aircraft'}${p.category ? ' (' + p.category + ')' : ''}</td></tr>`
+      ? `<tr><td>${I18n.h('aircraft.info.class')}</td><td>${p.typeLabel || I18n.h('aircraft.generic')}${p.category ? ' (' + p.category + ')' : ''}</td></tr>`
       : '';
     const gradeTitle = p.typeLabel
       ? `${p.typeLabel}${p.category ? ' (' + p.category + ')' : ''}`
-      : 'Aircraft class';
+      : I18n.t('scatter.aircraftClass');
     return `
       <div style="font-family:monospace;font-size:12px;min-width:180px">
         <b style="font-size:14px">${p.callsign || p.icao.toUpperCase()}</b>
-        <span title="${gradeTitle}" style="font-size:11px;color:${p.grade==='heavy'?'#0033cc':p.grade==='medium'?'#0066ff':'#aaaaaa'}">${gradeDisplayText(p)}</span>
+        <span title="${gradeTitle.replace(/"/g, '&quot;')}" style="font-size:11px;color:${p.grade==='heavy'?'#0033cc':p.grade==='medium'?'#0066ff':'#aaaaaa'}">${gradeDisplayText(p)}</span>
         <table style="margin-top:6px;border-collapse:collapse;width:100%">
           <tr><td>ICAO</td><td>${p.icao.toUpperCase()}</td></tr>
           ${classStr}
-          <tr><td>Alt</td><td>${p.altFt != null ? p.altFt.toLocaleString() + ' ft' : '—'}</td></tr>
-          <tr><td>Speed</td><td>${p.velocity != null ? p.velocity + ' kt' : '—'}</td></tr>
-          <tr><td>Heading</td><td>${p.heading != null ? p.heading + '°' : '—'}</td></tr>
+          <tr><td>${I18n.h('aircraft.info.alt')}</td><td>${p.altFt != null ? p.altFt.toLocaleString() + ' ft' : '—'}</td></tr>
+          <tr><td>${I18n.h('aircraft.info.speed')}</td><td>${p.velocity != null ? p.velocity + ' kt' : '—'}</td></tr>
+          <tr><td>${I18n.h('aircraft.info.heading')}</td><td>${p.heading != null ? p.heading + '°' : '—'}</td></tr>
           ${dStr}${entryStr}${exitStr}
-          <tr><td>Horizon A</td><td>${p.visA ? '✓ visible' : '✗ below horizon'}</td></tr>
-          <tr><td>Horizon B</td><td>${p.visB ? '✓ visible' : '✗ below horizon'}</td></tr>
-          <tr><td>Country</td><td>${p.country || '—'}</td></tr>
+          <tr><td>${I18n.h('aircraft.info.horizonA')}</td><td>${p.visA ? I18n.h('aircraft.info.visible') : I18n.h('aircraft.info.belowHorizon')}</td></tr>
+          <tr><td>${I18n.h('aircraft.info.horizonB')}</td><td>${p.visB ? I18n.h('aircraft.info.visible') : I18n.h('aircraft.info.belowHorizon')}</td></tr>
+          <tr><td>${I18n.h('aircraft.info.country')}</td><td>${p.country || '—'}</td></tr>
         </table>
       </div>`;
   }

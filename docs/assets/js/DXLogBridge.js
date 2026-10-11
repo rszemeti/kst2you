@@ -14,7 +14,7 @@ var DXLogBridge = (function () {
     badge.textContent = text;
     badge.className = 'dxlog-status-badge ' + state;
     badge.style.display = '';
-    badge.title = state === 'error' ? 'Click to reconnect to DXLog bridge' : 'DXLog bridge connected';
+    badge.title = state === 'error' ? I18n.t('dxlog.reconnectTitle') : I18n.t('dxlog.connectedTitle');
     badge.style.cursor = state === 'error' ? 'pointer' : 'default';
     badge.onclick = state === 'error' ? function () {
       if (retryTimer) {
@@ -30,7 +30,7 @@ var DXLogBridge = (function () {
     socket = new WebSocket(localStorage.getItem('kst2you_dxlog_bridge_url') || 'ws://127.0.0.1:8765');
     socket.onopen = function () {
       connectedOnce = true;
-      setStatus('connected', 'DXLog Connected');
+      setStatus('connected', I18n.t('dxlog.connected'));
       console.info('DXLog bridge connected');
     };
     socket.onmessage = function (message) {
@@ -53,7 +53,7 @@ var DXLogBridge = (function () {
     };
     socket.onclose = function () {
       socket = null;
-      setStatus('error', 'DXLog Error');
+      setStatus('error', I18n.t('dxlog.error'));
       // Most users have no bridge: retrying a dead localhost port makes Firefox
       // throttle and queue other local WebSockets (the KST proxy), so only
       // auto-reconnect once the bridge has actually been seen.
@@ -61,7 +61,7 @@ var DXLogBridge = (function () {
       if (!retryTimer) retryTimer = setTimeout(function () { retryTimer = null; connect(); }, 5000);
     };
     socket.onerror = function () {
-      setStatus('error', 'DXLog Error');
+      setStatus('error', I18n.t('dxlog.error'));
       socket.close();
     };
   }

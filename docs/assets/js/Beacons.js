@@ -9,15 +9,15 @@ var spotBcn;
 const reportPattern = /^[1-5][1-9]{1,2}$|^[+-]?\s*[1-9][0-9]?\s*[dD][bB]$/;
 
 const modes = [
-    { value: "TR", text: "Tropo" },
-    { value: "AS", text: "Aircraft Scatter" },
-    { value: "MS", text: "Meteor Scatter" },
-    { value: "RS", text: "Rain Scatter" },
-    { value: "SS", text: "Snow Scatter" },
-    { value: "ES", text: "Sporadic E" },
-    { value: "F2", text: "F2 layer" },
-    { value: "TEP", text: "Trans-Equatorial" },
-    { value: "AU", text: "Aurora" },
+    { value: "TR", text: I18n.t('prop.TR') },
+    { value: "AS", text: I18n.t('prop.AS') },
+    { value: "MS", text: I18n.t('prop.MS') },
+    { value: "RS", text: I18n.t('prop.RS') },
+    { value: "SS", text: I18n.t('prop.SS') },
+    { value: "ES", text: I18n.t('prop.ES') },
+    { value: "F2", text: I18n.t('prop.F2') },
+    { value: "TEP", text: I18n.t('prop.TEP') },
+    { value: "AU", text: I18n.t('prop.AU') },
     { value: "EME", text: "EME"}
 ];
 
@@ -118,16 +118,16 @@ function getScatterMap() {
 
 function buildBeaconInfoContent(bcn, key) {
   return '<div id="content">' +
-    '<strong>Beacon</strong>' +
+    '<strong>' + I18n.h('beacon.title') + '</strong>' +
     '<h4 id="firstHeading" class="firstHeading">' + bcn.callsign + '</h1>' +
     '<div id="bodyContent">' +
       '<ul>' +
-      '<li>Freq: ' + bcn.frequency + '</li>' +
-      '<li>Locator: ' + bcn.locator + '</li>' +
+      '<li>' + I18n.h('beacon.freq', { freq: bcn.frequency }) + '</li>' +
+      '<li>' + I18n.h('beacon.locator', { locator: bcn.locator }) + '</li>' +
       '<li>' + parseInt(bcn.distance).toLocaleString() + 'km / ' + parseInt(bcn.bearing) + '&#176;</li>' +
       '</ul>' +
-      '<button onclick="spotPopup(\'' + bcn.callsign + '\',' + key + ')">Spot</button>' +
-      (window._rotatorUrl ? '<button onclick="window.rotatorPointTo(\'' + bcn.callsign + '\',\'' + bcn.locator + '\')" style="margin-left:4px">⟳ Rotate</button>' : '') +
+      '<button onclick="spotPopup(\'' + bcn.callsign + '\',' + key + ')">' + I18n.h('chatPopup.spot') + '</button>' +
+      (window._rotatorUrl ? '<button onclick="window.rotatorPointTo(\'' + bcn.callsign + '\',\'' + bcn.locator + '\')" style="margin-left:4px">' + I18n.h('chatPopup.rotate') + '</button>' : '') +
     '</div>' +
     '</div>';
 }
@@ -267,13 +267,13 @@ function spotData(callsign,freq,locator,mode,report) {
   function submitSpotEntry(callsign, freqMHz, locator, mode, report) {
     var parsedFreq = parseFloat(freqMHz);
     if (isNaN(parsedFreq) || parsedFreq <= 0) {
-      alert("Please enter a valid frequency in MHz");
+      alert(I18n.t('spot.invalidFreq'));
       return false;
     }
 
     var spotReport = (report || '').trim();
     if (!reportPattern.test(spotReport)) {
-      alert("Reports must be of the form 599, 59 or -16dB");
+      alert(I18n.t('spot.invalidReport'));
       return false;
     }
 

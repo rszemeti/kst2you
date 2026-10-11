@@ -7,8 +7,9 @@ var ChatInbox = (function () {
 
   var MAX_PER_CONV = 50;
   var _baseKey     = null;   // set on login
-  var _unread      = {};     // { callsign: count }
-  var _convs       = {};     // { callsign: [msg, ...] }
+  var _chatId      = '';     // set on login — messages are tagged with the chat room they came from
+  var _unread      = {};     // { callsign: count } for the current chat room
+  var _convs       = {};     // { callsign: [msg, ...] } — all chat rooms; see inChat()
   var _meta        = {};     // { callsign: { locator, name } } — stored separately (arrays don't survive JSON round-trip with extra props)
   var _panelOpen   = false;
 
@@ -18,14 +19,33 @@ var ChatInbox = (function () {
   }
 
   // ── localStorage keys ─────────────────────────────────
-  function msgKey()    { return 'kst2you_msgs_'   + _baseKey; }
-  function unreadKey() { return 'kst2you_unread_' + _baseKey; }
-  function metaKey()   { return 'kst2you_meta_'   + _baseKey; }
+  // Messages stay under the original per-callsign key so older versions of the page
+  // still read and write the same history; each message carries its chat room instead.
+  function msgKey()          { return 'kst2you_msgs_'   + _baseKey; }
+  function legacyUnreadKey() { return 'kst2you_unread_' + _baseKey; }
+  function unreadKey()       { return 'kst2you_unread_' + _baseKey + '_chat' + _chatId; }
+  function metaKey()         { return 'kst2you_meta_'   + _baseKey; }
+
+  // Messages saved before chat tagging have no chat field — show those in every room
+  function inChat(m) {
+    return !m.chat || m.chat === _chatId;
+  }
+
+  function visibleMsgs(call) {
+    return (_convs[call] || []).filter(inChat);
+  }
 
   // ── Persistence ───────────────────────────────────────
+  // Always start empty so nothing carries over from a previous login or chat room
   function loadFromStorage() {
+    _convs = {}; _unread = {}; _meta = {};
     try { var m = localStorage.getItem(msgKey());    if (m) _convs  = JSON.parse(m); } catch(e) { _convs  = {}; }
-    try { var u = localStorage.getItem(unreadKey()); if (u) _unread = JSON.parse(u); } catch(e) { _unread = {}; }
+    try {
+      // First visit to this room since chat tagging: carry over the old shared unread counts
+      var u = localStorage.getItem(unreadKey());
+      if (u === null) u = localStorage.getItem(legacyUnreadKey());
+      if (u) _unread = JSON.parse(u);
+    } catch(e) { _unread = {}; }
     try { var t = localStorage.getItem(metaKey());   if (t) _meta   = JSON.parse(t); } catch(e) { _meta   = {}; }
   }
 
@@ -78,7 +98,7 @@ var ChatInbox = (function () {
   }
 
   function lastTs(call) {
-    return _convs[call].reduce(function(max, m) { return Math.max(max, tsMs(m.ts)); }, 0);
+    return visibleMsgs(call).reduce(function(max, m) { return Math.max(max, tsMs(m.ts)); }, 0);
   }
 
   function formatTime(ts) {
@@ -94,18 +114,20 @@ var ChatInbox = (function () {
     var list = document.getElementById('ci-list');
     if (!list) return;
 
-    // Sort conversations by most recent message
-    var sorted = Object.keys(_convs).sort(function(a, b) {
+    // Conversations with messages in this chat room, most recent first
+    var sorted = Object.keys(_convs).filter(function(call) {
+      return visibleMsgs(call).length > 0;
+    }).sort(function(a, b) {
       return lastTs(b) - lastTs(a);
     });
 
     if (sorted.length === 0) {
-      list.innerHTML = '<div class="ci-empty">No conversations yet</div>';
+      list.innerHTML = '<div class="ci-empty">' + I18n.h('inbox.empty') + '</div>';
       return;
     }
 
     list.innerHTML = sorted.map(function(call) {
-      var msgs  = _convs[call];
+      var msgs  = visibleMsgs(call);
       var last  = msgs[msgs.length - 1];
       var unr   = _unread[call] || 0;
       var preview = last ? escHtml(last.text).slice(0, 45) + (last.text.length > 45 ? '…' : '') : '';
@@ -116,7 +138,7 @@ var ChatInbox = (function () {
           (unr > 0 ? '<span class="ci-unread-badge">' + unr + '</span>' : '') +
           '<span class="ci-time">' + (last ? formatTime(last.ts) : '') + '</span>' +
         '</div>' +
-        '<div class="ci-preview">' + (fromMe ? '<span class="ci-me">You: </span>' : '') + preview + '</div>' +
+        '<div class="ci-preview">' + (fromMe ? '<span class="ci-me">' + I18n.h('inbox.you') + ' </span>' : '') + preview + '</div>' +
       '</div>';
     }).join('');
 
@@ -156,17 +178,21 @@ var ChatInbox = (function () {
   return {
 
     /**
-     * Call after login with the user's own callsign.
+     * Call after login with the user's own callsign and chat room.
      * Loads persisted history back into Kst.js messageLog.
      */
-    init: function(myCallsign) {
+    init: function(myCallsign, chatId) {
       _baseKey = baseCall(myCallsign);
+      _chatId  = String(chatId || '');
       loadFromStorage();
+      if (_panelOpen) renderPanel();
 
-      // Replay persisted messages into Kst.js messageLog
+      // Replay this room's persisted messages into Kst.js messageLog
       Object.keys(_convs).forEach(function(call) {
+        var msgs = visibleMsgs(call);
+        if (msgs.length === 0) return;
         if (typeof messageLog[call] === 'undefined') messageLog[call] = [];
-        _convs[call].forEach(function(msg) {
+        msgs.forEach(function(msg) {
           var alreadyIn = messageLog[call].some(function(m) { return sameMessage(m, msg); });
           if (!alreadyIn) messageLog[call].push(msg);
         });
@@ -197,7 +223,7 @@ var ChatInbox = (function () {
       var msgTs = msg.timestamp || msg.ts || Date.now();
       if (!isLive) {
         var seen = conv.some(function(m) {
-          return sameMessage(m, { from: msg.from, text: msg.text, ts: msgTs });
+          return inChat(m) && sameMessage(m, { from: msg.from, text: msg.text, ts: msgTs });
         });
         if (seen) return;
       }
@@ -205,9 +231,11 @@ var ChatInbox = (function () {
       // Insert in time order (replayed messages arrive newest first)
       var i = conv.length;
       while (i > 0 && tsMs(conv[i - 1].ts) > tsMs(msgTs)) i--;
-      conv.splice(i, 0, { from: msg.from, to: msg.to, text: msg.text, ts: msgTs });
-      // Trim to max
-      if (_convs[peer].length > MAX_PER_CONV) _convs[peer].splice(0, _convs[peer].length - MAX_PER_CONV);
+      conv.splice(i, 0, { from: msg.from, to: msg.to, text: msg.text, ts: msgTs, chat: _chatId });
+      // Trim to max per chat room — drop this room's (or untagged) oldest messages first
+      while (visibleMsgs(peer).length > MAX_PER_CONV) {
+        conv.splice(conv.findIndex(inChat), 1);
+      }
 
       // Increment unread if incoming and chat popup isn't open for this peer
       if (isIncoming && peer !== (window.chatPopupCallsign || '')) {
@@ -238,10 +266,13 @@ var ChatInbox = (function () {
     },
 
     /**
-     * Clear all persisted history and unread counts.
+     * Clear this chat room's history (and untagged older history) and unread counts.
      */
     clear: function() {
-      _convs  = {};
+      Object.keys(_convs).forEach(function(call) {
+        _convs[call] = _convs[call].filter(function(m) { return !inChat(m); });
+        if (_convs[call].length === 0) delete _convs[call];
+      });
       _unread = {};
       _meta   = {};
       saveMsgs();
@@ -314,7 +345,7 @@ var ChatInbox = (function () {
       var btn = document.createElement('button');
       btn.id        = 'ci-btn';
       btn.className = 'ci-btn';
-      btn.title     = 'Message inbox';
+      btn.title     = I18n.t('inbox.buttonTitle');
       btn.innerHTML = '💬<span id="ci-badge" class="ci-badge" style="display:none">0</span>';
       btn.addEventListener('click', togglePanel);
       var cqBtn = document.getElementById('cqButton');
@@ -326,18 +357,18 @@ var ChatInbox = (function () {
       panel.className = 'ci-panel';
       panel.innerHTML =
         '<div class="ci-header">' +
-          '<span class="ci-title">Messages</span>' +
+          '<span class="ci-title">' + I18n.h('inbox.title') + '</span>' +
           '<button class="ci-close-btn" id="ci-close">✕</button>' +
         '</div>' +
-        '<div class="ci-list" id="ci-list"><div class="ci-empty">No conversations yet</div></div>' +
+        '<div class="ci-list" id="ci-list"><div class="ci-empty">' + I18n.h('inbox.empty') + '</div></div>' +
         '<div class="ci-footer">' +
-          '<button class="ci-clear-btn" id="ci-clear">Clear history</button>' +
+          '<button class="ci-clear-btn" id="ci-clear">' + I18n.h('inbox.clear') + '</button>' +
         '</div>';
       document.body.appendChild(panel);
 
       document.getElementById('ci-close').addEventListener('click', closePanel);
       document.getElementById('ci-clear').addEventListener('click', function() {
-        if (confirm('Clear all message history?')) ChatInbox.clear();
+        if (confirm(I18n.t('inbox.confirmClear'))) ChatInbox.clear();
       });
 
       // Close panel on outside click

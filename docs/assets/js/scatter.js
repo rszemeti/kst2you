@@ -48,7 +48,7 @@
 
   function _rotatorFound(label) {
     const el = document.getElementById('scatter-rotator-status');
-    if (el) { el.textContent = 'Rotator: ' + label; el.style.opacity = '1'; el.style.color = '#28a745'; }
+    if (el) { el.textContent = I18n.t('rotator.found', { name: label }); el.style.opacity = '1'; el.style.color = '#28a745'; }
     if ($.fn.DataTable && $.fn.DataTable.isDataTable('#userListTable')) injectUserListButtons();
   }
 
@@ -59,7 +59,7 @@
         if (r.ok) {
           window._rotatorUrl = 'http://localhost:' + port;
           window._rotatorType = 'custom';
-          _rotatorFound('Custom :' + port);
+          _rotatorFound(I18n.t('rotator.custom', { port: port }));
           return true;
         }
       } catch (_) {}
@@ -92,7 +92,7 @@
 
     if (type === 'none') {
       const el = document.getElementById('scatter-rotator-status');
-      if (el) { el.textContent = 'Rotator: disabled'; el.style.opacity = '.5'; el.style.color = ''; }
+      if (el) { el.textContent = I18n.t('rotator.disabled'); el.style.opacity = '.5'; el.style.color = ''; }
       return;
     }
 
@@ -212,7 +212,7 @@
         });
         scatterMapReady = true;
         google.maps.event.trigger(scatterMap, 'resize');
-        scatterLog('Map ready', 'ok');
+        scatterLog(I18n.t('scatter.log.mapReady'), 'ok');
 
         // Pre-fill Station A if already logged in
         const locA = document.getElementById('scatter-loc-a');
@@ -257,7 +257,7 @@
         node.find('td:nth-child(3)').append(
           ' <button class="btn btn-outline-primary btn-sm py-0 px-1 scatter-btn"' +
           ' data-loc="' + row.locator + '" data-call="' + row.callsign + '"' +
-          ' title="Check scatter path to ' + row.locator + '">✈</button>'
+          ' title="' + I18n.h('scatter.checkPathTo', { locator: row.locator }) + '">✈</button>'
         );
       }
     });
@@ -433,7 +433,7 @@
       customFreq.value = Number(freqMHz).toFixed(3);
       bandSelect.disabled = true;
       customFreq.disabled = true;
-      lockNote.textContent = 'Frequency locked to beacon (' + Number(freqMHz).toFixed(3) + ' MHz)';
+      lockNote.textContent = I18n.t('scatter.freqLocked', { freq: Number(freqMHz).toFixed(3) });
       lockNote.style.display = 'block';
     } else {
       bandSelect.disabled = false;
@@ -450,16 +450,16 @@
   // ── Scan / Clear ───────────────────────────────────
   window.scatterScan = function () {
     if (!scatterMapReady) {
-      scatterLog('Map not ready — open the Scatter tab first', 'err'); return;
+      scatterLog(I18n.t('scatter.log.mapNotReady'), 'err'); return;
     }
     const locA   = document.getElementById('scatter-loc-a').value.trim().toUpperCase();
     const locB   = document.getElementById('scatter-loc-b').value.trim().toUpperCase();
     if (locA.length < 4 || locB.length < 4) {
-      scatterLog('Please enter valid Maidenhead locators for both stations', 'err'); return;
+      scatterLog(I18n.t('scatter.log.badLocators'), 'err'); return;
     }
     document.getElementById('scatter-scan-btn').disabled = true;
-    scatterSetStatus('Scanning…', 'info');
-    scatterLog('Scanning ' + locA + ' → ' + locB + ' on ' + getFreqMHz() + ' MHz', 'info');
+    scatterSetStatus(I18n.t('scatter.scanning'), 'info');
+    scatterLog(I18n.t('scatter.log.scanning', { from: locA, to: locB, freq: getFreqMHz() }), 'info');
 
     ScatterTrack.init(scatterMap, {
       myLocator:     locA,
@@ -476,11 +476,11 @@
         if (!predicted) document.getElementById('scatter-scan-btn').disabled = false;
         if (error) {
           if (_ref.rateLimited) {
-            const msg = 'Rate limited — retrying in ' + _ref.retryAfter + 's';
+            const msg = I18n.t('scatter.rateLimited', { seconds: _ref.retryAfter });
             scatterSetStatus(msg, 'warn');
             scatterLog(msg, 'warn');
           } else {
-            scatterSetStatus('Error: ' + error, 'err');
+            scatterSetStatus(I18n.t('scatter.error', { error: error }), 'err');
             scatterLog(error, 'err');
           }
           return;
@@ -488,19 +488,18 @@
         if (!predicted) {
           document.getElementById('scatter-last-scan').textContent =
             new Date().toUTCString().slice(17, 25) + ' UTC';
-          scatterLog(all.length + ' AC — ' + inPath.length + ' in corridor, ' +
-                     approaching.length + ' approaching', 'ok');
+          scatterLog(I18n.t('scatter.log.scanResult', { all: all.length, inPath: inPath.length, approaching: approaching.length }), 'ok');
         }
         document.getElementById('scatter-count').textContent = all.length;
         scatterSetStatus(
-          all.length + ' AC · ' + inPath.length + ' in path · ' + approaching.length + ' approaching',
+          I18n.t('scatter.statusCounts', { all: all.length, inPath: inPath.length, approaching: approaching.length }),
           'ok'
         );
         if (pathInfo) {
           const oslClient   = document.getElementById('osl-client');
           const oslRequests = document.getElementById('osl-requests');
           const feedEndpoint = document.getElementById('scatter-feed-endpoint');
-          if (oslClient)   oslClient.textContent   = pathInfo.clientId || 'anonymous';
+          if (oslClient)   oslClient.textContent   = pathInfo.clientId || I18n.t('opensky.anonymous');
           if (oslRequests) oslRequests.textContent = pathInfo.requestCount || 0;
           if (feedEndpoint) feedEndpoint.textContent = pathInfo.datasource || '—';
         }
@@ -515,12 +514,12 @@
     _stopTracking();
     ScatterTrack.clear();
     document.getElementById('scatter-list').innerHTML =
-      '<div class="s-empty"><i class="bi bi-x-circle me-1"></i>Cleared.</div>';
+      '<div class="s-empty"><i class="bi bi-x-circle me-1"></i>' + I18n.h('scatter.clearedList') + '</div>';
     document.getElementById('scatter-path-bar').style.display = 'none';
     document.getElementById('scatter-count').textContent = '0';
     document.getElementById('scatter-feed-endpoint').textContent = '—';
-    scatterSetStatus('Cleared', 'info');
-    scatterLog('Cleared', 'info');
+    scatterSetStatus(I18n.t('scatter.cleared'), 'info');
+    scatterLog(I18n.t('scatter.cleared'), 'info');
   };
 
   // ── Directed chat strip ────────────────────────────
@@ -588,10 +587,10 @@
     const text  = input.value.trim();
     if (!text) return;
     if (!scatterChatCallsign) {
-      scatterLog('No target — click ✈ on a station first', 'err'); return;
+      scatterLog(I18n.t('scatter.log.noTarget'), 'err'); return;
     }
     if (typeof sendMsg === 'undefined' || typeof chatId === 'undefined') {
-      scatterLog('Not connected', 'err'); return;
+      scatterLog(I18n.t('scatter.log.notConnected'), 'err'); return;
     }
     sendMsg('MSG|' + chatId + '|0|/CQ ' + scatterChatCallsign + ' ' + text + '|0|');
     input.value = '';
@@ -603,11 +602,11 @@
 
   window.scatterBeaconSpot = function () {
     if (!scatterTarget || scatterTarget.type !== 'beacon') {
-      scatterLog('No beacon target selected', 'err');
+      scatterLog(I18n.t('scatter.log.noBeacon'), 'err');
       return;
     }
     if (typeof window.spotPopup !== 'function' || scatterTarget.beaconKey == null) {
-      scatterLog('Beacon spot dialog is not available', 'err');
+      scatterLog(I18n.t('scatter.log.noSpotDialog'), 'err');
       return;
     }
     window.spotPopup(scatterTarget.callsign, scatterTarget.beaconKey, {
@@ -666,11 +665,11 @@
         var label = (p.callsign || p.icao.toUpperCase());
         btn.innerHTML = '&#x2295; ' + label;
       } else {
-        btn.textContent = '\u2295 Tracking';
+        btn.textContent = I18n.t('scatter.tracking');
       }
     } else {
       btn.classList.remove('btn-success'); btn.classList.add('btn-outline-light');
-      btn.textContent = '\u2295 Track';
+      btn.textContent = I18n.t('scatter.track');
     }
   }
 
@@ -756,19 +755,19 @@
     const list = document.getElementById('scatter-list');
     list.innerHTML = '';
     if (!inPath.length && !approaching.length) {
-      list.innerHTML = '<div class="s-empty"><i class="bi bi-search me-1"></i>No aircraft in corridor or approaching.</div>';
+      list.innerHTML = '<div class="s-empty"><i class="bi bi-search me-1"></i>' + I18n.h('scatter.noAircraft') + '</div>';
       return;
     }
     if (inPath.length) {
       const h = document.createElement('div');
       h.className = 's-section-label in-path';
-      h.innerHTML = '<span><i class="bi bi-airplane-fill me-1"></i>In Path Now</span>' +
+      h.innerHTML = '<span><i class="bi bi-airplane-fill me-1"></i>' + I18n.h('scatter.inPathNow') + '</span>' +
                     '<span class="badge bg-primary">' + inPath.length + '</span>';
       list.appendChild(h);
       inPath.forEach(function (p) {
         const el = makePlaneItem(p, false);
         el.dataset.icao = p.icao;
-        el.title = 'Double-click to send AS! alert · Click \u2295 to track this plane';
+        el.title = I18n.t('scatter.inPathItemTitle');
         el.addEventListener('dblclick', function () { sendASMessage(p); });
         // Highlight if tracked
         var tracked = _getTrackedPlane();
@@ -779,13 +778,13 @@
     if (approaching.length) {
       const h = document.createElement('div');
       h.className = 's-section-label approaching';
-      h.innerHTML = '<span><i class="bi bi-arrow-right-circle me-1"></i>Approaching</span>' +
+      h.innerHTML = '<span><i class="bi bi-arrow-right-circle me-1"></i>' + I18n.h('scatter.approaching') + '</span>' +
                     '<span class="badge bg-warning text-dark">' + approaching.length + '</span>';
       list.appendChild(h);
       approaching.forEach(function (p) {
         const el = makePlaneItem(p, true);
         if (scatterChatCallsign) {
-          el.title = 'Double-click to send AS! alert to ' + scatterChatCallsign;
+          el.title = I18n.t('scatter.approachingItemTitle', { call: scatterChatCallsign });
           el.addEventListener('dblclick', function () { sendASMessage(p); });
         }
         list.appendChild(el);
@@ -803,26 +802,26 @@
       ? '<span class="pi-doppler ' + (dPos ? 'pos' : 'neg') + '">' + p.dopplerKHz + ' kHz</span>'
       : '';
     const timeHtml = isApproaching
-      ? '<div class="pi-time"><i class="bi bi-clock me-1"></i>Entry in ~' + Math.round(p.minsToEntry) + ' min</div>'
+      ? '<div class="pi-time"><i class="bi bi-clock me-1"></i>' + I18n.h('scatter.entryIn', { mins: Math.round(p.minsToEntry) }) + '</div>'
       : p.minsInPath != null
-        ? '<div class="pi-time rem"><i class="bi bi-hourglass-split me-1"></i>~' + Math.round(p.minsInPath) + ' min remaining</div>'
+        ? '<div class="pi-time rem"><i class="bi bi-hourglass-split me-1"></i>' + I18n.h('scatter.minsRemaining', { mins: Math.round(p.minsInPath) }) + '</div>'
         : '';
     const callClass = p.callsign ? (isApproaching ? 'app' : '') : 'anon';
     const gradeStars = p.grade === 'heavy' ? '★★★' : p.grade === 'medium' ? '★★' : '★';
     const gradeCls   = 'grade-' + (p.grade || 'light');
     const gradeTitle = p.typeLabel
       ? (p.typeLabel + (p.category ? ' (' + p.category + ')' : ''))
-      : 'Aircraft class';
+      : I18n.t('scatter.aircraftClass');
     // Track button for in-path planes when rotator available
     var trackBtnHtml = '';
     if (!isApproaching && window._rotatorUrl) {
-      trackBtnHtml = '<button class="pi-track-btn" data-track-icao="' + p.icao + '" title="Track this plane">⊕</button>';
+      trackBtnHtml = '<button class="pi-track-btn" data-track-icao="' + p.icao + '" title="' + I18n.h('scatter.trackThisPlane') + '">⊕</button>';
     }
-    const azHtml = p.azA != null ? 'Az: ' + p.azA.toFixed(0) + '° ' : '';
+    const azHtml = p.azA != null ? I18n.h('scatter.az') + ' ' + p.azA.toFixed(0) + '° ' : '';
     div.innerHTML =
       '<div class="d-flex justify-content-between align-items-baseline mb-1">' +
         '<span class="pi-call ' + callClass + '">' + (p.callsign || p.icao.toUpperCase()) + '</span>' +
-        '<span class="pi-grade ' + gradeCls + '" title="' + gradeTitle + '">' + gradeStars + '</span>' +
+        '<span class="pi-grade ' + gradeCls + '" title="' + gradeTitle.replace(/"/g, '&quot;') + '">' + gradeStars + '</span>' +
         dopplerHtml + trackBtnHtml +
       '</div>' +
       '<div class="pi-meta">' +
@@ -833,7 +832,7 @@
       '</div>' +
       '<div class="pi-meta">' +
         azHtml +
-        'El: ' + (p.elevA != null ? p.elevA.toFixed(1) + '°' : '—') + ' / ' +
+        I18n.h('scatter.el') + ' ' + (p.elevA != null ? p.elevA.toFixed(1) + '°' : '—') + ' / ' +
                  (p.elevB != null ? p.elevB.toFixed(1) + '°' : '—') +
       '</div>' + timeHtml;
     return div;

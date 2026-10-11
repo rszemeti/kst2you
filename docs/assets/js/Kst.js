@@ -88,6 +88,7 @@ const preciseLocatorStorageKey = 'kst2you_precise_locator';
 const preciseLocatorPattern = /^[A-R]{2}\d{2}[A-X]{2}\d{2}$/i;
 const locAutoReplyStorageKey = 'kst2you_loc_autoreply';
 const remoteSettingsSyncStorageKey = 'kst2you_remote_settings_sync';
+const preciseLocatorPromptOffStorageKey = 'kst2you_precise_locator_prompt_off';
 
 function renderReleaseTag() {
   $('#releaseTagLabel').text(clientSoftwareVersion.replace(/^KST2You\s+/, ''));
@@ -657,7 +658,7 @@ function websocketInit(urls) {
         ws.onopen = function () {
             clearTimeout(connectTimer);
             console.log(protocolLogTimestamp() + ' WebSocket connected after ' + (Date.now() - connectStartedAt) + 'ms.');
-            $('#connState').text("connected");
+            $('#connState').text(I18n.t('conn.connected'));
           sendMsg("LOGINC|" + userName + "|" + password + "|" + chatId + "|" + clientSoftwareVersion + "|20|20|1|" + latestMessageTime + "|" + latestMessageTime + "|");
             connectState = 'connected';
 
@@ -671,7 +672,7 @@ function websocketInit(urls) {
 
         ws.onclose = function () {
           if (connectState === 'logOff' || connectState === 'loginFailed') {
-                $('#connState').text('connection closed');
+                $('#connState').text(I18n.t('conn.closed'));
                 $("#loginModal").modal();
             } else {
                 console.warn('WebSocket closed. Attempting reconnect...');
@@ -725,8 +726,8 @@ function websocketInit(urls) {
 
                 $('#loginError').show();
                 $("#loginModal").modal('show');
-                $('#loginErrorMessage').text("Unable to connect to any proxy server. Try refreshing your browser and if no luck, please try again later and let G1YFG know.");
-                alert("Unable to connect to any proxy server. Try refreshing your browser and if no luck, please try again later and let G1YFG know.");
+                $('#loginErrorMessage').text(I18n.t('conn.noProxy'));
+                alert(I18n.t('conn.noProxy'));
             }
         }
     }
@@ -737,7 +738,7 @@ function websocketInit(urls) {
 function reconnect() {
     if (connectState !== 'reconnecting') {
         connectState = 'reconnecting';
-        $('#connState').text('re-connecting');
+        $('#connState').text(I18n.t('conn.reconnecting'));
         setTimeout(function () {
             connCount++;
             console.warn('Attempting to reconnect at ' + new Date());
@@ -765,7 +766,8 @@ function doLogin() {
   if (typeof updateRainAvailability === 'function') updateRainAvailability();
     userName = $('#userInput').val().toUpperCase();
     password = $('#passInput').val();
-    if (typeof ChatInbox   !== 'undefined') ChatInbox.init(userName);
+    messageLog = {};  // per chat room — ChatInbox.init reloads this room's saved history
+    if (typeof ChatInbox   !== 'undefined') ChatInbox.init(userName, chatId);
 
     if ($('#rememberMe').is(':checked')) {
         var cookieData = {
@@ -911,7 +913,7 @@ function getBandActivitySummaryText(callsign) {
 function buildPeerBandActivityBadgeHtml(callsign) {
   var summary = getBandActivitySummaryText(callsign);
   if (!summary) return '';
-  return '<span class="badge text-bg-info ms-1" title="Microwave band activity">' + escapeChatHtml(summary) + '</span>';
+  return '<span class="badge text-bg-info ms-1" title="' + I18n.h('users.bandActivityTitle') + '">' + escapeChatHtml(summary) + '</span>';
 }
 
 function renderLocatorCell(locator, callsign) {
@@ -983,6 +985,18 @@ function showBandActivityModal(bands) {
   }).join('');
   $('#bandActivityToggles').html(html);
   $('#bandActivityModal').modal('show');
+}
+
+// Once per session, after the band dialog: nudge microwave users with only a 6 digit locator
+var preciseLocatorPromptShown = false;
+
+function maybePromptForPreciseLocator() {
+  if (chatId != '3' || preciseMyLoc || preciseLocatorPromptShown) return;
+  try { if (localStorage.getItem(preciseLocatorPromptOffStorageKey) === 'true') return; } catch (e) {}
+  preciseLocatorPromptShown = true;
+  $('#preciseLocatorPromptLoc').text(kstServerLoc || (myLoc ? myLoc.substring(0, 6) : ''));
+  $('#preciseLocatorPromptDontShow').prop('checked', false);
+  $('#preciseLocatorPromptModal').modal('show');
 }
 
 function saveBandActivity() {
@@ -1061,7 +1075,7 @@ function procChatMessage(msg, isLive) {
         $('#setNameModal').modal('hide');
       }else if (message.text.includes("Invalid first name")) {
         $('#setNameAlert').show();
-        $('#setNameAlertText').html("<strong>Warning: </strong> Invalid first name");
+        $('#setNameAlertText').html('<strong>' + I18n.h('setName.warning') + '</strong> ' + I18n.h('setName.invalid'));
       }else if (message.text.includes("Available DX clusters")) {
         const regex = /Available DX clusters: (.+?)\./;
         const match = message.text.match(regex);
@@ -1289,9 +1303,9 @@ function addMapMarker(stn) {
     '<li>' + stn.locator + '</li>' +
     '<li>' + parseInt(stn.distance).toLocaleString() + 'km / ' + parseInt(stn.bearing) + '&#176;</li>' +
     '</ul>' +
-    '<button onclick="chatPopup(\'' + stn.callsign + '\')">Chat</button>' +
-    (stn.distance >= 5 && stn.distance <= 900 ? '<button onclick="setScatterTarget(\'' + stn.locator + '\',\'' + stn.callsign + '\')" style="margin-left:4px">&#9992; Scatter</button>' : '') +
-    (window._rotatorUrl && stn.distance >= 1 ? '<button onclick="rotatorPointTo(\'' + stn.callsign + '\',\'' + stn.locator + '\')" style="margin-left:4px">&#x27f3; Rotate</button>' : '') +
+    '<button onclick="chatPopup(\'' + stn.callsign + '\')">' + I18n.h('map.info.chat') + '</button>' +
+    (stn.distance >= 5 && stn.distance <= 900 ? '<button onclick="setScatterTarget(\'' + stn.locator + '\',\'' + stn.callsign + '\')" style="margin-left:4px">' + I18n.h('chatPopup.scatter') + '</button>' : '') +
+    (window._rotatorUrl && stn.distance >= 1 ? '<button onclick="rotatorPointTo(\'' + stn.callsign + '\',\'' + stn.locator + '\')" style="margin-left:4px">' + I18n.h('chatPopup.rotate') + '</button>' : '') +
     '</div>' +
     '</div>';
 
@@ -1504,7 +1518,8 @@ function doLogin() {
     chatId = $('#chatId').val();
     userName = $('#userInput').val().toUpperCase();
     password = $('#passInput').val();
-    if (typeof ChatInbox   !== 'undefined') ChatInbox.init(userName);
+    messageLog = {};  // per chat room — ChatInbox.init reloads this room's saved history
+    if (typeof ChatInbox   !== 'undefined') ChatInbox.init(userName, chatId);
     if (typeof ContestLog  !== 'undefined') ContestLog.init(userName, password);
 
     if ($('#rememberMe').is(':checked')) {
@@ -1553,6 +1568,7 @@ function doLogoff() {
   deleteAllBeacons();
   stationList = {};
   microwavePeerBandActivity = {};
+  messageLog = {};
   latestMessageTime = 0;
   //$('#userList').empty();
   dataTableUsers.clear().draw();
@@ -1701,7 +1717,7 @@ function chatPopup(callsign) {
     $contestWrap.show();
     var _cstate = ContestLog.getState(callsign);
     var $badge = $('#chatContestBadge');
-    $badge.text(_cstate === 'worked' ? '✓ Worked' : _cstate === 'skip' ? '✗ Skip' : '');
+    $badge.text(_cstate === 'worked' ? I18n.t('chatPopup.worked') : _cstate === 'skip' ? I18n.t('chatPopup.skip') : '');
     $badge.attr('class', 'chat-contest-badge ms-1' + (_cstate ? ' clog-' + _cstate : ' d-none'));
     var _brg = chatUser.locator ? Math.round(bearing(myLatLong[0], myLatLong[1],
       gridSquareToLatLon(chatUser.locator)[0], gridSquareToLatLon(chatUser.locator)[1])) : null;
@@ -1747,7 +1763,7 @@ function chatPopup(callsign) {
     $contestWrap.hide();
   }
   $('#chatPopupMessageInput').prop('disabled', !isOnline)
-    .attr('placeholder', isOnline ? 'Write your message' : 'Station offline — history only');
+    .attr('placeholder', isOnline ? I18n.t('chatPopup.messagePlaceholder') : I18n.t('chatPopup.offlinePlaceholder'));
   $('#chatPopupSendButton').prop('disabled', !isOnline);
   $('#chatPopupSendLocButton').prop('disabled', !isOnline || !getLocatorForChatShare());
   $('#chatPopupSendLocButton').off('click').on('click', function() {
@@ -1760,7 +1776,7 @@ function chatPopup(callsign) {
       '<div style="text-align:center;padding:6px 10px;margin-bottom:6px;' +
       'background:#fff3f3;border:1px solid #f5c6cb;border-radius:4px;' +
       'color:#dc3545;font-size:11px;font-weight:600;letter-spacing:1px">' +
-      '⚠ OFFLINE — message history only</div>'
+      I18n.h('chatPopup.offlineBanner') + '</div>'
     );
   }
   $('#modalChat').off('shown.bs.modal.chatHistory').on('shown.bs.modal.chatHistory', function() {
@@ -1858,7 +1874,7 @@ function cqModalShow() {
   // Add a default placeholder option
   $('#cqMesgSelector').append($('<option>', {
     value: '',
-    text: 'Choose a message',
+    text: I18n.t('cq.choose'),
     disabled: true,
     selected: true // This will make it selected by default
   }));
@@ -1907,7 +1923,7 @@ $(document).ready(function() {
   initCqList();
 
   $('#chatId').empty();
-  var optgroup = $('<optgroup>').attr('label', 'Select Chat Group'); 
+  var optgroup = $('<optgroup>').attr('label', I18n.t('login.selectChatGroup')); 
   $.each(chatGroups, function(index, chatGroup) {
     var option = $('<option>')
         .attr('value', chatGroup.id)
@@ -1976,6 +1992,20 @@ $(document).ready(function() {
     saveBandActivity();
   });
 
+  // Saved or cancelled, the band dialog is followed by the precise locator prompt
+  $('#bandActivityModal').on('hidden.bs.modal', maybePromptForPreciseLocator);
+
+  $('#preciseLocatorPromptModal').on('hide.bs.modal', function() {
+    if ($('#preciseLocatorPromptDontShow').is(':checked')) {
+      try { localStorage.setItem(preciseLocatorPromptOffStorageKey, 'true'); } catch (e) {}
+    }
+  });
+
+  $('#preciseLocatorPromptMapButton').click(function() {
+    $('#preciseLocatorPromptModal').modal('hide');
+    $('#mapTab a').tab('show');
+  });
+
   $('#beepTestButton').click(function() {
     playBeep();
   });
@@ -2037,7 +2067,7 @@ $(document).ready(function() {
       window._rotatorUrl = null;
       window._rotatorType = null;
       var el = document.getElementById('scatter-rotator-status');
-      if (el) { el.textContent = 'Rotator: disabled'; el.style.opacity = '.5'; el.style.color = ''; }
+      if (el) { el.textContent = I18n.t('rotator.disabled'); el.style.opacity = '.5'; el.style.color = ''; }
     } else {
       window._applyRotatorSetting();
     }
@@ -2062,20 +2092,20 @@ $(document).ready(function() {
     try {
       await ContestLog.downloadRemoteBackup();
     } catch (error) {
-      alert(error && error.message ? error.message : 'Unable to download remote data.');
+      alert(error && error.message ? error.message : I18n.t('settings.remote.downloadFailed'));
     }
   });
   $('#settings-delete-remote-data').on('click', function() {
     if (typeof ContestLog === 'undefined' || !ContestLog.deleteRemoteBackup) return;
-    if (!confirm('Delete the current remote backup set?\nThis removes backed-up settings and contest sessions for the current credential-derived namespace only.')) {
+    if (!confirm(I18n.t('settings.remote.confirmDelete'))) {
       return;
     }
     ContestLog.deleteRemoteBackup(function(resp) {
       if (!resp || resp.status !== 'ok') {
-        alert('Failed to delete remote data: ' + (resp && resp.message ? resp.message : 'network error'));
+        alert(I18n.t('settings.remote.deleteFailed', { reason: resp && resp.message ? resp.message : I18n.t('common.networkError') }));
         return;
       }
-      alert('Remote backup data deleted.');
+      alert(I18n.t('settings.remote.deleted'));
     });
   });
   $('#settings-autoresponder-loc').on('change', function() {
@@ -2213,9 +2243,9 @@ $(document).ready(function() {
     var gs = input.val().trim().toUpperCase();
     var error = null;
     if (!typedLocatorPattern.test(gs)) {
-      error = 'Enter a 6 or 8 character locator, e.g. IO82UJ or IO82UJ45.';
+      error = I18n.t('settings.locatorInvalid');
     } else if (!ws || ws.readyState !== WebSocket.OPEN) {
-      error = 'Log in first; the locator is sent to ON4KST.';
+      error = I18n.t('settings.locatorNeedsLogin');
     }
     if (error) {
       $('#settings-locator-feedback').text(error);
@@ -2259,7 +2289,7 @@ $(document).ready(function() {
   var supportsWebSockets = 'WebSocket' in window || 'MozWebSocket' in window;
 
   if (!supportsWebSockets) {
-    alert("Your browser does not appear to support WebSockets, we use these for communication with the server. Can I suggest you try Google Chrome?");
+    alert(I18n.t('conn.noWebSockets'));
   }
 });
 
