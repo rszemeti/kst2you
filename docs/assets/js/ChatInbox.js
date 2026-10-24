@@ -130,7 +130,7 @@ var ChatInbox = (function () {
       var msgs  = visibleMsgs(call);
       var last  = msgs[msgs.length - 1];
       var unr   = _unread[call] || 0;
-      var preview = last ? escHtml(last.text).slice(0, 45) + (last.text.length > 45 ? '…' : '') : '';
+      var preview = last ? escHtml(last.text.slice(0, 45)) + (last.text.length > 45 ? '…' : '') : '';
       var fromMe  = last && last.from === (window.userName || '');
       return '<div class="ci-row" data-call="' + escHtml(call) + '">' +
         '<div class="ci-row-main">' +

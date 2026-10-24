@@ -539,6 +539,16 @@ class Station {
 
 }
 
+// The KST server sends chat text HTML-escaped (e.g. j&#39;ai); decode it to plain
+// text here, since everything that displays it escapes it again.
+// A <textarea> parses its content as text only, so nothing in it can execute.
+var _entityDecoder = document.createElement('textarea');
+function decodeHtmlEntities(text) {
+  if (text == null || String(text).indexOf('&') === -1) return text;
+  _entityDecoder.innerHTML = text;
+  return _entityDecoder.value;
+}
+
 // CH|3|1696934988|SERVER|message|G1YFG|Your name is now "Robin 3cm".|0|
 class Message {
   constructor(msgString) {
@@ -546,7 +556,7 @@ class Message {
     this._timestamp = msg[2];
     this._from = msg[3];
     this._status = msg[5];
-    this._text = msg[6];
+    this._text = decodeHtmlEntities(msg[6]);
     this._rawTo = msg[7];
     this._to = this._rawTo;
     if(this._to==0){
