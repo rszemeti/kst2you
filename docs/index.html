@@ -493,7 +493,7 @@
       <div class="d-flex justify-content-between align-items-center mb-2 gap-2 flex-wrap">
         <div>
           <h5 class="text-primary mb-1" data-i18n="admin.title">Admin</h5>
-          <p class="text-muted small mb-0" data-i18n="admin.intro">Per-user login activity plus a 30-day trend of total and unique logins. Visible only when your remote user settings include the admin flag.</p>
+          <p class="text-muted small mb-0" data-i18n="admin.intro">Per-user login activity plus a 30-day trend of total and unique logins. Visible only to callsigns listed as admins.</p>
         </div>
         <button class="btn btn-outline-secondary btn-sm" id="admin-refresh-button" type="button" data-i18n="admin.refresh">Refresh</button>
       </div>
@@ -514,6 +514,21 @@
             </tr>
           </thead>
           <tbody id="adminUserStatsBody"></tbody>
+        </table>
+      </div>
+      <div class="small text-muted mt-3 mb-2" data-i18n="admin.rateLimitedTitle">Clients refused for sending too many requests (last 30 days)</div>
+      <div class="table-responsive">
+        <table class="table table-sm table-striped table-bordered w-100" id="adminRateLimitedTable">
+          <thead>
+            <tr>
+              <th data-i18n="col.network">Network</th>
+              <th data-i18n="col.callsigns">Callsigns</th>
+              <th data-i18n="col.browser">Browser</th>
+              <th data-i18n="col.lastRefused">Last Refused</th>
+              <th data-i18n="col.timesLimited">Times Limited</th>
+            </tr>
+          </thead>
+          <tbody id="adminRateLimitedBody"></tbody>
         </table>
       </div>
     </div>

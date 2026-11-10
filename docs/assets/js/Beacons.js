@@ -414,7 +414,6 @@ $(document).ready(function(){
     }); 
     
     initSpotList();
-    getSpots();
 
 });
 

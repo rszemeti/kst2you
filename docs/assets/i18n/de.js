@@ -54,6 +54,11 @@ window.KST_I18N.de = {
   "col.user": "Benutzer",
   "col.loginCount": "Anmeldungen",
   "col.lastLogin": "Letzte Anmeldung",
+  "col.network": "Netz",
+  "col.callsigns": "Rufzeichen",
+  "col.browser": "Browser",
+  "col.lastRefused": "Zuletzt abgewiesen",
+  "col.timesLimited": "Begrenzungen",
 
   "chat.filterDistance": "Nach Entfernung filtern",
   "chat.onlyAboutMe": "Nur Nachrichten an mich",
@@ -290,7 +295,7 @@ window.KST_I18N.de = {
   "contest.nothingToExport": "Keine gearbeiteten QSOs zum Exportieren.",
 
   "admin.title": "Admin",
-  "admin.intro": "Anmeldeaktivität pro Benutzer sowie der 30-Tage-Verlauf aller und eindeutiger Anmeldungen. Nur sichtbar, wenn deine externen Benutzereinstellungen das Admin-Flag enthalten.",
+  "admin.intro": "Anmeldeaktivität pro Benutzer sowie der 30-Tage-Verlauf aller und eindeutiger Anmeldungen. Nur für als Admin eingetragene Rufzeichen sichtbar.",
   "admin.refresh": "Aktualisieren",
   "admin.waiting": "Warte auf Admin-Daten.",
   "admin.chartTitle": "Anmeldeaktivität der letzten 30 Tage",
@@ -304,6 +309,8 @@ window.KST_I18N.de = {
   "admin.loading": "Lade Admin-Statistiken…",
   "admin.loadFailed": "Admin-Statistiken konnten nicht geladen werden.",
   "admin.loaded": "Admin-Statistiken geladen.",
+  "admin.rateLimitedTitle": "Wegen zu vieler Anfragen abgewiesene Clients (letzte 30 Tage)",
+  "admin.noRateLimited": "Kein Client wurde begrenzt.",
 
   "about.intro": "KST2YOU ist ein Projekt von Robin Szemeti, G1YFG. Es bietet eine Web-Oberfläche für den KST-Dienst, nutzbar mit jedem modernen Browser auf jedem Gerät. Für Funktionswünsche oder Anmerkungen erreichst du mich über meine auf QRZ.com veröffentlichte E-Mail-Adresse.",
   "about.beacons": "Die Bakendaten sind aktuelle Daten, die freundlicherweise von Beaconspot bereitgestellt werden, einer Website der UK Microwave Group. Wenn dir Mikrowellenfunk Spaß macht oder du zum Unterhalt unserer Server und unseres Bakennetzes beitragen oder einfach unseren monatlichen Newsletter erhalten möchtest, denk über eine Mitgliedschaft nach (zum Zeitpunkt des Schreibens nur 6 £ im Jahr) — jeder Beitrag hilft! <a class=\"fw-bold\" href=\"https://www.beaconspot.uk/index2.php\" target=\"_blank\">BeaconSpot</a> und <a class=\"fw-bold\" href=\"https://www.microwavers.org/index.htm?membership.htm\" target=\"_blank\">Microwavers.org</a> danken für deine Unterstützung.",

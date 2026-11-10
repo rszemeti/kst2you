@@ -36,6 +36,32 @@ function _renderAdminStats(users) {
   });
 }
 
+function _renderRateLimited(rows) {
+  const body = $('#adminRateLimitedBody');
+  if (!body.length) return;
+
+  body.empty();
+  if (!rows || !rows.length) {
+    body.append('<tr><td colspan="5" class="text-muted">' + I18n.h('admin.noRateLimited') + '</td></tr>');
+    return;
+  }
+
+  const esc = function(s) { return $('<div>').text(s == null ? '' : String(s)).html(); };
+  rows.forEach(function(row) {
+    const lastSeen = row.lastSeen ? new Date(row.lastSeen).toLocaleString() : '—';
+    const calls = (row.callsigns || []).join(', ') || '—';
+    body.append(
+      '<tr>' +
+        '<td class="font-monospace small">' + esc(row.client) + '</td>' +
+        '<td>' + esc(calls) + '</td>' +
+        '<td class="small" title="' + esc(row.userAgent) + '">' + esc((row.userAgent || '').slice(0, 60)) + '</td>' +
+        '<td>' + esc(lastSeen) + '</td>' +
+        '<td>' + (row.events || 0) + '</td>' +
+      '</tr>'
+    );
+  });
+}
+
 function _renderAdminChart(rows) {
   adminChartRows = Array.isArray(rows) ? rows : [];
 
@@ -114,11 +140,13 @@ function getDetailedStats() {
       if (response.status !== 'OK') {
         _setAdminStatus(response.message || I18n.t('admin.loadFailed'), 'alert-danger');
         _renderAdminStats([]);
+        _renderRateLimited([]);
         _renderAdminChart([]);
         return;
       }
 
       _renderAdminStats(response.data || []);
+      _renderRateLimited(response.rateLimited || []);
       _renderAdminChart(response.dailyLogins || []);
       _setAdminStatus(I18n.t('admin.loaded'), 'alert-success');
     },
@@ -126,6 +154,25 @@ function getDetailedStats() {
       _setAdminStatus(I18n.t('admin.loadFailed'), 'alert-danger');
       _renderAdminChart([]);
       console.error('Error:', error, 'Status:', status, 'Response:', xhr.responseText);
+    }
+  });
+}
+
+// Show the Admin tab if kst-actions lists this callsign as an admin. Only the
+// callsign is sent; the stats themselves are still password-checked.
+function checkAdminAccess() {
+  if (!userName) return;
+  $.ajax({
+    type: 'POST',
+    url: ADMIN_URL,
+    contentType: 'application/json',
+    dataType: 'json',
+    data: JSON.stringify({ action: 'checkAdmin', data: { login: userName } }),
+    success: function(response) {
+      setAdminAccessEnabled(!!(response && response.isAdmin));
+    },
+    error: function() {
+      setAdminAccessEnabled(false);
     }
   });
 }
@@ -149,7 +196,13 @@ function getStats(){
     });
 }
 
+// Spots are fetched once per page load, and only after a successful login
+// (see procLogin), so idle or reloading pages cost no Firestore reads.
+let spotsRequested = false;
+
 function getSpots(){
+    if (spotsRequested) return;
+    spotsRequested = true;
     $.ajax({
         type: "POST",
         url: LOGGING_URL, 

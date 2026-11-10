@@ -44,10 +44,6 @@ var ContestLog = (function () {
     return Object.assign({ backupKey: _remoteKey, callsign: _baseKey }, data || {});
   }
   function _applyCloudUserSettings(cloudSettings) {
-    if (typeof window.setAdminAccessEnabled === 'function') {
-      window.setAdminAccessEnabled(!!(cloudSettings && cloudSettings.isAdmin));
-    }
-
     if (!cloudSettings) {
       return;
     }

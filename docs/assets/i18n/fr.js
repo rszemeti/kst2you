@@ -54,6 +54,11 @@ window.KST_I18N.fr = {
   "col.user": "Utilisateur",
   "col.loginCount": "Connexions",
   "col.lastLogin": "Dernière connexion",
+  "col.network": "Réseau",
+  "col.callsigns": "Indicatifs",
+  "col.browser": "Navigateur",
+  "col.lastRefused": "Dernier refus",
+  "col.timesLimited": "Limitations",
 
   "chat.filterDistance": "Filtrer par distance",
   "chat.onlyAboutMe": "Seulement les messages me concernant",
@@ -290,7 +295,7 @@ window.KST_I18N.fr = {
   "contest.nothingToExport": "Aucun QSO contacté à exporter.",
 
   "admin.title": "Admin",
-  "admin.intro": "Activité de connexion par utilisateur, avec la tendance sur 30 jours des connexions totales et uniques. Visible seulement si vos réglages utilisateur distants comportent l’indicateur admin.",
+  "admin.intro": "Activité de connexion par utilisateur, avec la tendance sur 30 jours des connexions totales et uniques. Visible seulement pour les indicatifs déclarés comme admins.",
   "admin.refresh": "Actualiser",
   "admin.waiting": "En attente des données admin.",
   "admin.chartTitle": "Activité de connexion des 30 derniers jours",
@@ -304,6 +309,8 @@ window.KST_I18N.fr = {
   "admin.loading": "Chargement des statistiques admin…",
   "admin.loadFailed": "Échec du chargement des statistiques admin.",
   "admin.loaded": "Statistiques admin chargées.",
+  "admin.rateLimitedTitle": "Clients refusés pour trop de requêtes (30 derniers jours)",
+  "admin.noRateLimited": "Aucun client n’a été limité.",
 
   "about.intro": "KST2YOU est un projet de Robin Szemeti, G1YFG. Il vise à offrir une interface web au service KST, accessible depuis n’importe quel navigateur moderne, quel que soit l’appareil. Pour une demande de fonctionnalité ou des commentaires, contactez-moi par l’adresse e-mail publiée sur QRZ.com.",
   "about.beacons": "Les données de balises sont des données à jour aimablement fournies par Beaconspot, un site géré par le UK Microwave Group. Si vous aimez les hyperfréquences ou souhaitez contribuer à l’entretien de nos serveurs et de notre réseau de balises, ou simplement recevoir notre lettre d’information mensuelle, pensez à adhérer (seulement 6 £ par an au moment de la rédaction) — chaque contribution compte ! <a class=\"fw-bold\" href=\"https://www.beaconspot.uk/index2.php\" target=\"_blank\">BeaconSpot</a> et <a class=\"fw-bold\" href=\"https://www.microwavers.org/index.htm?membership.htm\" target=\"_blank\">Microwavers.org</a> vous remercient de votre soutien.",

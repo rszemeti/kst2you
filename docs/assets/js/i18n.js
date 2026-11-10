@@ -77,8 +77,22 @@ var I18n = (function () {
     });
   }
 
+  // Reload only for a real change, and never twice within RELOAD_GUARD_MS:
+  // a stray 'change' event on a picker (e.g. browser autofill in the login
+  // dialog) must not be able to put the page into a reload loop.
+  var RELOAD_GUARD_KEY = 'kst2you_lang_reload_at';
+  var RELOAD_GUARD_MS = 10000;
+
   function setLang(code) {
+    if (!code || code === lang) return;
     try { localStorage.setItem(STORAGE_KEY, code); } catch (e) { /* ignore */ }
+    var last = 0;
+    try { last = Number(sessionStorage.getItem(RELOAD_GUARD_KEY)) || 0; } catch (e) { /* ignore */ }
+    if (Date.now() - last < RELOAD_GUARD_MS) {
+      console.warn('i18n: language reload suppressed (reloaded moments ago)');
+      return;
+    }
+    try { sessionStorage.setItem(RELOAD_GUARD_KEY, String(Date.now())); } catch (e) { /* ignore */ }
     location.reload();
   }
 
@@ -99,6 +113,7 @@ var I18n = (function () {
         select.appendChild(opt);
       });
       select.addEventListener('change', function () {
+        if (select.value === lang) return;
         var connected = typeof ws !== 'undefined' && ws && ws.readyState === 1;
         if (select.getAttribute('data-lang-select') === 'confirm' && connected &&
             !confirm(t('lang.reloadConfirm'))) {

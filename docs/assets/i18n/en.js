@@ -56,6 +56,11 @@ window.KST_I18N.en = {
   "col.user": "User",
   "col.loginCount": "Login Count",
   "col.lastLogin": "Last Login",
+  "col.network": "Network",
+  "col.callsigns": "Callsigns",
+  "col.browser": "Browser",
+  "col.lastRefused": "Last Refused",
+  "col.timesLimited": "Times Limited",
 
   "chat.filterDistance": "Filter by distance",
   "chat.onlyAboutMe": "Only messages about me",
@@ -292,7 +297,7 @@ window.KST_I18N.en = {
   "contest.nothingToExport": "No worked QSOs to export.",
 
   "admin.title": "Admin",
-  "admin.intro": "Per-user login activity plus a 30-day trend of total and unique logins. Visible only when your remote user settings include the admin flag.",
+  "admin.intro": "Per-user login activity plus a 30-day trend of total and unique logins. Visible only to callsigns listed as admins.",
   "admin.refresh": "Refresh",
   "admin.waiting": "Waiting for admin data.",
   "admin.chartTitle": "Last 30 days of login activity",
@@ -306,6 +311,8 @@ window.KST_I18N.en = {
   "admin.loading": "Loading admin stats…",
   "admin.loadFailed": "Failed to load admin stats.",
   "admin.loaded": "Admin stats loaded.",
+  "admin.rateLimitedTitle": "Clients refused for sending too many requests (last 30 days)",
+  "admin.noRateLimited": "No clients have been rate-limited.",
 
   "about.intro": "KST2YOU is a project by Robin Szemeti, G1YFG. It aims to provide a web-based interface to the KST service, accessible on any modern browser, regardless of the device. If you have a feature request or comments, please contact me via my email as published on QRZ.com.",
   "about.beacons": "Beacon data is current data kindly supplied by Beaconspot, a website run by the UK Microwave group. If you enjoy microwave radio or would like to contribute to the upkeep of our servers, beacon network or just receive our monthly newsletter, please consider a subscription (just £6 a year at the time of writing) — every little helps! <a class=\"fw-bold\" href=\"https://www.beaconspot.uk/index2.php\" target=\"_blank\">BeaconSpot</a> and <a class=\"fw-bold\" href=\"https://www.microwavers.org/index.htm?membership.htm\" target=\"_blank\">Microwavers.org</a> appreciate your support.",

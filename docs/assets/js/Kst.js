@@ -192,10 +192,6 @@ function setRemoteSettingsSyncEnabled(enabled) {
   localStorage.setItem(remoteSettingsSyncStorageKey, enabled ? 'true' : 'false');
   renderLocationSettings();
 
-  if (!enabled) {
-    setAdminAccessEnabled(false);
-  }
-
   refreshRemoteSyncNamespace().then(function(namespace) {
     if (enabled && namespace) {
       syncRemoteUserSettings();
@@ -1382,6 +1378,8 @@ function procLogin(msg) {
   $("#loginModal").modal('hide');
   $('#loginError').hide();
   logUsage({user: userName, chat: chatId});
+  getSpots();
+  checkAdminAccess();
   if (typeof ContestLog !== 'undefined') {
     ContestLog.init(userName);
     refreshRemoteSyncNamespace().then(function(namespace) {
