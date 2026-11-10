@@ -24,6 +24,12 @@ function _renderAdminStats(users) {
     return;
   }
 
+  // Most recent login first; users with no recorded login go last.
+  const loginTime = function(u) { return u.lastLogin ? new Date(u.lastLogin).getTime() : 0; };
+  users = users.slice().sort(function(a, b) {
+    return loginTime(b) - loginTime(a) || (b.loginCount || 0) - (a.loginCount || 0);
+  });
+
   users.forEach(function(user) {
     const lastLogin = user.lastLogin ? new Date(user.lastLogin).toLocaleString() : '—';
     body.append(

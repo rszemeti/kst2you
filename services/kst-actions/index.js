@@ -427,7 +427,9 @@ functions.http('endpoint', async (req, res) => {
                     }
                 });
 
-                users.sort((a, b) => b.loginCount - a.loginCount);
+                // Most recent login first; users with no recorded login go last.
+                users.sort((a, b) => (b.lastLogin?.getTime() || 0) - (a.lastLogin?.getTime() || 0)
+                    || b.loginCount - a.loginCount);
 
                 // Clients refused by the rate limit in the last 30 days.
                 const since = new Date(Date.now() - 30 * 24 * 3600 * 1000);
