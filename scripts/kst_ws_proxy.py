@@ -287,7 +287,10 @@ class KstWebSocketProxy:
         return True
 
     def _rewrite_browser_chunk(self, connection_id: int, chunk: bytes) -> bytes:
-        text = chunk.decode("utf-8", errors="replace")
+        # latin-1 round-trips every byte unchanged, so whatever encoding the
+        # browser used for chat text reaches KST intact; the frames we rewrite
+        # are plain ASCII.
+        text = chunk.decode("latin-1")
         parts = re.split(r"(\r\n|\r|\n)", text)
         rewritten = []
         drop_separator = False
@@ -302,7 +305,7 @@ class KstWebSocketProxy:
                 drop_separator = True
                 continue
             rewritten.append(self._rewrite_browser_frame(connection_id, part))
-        return "".join(rewritten).encode("utf-8")
+        return "".join(rewritten).encode("latin-1")
 
     def _rewrite_browser_frame(self, connection_id: int, frame: str) -> str:
         fields = frame.split("|")

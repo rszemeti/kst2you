@@ -1518,7 +1518,22 @@ function setMyLocator(loc, latLongOverride) {
   renderLocationSettings();
 }
 
+// KST turns every non-ASCII byte we send into a space (whatever the encoding),
+// so fold text to the closest ASCII first: tésting -> testing, j’ai -> j'ai.
+var KST_ASCII_MAP = {
+  'ß': 'ss', 'æ': 'ae', 'Æ': 'AE', 'œ': 'oe', 'Œ': 'OE', 'ø': 'o', 'Ø': 'O',
+  'ł': 'l', 'Ł': 'L', 'đ': 'd', 'Đ': 'D', 'þ': 'th', 'Þ': 'TH',
+  '‘': "'", '’': "'", '‚': "'", '“': '"', '”': '"', '„': '"',
+  '–': '-', '—': '-', '…': '...', '°': 'deg', ' ': ' '
+};
+function toKstAscii(text) {
+  return text.normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^\x00-\x7f]/g, function(c) { return KST_ASCII_MAP[c] || '?'; });
+}
+
 function sendMsg(msg) {
+  msg = toKstAscii(msg);
   var logEntry = protocolLogTimestamp() + " > " + msg;
   console.log(logEntry);
   $('#debugWindow').append(logEntry + "\n<br/>");
