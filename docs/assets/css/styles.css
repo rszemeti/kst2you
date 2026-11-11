@@ -17,3 +17,12 @@
   background-color: grey;
 }
 
+
+/* ── Chat spam marking ── */
+#chatLogTable .chat-spam-col { width: 1.75rem; text-align: center; }
+#chatLogTable .chat-spam-btn { color: var(--bs-secondary-color); opacity: 0.35; line-height: 1; }
+#chatLogTable tr:hover .chat-spam-btn,
+#chatLogTable .chat-spam-btn:focus-visible { opacity: 1; }
+#chatLogTable tr.chat-spam > td { opacity: 0.5; text-decoration: line-through; }
+#chatLogTable tr.chat-spam .chat-spam-btn { opacity: 1; text-decoration: none; }
+#userListTable tr.user-spam > td { --bs-table-bg-type: rgba(220, 53, 69, 0.12); }

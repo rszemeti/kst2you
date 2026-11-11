@@ -117,6 +117,13 @@
             <label class="form-check-label small" for="aboutMe" data-i18n="chat.onlyAboutMe">Only messages about me</label>
           </div>
         </div>
+        <div class="col-auto">
+          <div class="form-check mb-0" title="Hide unaddressed messages from stations you have marked as spam. Messages addressed to you always get through." data-i18n-title="chat.hideSpamTitle">
+            <input class="form-check-input" type="checkbox" id="hideSpam" checked>
+            <label class="form-check-label small" for="hideSpam" data-i18n="chat.hideSpam">Hide spam</label>
+            <span class="small text-muted" id="spamCount"></span>
+          </div>
+        </div>
       </div>
       <div class="table-responsive">
         <table class="table table-sm table-hover" id="chatLogTable">
@@ -126,6 +133,7 @@
               <th data-i18n="col.from">From</th>
               <th data-i18n="col.to">To</th>
               <th data-i18n="col.message">Message</th>
+              <th class="chat-spam-col"></th>
             </tr>
           </thead>
           <tbody id="chatLog"></tbody>
@@ -664,6 +672,9 @@
             </li>
             <li class="list-inline-item" id="chatPopupRotateWrap" style="display:none">
               <button class="btn btn-warning btn-sm py-0 px-2" id="chatPopupRotateButton" type="button" data-i18n="chatPopup.rotate">⟳ Rotate</button>
+            </li>
+            <li class="list-inline-item">
+              <button class="btn btn-outline-danger btn-sm py-0 px-2" id="chatPopupSpamButton" type="button" title="Hide this station's unaddressed messages in the main chat" data-i18n-title="chatPopup.spamTitle" data-i18n="chatPopup.markSpam">⊘ Spam</button>
             </li>
             <li class="list-inline-item" id="chatContestWrap" style="display:none">
               <button class="btn btn-success btn-sm py-0 px-2" id="chatWorkedButton" type="button" data-i18n="chatPopup.worked">✓ Worked</button>

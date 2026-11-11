@@ -89,6 +89,8 @@ const preciseLocatorPattern = /^[A-R]{2}\d{2}[A-X]{2}\d{2}$/i;
 const locAutoReplyStorageKey = 'kst2you_loc_autoreply';
 const remoteSettingsSyncStorageKey = 'kst2you_remote_settings_sync';
 const preciseLocatorPromptOffStorageKey = 'kst2you_precise_locator_prompt_off';
+const spamCallsStorageKey = 'kst2you_spam_calls';
+const hideSpamStorageKey = 'kst2you_hide_spam';
 
 function renderReleaseTag() {
   $('#releaseTagLabel').text(clientSoftwareVersion.replace(/^KST2You\s+/, ''));
@@ -227,6 +229,122 @@ function setLocAutoReplyEnabled(enabled, saveToCloud) {
   if (saveToCloud && isRemoteSettingsSyncEnabled() && typeof ContestLog !== 'undefined' && ContestLog.saveUserSetting) {
     ContestLog.saveUserSetting({ locAutoReply: !!enabled });
   }
+}
+
+// ── Spam ──
+// Callsigns marked as spam. Their unaddressed (CQ) messages in the main chat are
+// hidden while "Hide spam" is ticked. Anything addressed to us always gets through.
+var spamCalls = (function () {
+  try {
+    var list = JSON.parse(localStorage.getItem(spamCallsStorageKey) || '[]');
+    return new Set(Array.isArray(list) ? list : []);
+  } catch (e) {
+    return new Set();
+  }
+})();
+
+// Ignore the -2 style session suffix so a reconnecting spammer stays marked
+function spamKey(callsign) {
+  return String(callsign || '').trim().toUpperCase().replace(/-\d+$/, '');
+}
+
+function isSpamCall(callsign) {
+  return spamCalls.has(spamKey(callsign));
+}
+
+function saveSpamCalls() {
+  try { localStorage.setItem(spamCallsStorageKey, JSON.stringify(Array.from(spamCalls))); } catch (e) {}
+  renderSpamCount();
+}
+
+function setSpamCall(callsign, isSpam) {
+  var key = spamKey(callsign);
+  if (!key) return;
+  if (isSpam) spamCalls.add(key); else spamCalls.delete(key);
+  saveSpamCalls();
+  markSpamUserRows();
+  if (chatPopupCallsign && spamKey(chatPopupCallsign) === key) renderChatPopupSpamButton(chatPopupCallsign);
+  $('#chatLog > tr').each(function(i, tr) {
+    var $tr = $(tr);
+    if (spamKey($tr.data('fromCall')) === key) {
+      updateChatRowSpamButton($tr);
+      applyChatRowVisibility($tr);
+    }
+  });
+}
+
+// Faint red background in the user list for stations marked as spam
+function markSpamUserRows() {
+  if (!dataTableUsers) return;
+  dataTableUsers.rows().every(function() {
+    var data = this.data();
+    if (data) $(this.node()).toggleClass('user-spam', isSpamCall(data.callsign));
+  });
+}
+
+function renderChatPopupSpamButton(callsign) {
+  var spam = isSpamCall(callsign);
+  $('#chatPopupSpamButton')
+    .text(spam ? I18n.t('chatPopup.unmarkSpam') : I18n.t('chatPopup.markSpam'))
+    .toggleClass('btn-danger', spam)
+    .toggleClass('btn-outline-danger', !spam)
+    .off('click').on('click', function(e) {
+      e.stopPropagation();
+      setSpamCall(callsign, !isSpamCall(callsign));
+    });
+}
+
+function isHideSpamEnabled() {
+  try { return localStorage.getItem(hideSpamStorageKey) !== 'false'; } catch (e) { return true; }
+}
+
+function renderSpamCount() {
+  var n = spamCalls.size;
+  $('#spamCount').text(n ? I18n.t('chat.spamCount', { count: n }) : '');
+}
+
+function isChatRowUnaddressed($tr) {
+  return String($tr.data('toCall')) === '0';
+}
+
+function isChatRowSpam($tr) {
+  return isChatRowUnaddressed($tr) && $tr.data('fromCall') !== userName && isSpamCall($tr.data('fromCall'));
+}
+
+function chatSpamButtonHtml(callsign) {
+  var spam = isSpamCall(callsign);
+  var title = spam ? I18n.h('chat.unmarkSpam', { call: callsign }) : I18n.h('chat.markSpam', { call: callsign });
+  return '<button type="button" class="btn btn-link btn-sm p-0 chat-spam-btn" data-spam="' + (spam ? '1' : '0') + '"' +
+    ' title="' + title + '" aria-label="' + title + '">' +
+    '<i class="bi ' + (spam ? 'bi-arrow-counterclockwise' : 'bi-slash-circle') + '"></i></button>';
+}
+
+function updateChatRowSpamButton($tr) {
+  if (!isChatRowUnaddressed($tr) || $tr.data('fromCall') === userName) return;
+  $tr.find('td.chat-spam-col').html(chatSpamButtonHtml($tr.data('fromCall')));
+}
+
+// One place that decides whether a chat row is shown, combining every filter
+function isChatRowVisible($tr) {
+  if ($tr.data('toCall') === userName) return true;
+  if (isHideSpamEnabled() && isChatRowSpam($tr)) return false;
+  var uname = (userName || '').toLowerCase();
+  var mentionsMe = !!uname && $tr.text().toLowerCase().includes(uname);
+  if ($('#aboutMe').prop('checked') && !mentionsMe) return false;
+  if (mentionsMe) return true;
+  var distance = $tr.data('distance');
+  return !(typeof distance !== 'undefined' && distance > $('#maxDistance').val());
+}
+
+function applyChatRowVisibility($tr) {
+  $tr.toggleClass('chat-spam', isChatRowSpam($tr));
+  $tr.toggle(isChatRowVisible($tr));
+}
+
+function applyChatFilters() {
+  $('#chatLog > tr').each(function(i, tr) {
+    applyChatRowVisibility($(tr));
+  });
 }
 
 function getChatPeerLocator(callsign) {
@@ -1117,10 +1235,12 @@ function procChatMessage(msg, isLive) {
     '<td class="from" onclick="chatPopup(\'' + mf + '\')" >' + decorate(message.from) + "</td>" +
     '<td class="to" onclick="chatPopup(\'' + mt + '\')"  >' + decorate(message.to) + "</td>" +
     "<td>" + renderChatMessageHtml(message.text) + "</td>" +
+    '<td class="chat-spam-col"></td>' +
     "</tr>");
 
   row.data('fromCall', message.from);
   row.data('toCall', message.to);
+  updateChatRowSpamButton(row);
     
   if (isLive) {
     $('#chatLog').prepend(row);
@@ -1128,21 +1248,15 @@ function procChatMessage(msg, isLive) {
     $('#chatLog').append(row);
   }
 
-  if ($('#aboutMe').prop('checked')) {
-    $('#chatLog >  tr').filter(":not(:icontains('" + userName + "'))").hide();
-  }
-
   if (typeof stn !== 'undefined') {
     row.data('station', stn);
     row.data('distance', stn.distance);
-    if (stn.distance > $('#maxDistance').val()) {
-      row.hide();
-    }
   }
+  applyChatRowVisibility(row);
+
   // messages for me
   if (message.to == userName) {
     row.addClass('table-danger');
-    row.show();
     if (typeof messageLog[message.from] == 'undefined') {
       messageLog[message.from] = [];
     }
@@ -1650,6 +1764,7 @@ function initUserList() {
     ],
     createdRow: function(row, data) {
       $(row).attr('data-callsign', data.callsign);
+      $(row).toggleClass('user-spam', isSpamCall(data.callsign));
       if (typeof ContestLog !== 'undefined' && ContestLog.isActive()) {
         var state = ContestLog.getState(data.callsign);
         if (state) {
@@ -1668,23 +1783,7 @@ function initUserList() {
 }
 
 function filterChatByDistance() {
-  var dist = $('#maxDistance').val();
-  var uname = userName.toLowerCase();
-
-  $('#chatLog > tr').each(function(index, tr) {
-    var $tr = $(tr);
-    var distance = $tr.data('distance');
-    var rowText = $tr.text().toLowerCase();
-
-    // Always show rows that mention the current user
-    if (rowText.includes(uname)) {
-      $tr.show();
-    } else if (typeof distance !== 'undefined' && distance > dist) {
-      $tr.hide();
-    } else {
-      $tr.show();
-    }
-  });
+  applyChatFilters();
 }
 
 
@@ -1740,6 +1839,7 @@ function chatPopup(callsign) {
   } else {
     $rotWrap.hide();
   }
+  renderChatPopupSpamButton(callsign);
   // Contest mark buttons
   var $contestWrap = $('#chatContestWrap');
   if (typeof ContestLog !== 'undefined' && ContestLog.isActive()) {
@@ -2168,12 +2268,20 @@ $(document).ready(function() {
   });
 
   $('#aboutMe').change(function() {
-    if (this.checked) {
-      $('#chatLog > tr').filter(":not(:icontains('" + userName + "'))").hide();
-    } else {
-      $('#chatLog > tr').filter(":not(:icontains('" + userName + "'))").show();
-      filterChatByDistance();
-    }
+    applyChatFilters();
+  });
+
+  $('#hideSpam').prop('checked', isHideSpamEnabled()).change(function() {
+    try { localStorage.setItem(hideSpamStorageKey, this.checked ? 'true' : 'false'); } catch (e) {}
+    applyChatFilters();
+  });
+  renderSpamCount();
+
+  $('#chatLog').on('click', '.chat-spam-btn', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    var $tr = $(this).closest('tr');
+    setSpamCall($tr.data('fromCall'), $(this).attr('data-spam') !== '1');
   });
 
   $('#awayButton').change(function() {
